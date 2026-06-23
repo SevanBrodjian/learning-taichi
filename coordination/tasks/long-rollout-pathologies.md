@@ -1,7 +1,10 @@
 # Task brief — Long-rollout gradient pathologies
 
 > Orchestrator → worker contract. Read `CLAUDE.md` (esp. the Autonomy charter) and all of `spec/`
-> first. Branch: `claude/long-rollout-grads`. Direction id: `long-rollout-pathologies`.
+> first. Direction id: `long-rollout-pathologies`. You are running in your own worktree on an
+> auto-named branch; that is expected. Write to your own per-branch paths (`runs/<your-branch>/...`,
+> `agents/<your-branch>/...`) and give every run a clear, named `title` so the dashboard reads well
+> regardless of the branch name.
 
 ## Context (what is already established)
 The DiffMPM baseline (`sim/diffmpm.py`) backpropagates through a 512-step MLS-MPM rollout to optimize a
@@ -37,18 +40,20 @@ cleanly past where it currently dies, while characterizing how gradient quality 
 Keep the baseline `sim/diffmpm.py` working. Prefer flags or a sibling module over destructive edits.
 
 ## Deliverables (the dashboard contract)
-- Code under `sim/` (flags or a variant module). Use the main `.venv`.
-- One `runs/claude/long-rollout-grads/<run-id>/` per notable config: `manifest.json` (schema_version "1",
-  with `training_refs`), `metrics.json`, and `video.mp4` for at least the headline result.
+- Code under `sim/` (flags or a variant module). Use the main `.venv` (it lives in the main checkout, not
+  your worktree — invoke it by absolute path, e.g. `C:/Users/Owner/Projects/learning-taichi/.venv/Scripts/python.exe`).
+- One `runs/<your-branch>/<run-id>/` per notable config: `manifest.json` (schema_version "1", a named
+  `title`, and `training_refs`), `metrics.json`, and `video.mp4` for at least the headline result.
 - **Teach it.** Substantially expand `reports/training/core/03-failure-modes.md` with the mechanism you
   find and the fix that worked. Add prerequisite sections as needed and err toward more (e.g. exploding/
   vanishing gradients in unrolled/recurrent systems, the adjoint method, matrix conditioning). Derive the
   math, link with `[[wiki-links]]`. KaTeX rule: multiline `$$` must be three-line (open and close on their
   own lines).
-- Update `coordination/directions.json` status as you go; keep `agents/claude/long-rollout-grads/STATUS.md`
-  current and append to `LOG.md`.
+- Update `coordination/directions.json` (set this direction's `branch` to your actual branch); keep
+  `agents/<your-branch>/STATUS.md` current and append to `LOG.md`.
 - ntfy: `progress` pings freely; `gate` only at a real decision, written to `coordination/decisions/`,
   and never block on it (see the Autonomy charter).
+- When done, commit your branch and merge to `main` so the orchestrator dashboard picks it up.
 
 ## Definition of done
 - A clear, evidence-backed statement of which hypothesis(es) drive the NaN, with the instrumentation plot

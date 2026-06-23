@@ -18,7 +18,6 @@
       "id": "long-rollout-pathologies",
       "title": "Long-rollout gradient pathologies",
       "status": "active",
-      "branch": "claude/long-rollout-grads",
       "note": "Exploding/vanishing gradients vs. number of steps; the iter-67 NaN; checkpointing trade-offs; gradient clipping; f64. The hottest lead from the baseline run."
     },
     {

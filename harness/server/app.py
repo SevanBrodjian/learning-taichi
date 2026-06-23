@@ -158,8 +158,17 @@ def training_toc() -> dict:
 
 
 def directions_doc() -> dict:
-    p = MAIN_ROOT / "coordination" / "research_directions.md"
-    return {"url": _shared_url("coordination/research_directions.md") if p.is_file() else None}
+    """Structured directions for the board, from coordination/directions.json, with the narrative
+    research_directions.md as a fallback url."""
+    j = MAIN_ROOT / "coordination" / "directions.json"
+    md = MAIN_ROOT / "coordination" / "research_directions.md"
+    out = {"directions": [], "md_url": _shared_url("coordination/research_directions.md") if md.is_file() else None}
+    if j.is_file():
+        try:
+            out["directions"] = json.loads(j.read_text("utf-8")).get("directions", [])
+        except Exception:
+            pass
+    return out
 
 
 def reports_list() -> dict:

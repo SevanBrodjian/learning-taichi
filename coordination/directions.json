@@ -1,0 +1,48 @@
+{
+  "_comment": "Structured source of truth for research directions and their status. The dashboard Directions board renders this. Statuses: active (has a worker/worktree) | queued (next up) | proposed (candidate) | done | parked. The orchestrator edits this on main; research_directions.md is the narrative companion.",
+  "directions": [
+    {
+      "id": "diffmpm-baseline",
+      "title": "DiffMPM baseline",
+      "status": "done",
+      "branch": "claude/elegant-bassi-cb7174",
+      "note": "Forward MLS-MPM made differentiable; optimize a shared initial velocity to hit a target. Loss 0.144 -> ~5e-5, high-res video, interim training textbook. The NaN gradient at long horizon was observed and reproduced."
+    },
+    {
+      "id": "contact-boundary",
+      "title": "Contact / boundary differentiability",
+      "status": "queued",
+      "note": "The non-differentiable wall clamps (mpm88 lines 49-59, 77). Smoothing the contact and measuring the effect on gradients. Directly implicated in the baseline NaN."
+    },
+    {
+      "id": "long-rollout-pathologies",
+      "title": "Long-rollout gradient pathologies",
+      "status": "queued",
+      "note": "Exploding/vanishing gradients vs. number of steps; the iter-67 NaN; checkpointing trade-offs; gradient clipping; f64. The hottest lead from the baseline run."
+    },
+    {
+      "id": "material-variants",
+      "title": "Material variants",
+      "status": "proposed",
+      "note": "Elastic vs. fluid vs. snow constitutive swaps and how each optimizes. Demo-friendly and visually striking."
+    },
+    {
+      "id": "optimizer-comparison",
+      "title": "Optimizer comparison",
+      "status": "proposed",
+      "note": "SGD vs. Adam vs. L-BFGS backpropagating through the rollout."
+    },
+    {
+      "id": "resolution-scaling",
+      "title": "Resolution / performance scaling",
+      "status": "proposed",
+      "note": "Grid and particle count vs. GPU throughput and gradient memory."
+    },
+    {
+      "id": "learned-dynamics",
+      "title": "Toward learned dynamics",
+      "status": "proposed",
+      "note": "Replace part of the sim with a learned component. The first real step toward structured world models."
+    }
+  ]
+}

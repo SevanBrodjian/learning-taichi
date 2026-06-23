@@ -26,10 +26,12 @@ Stop and hand back to the user **only** at a real gate:
   deliverable.
 - **The defined milestone** for the current plan.
 
-When you *do* need the user, prefer to **escalate asynchronously**: write the question to
-`coordination/decisions/` (the inbox) and fire a `gate` ping, then keep working on anything not blocked
-by it. Halting the entire run to wait is itself a failure mode. Autonomy is not "never need the user";
-it is "never freeze the run."
+When you *do* need the user, escalate **asynchronously and never block**: write the question to
+`coordination/decisions/` (the inbox), fire a `gate` ping, then either keep working on anything not
+blocked by it or checkpoint in `STATUS.md` and end the run cleanly. Do **not** sit in a wait loop or
+poll a command for a human reply — tool calls time out in minutes and a human may take hours. Resumption
+happens on the next invocation: you, the orchestrator, or a scheduled wake-up reads the answer from the
+inbox and continues. Autonomy is not "never need the user", it is "never freeze the run waiting for one".
 
 ## Repository map
 The repo separates a **portable harness** (the reusable skeleton) from **project-specific** calibration

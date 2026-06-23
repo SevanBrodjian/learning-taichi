@@ -34,6 +34,15 @@ The length should be as long as needed. There's really no limit, and in some sen
 
 Mathematical rigor is preferred but used precisely. In general I struggle to feel engaged with the math unless I understand why I'm learning it. Also, don't hesitate to explain the principles needed before showing equations. I don't just want to learn what an equation for this system looks like, I want to learn the underlying mathematics and physics that explains where it came from and how someone could have arrived at that idea.
 
+## Prerequisites (err on the side of more)
+Bias toward over-including prerequisites. When an implementation leans on a piece of mathematics, teach
+that mathematics from the ground up in the prerequisites layer, even if it feels basic. If a step uses an
+SVD, a change of basis, a quadratic form, a Jacobian, or a numerical-integration scheme, add or extend a
+prerequisite section that derives it and builds intuition, then link to it from the core. A standing goal
+of this project is to strengthen my mathematical foundations across linear algebra, calculus, and
+numerical methods, so depth in the prerequisites is a feature rather than padding. The prerequisites are
+skim-friendly by design, so over-coverage costs me nothing and fills gaps I might not know I have.
+
 ## Notation conventions
 > TODO(you): any standing preferences (e.g. matrices bold capital, particle index $p$, grid node $i$)?
 > Default: state notation locally per report.

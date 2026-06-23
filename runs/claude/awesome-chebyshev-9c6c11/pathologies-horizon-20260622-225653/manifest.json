@@ -1,0 +1,36 @@
+{
+  "schema_version": "1",
+  "run_id": "pathologies-horizon-20260622-225653",
+  "branch": "claude/awesome-chebyshev-9c6c11",
+  "title": "Horizon sweep \u2014 NaN iteration vs. rollout length",
+  "created": "2026-06-23T05:56:53.326851+00:00",
+  "status": "completed",
+  "summary": "Swept rollout lengths [128, 256, 512] with fixed target [0.7, 0.35]. n=128\u2192NaN@None  n=256\u2192NaN@11  n=512\u2192NaN@7",
+  "metrics": {
+    "nan_iters": {
+      "128": null,
+      "256": 11,
+      "512": 7
+    },
+    "series": "runs/claude/awesome-chebyshev-9c6c11/pathologies-horizon-20260622-225653/metrics.json"
+  },
+  "media": {},
+  "training_refs": [
+    "failure-modes"
+  ],
+  "params": {
+    "experiment": "horizon",
+    "horizons": [
+      128,
+      256,
+      512
+    ],
+    "iters": 80,
+    "lr": 0.1,
+    "precision": "f32",
+    "target": [
+      0.7,
+      0.35
+    ]
+  }
+}

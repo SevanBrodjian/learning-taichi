@@ -2,12 +2,60 @@
   "schema_version": "0",
   "runs": [
     {
-      "run_id": "diffmpm-20260620-212710",
+      "run_id": "pathologies-instrument-f64-20260622-231314",
+      "branch": "claude/awesome-chebyshev-9c6c11",
+      "title": "Gradient instrumentation \u2014 512 steps, f64",
+      "status": "completed",
+      "created": "2026-06-23T06:13:14.007028+00:00",
+      "manifest": "runs/claude/awesome-chebyshev-9c6c11/pathologies-instrument-f64-20260622-231314/manifest.json"
+    },
+    {
+      "run_id": "pathologies-clip-stabilized-20260622-231043",
+      "branch": "claude/awesome-chebyshev-9c6c11",
+      "title": "Mass-stabilised grid_op \u2014 clean optimisation (512 steps, f32)",
+      "status": "completed",
+      "created": "2026-06-23T06:10:45.267884+00:00",
+      "manifest": "runs/claude/awesome-chebyshev-9c6c11/pathologies-clip-stabilized-20260622-231043/manifest.json"
+    },
+    {
+      "run_id": "pathologies-isolate-20260622-225733",
+      "branch": "claude/awesome-chebyshev-9c6c11",
+      "title": "Contact isolation \u2014 center vs. wall target",
+      "status": "completed",
+      "created": "2026-06-23T05:57:33.166344+00:00",
+      "manifest": "runs/claude/awesome-chebyshev-9c6c11/pathologies-isolate-20260622-225733/manifest.json"
+    },
+    {
+      "run_id": "pathologies-clip-20260622-225719",
+      "branch": "claude/awesome-chebyshev-9c6c11",
+      "title": "Gradient clipping \u2014 continues past NaN (clip=1.0)",
+      "status": "completed",
+      "created": "2026-06-23T05:57:21.291759+00:00",
+      "manifest": "runs/claude/awesome-chebyshev-9c6c11/pathologies-clip-20260622-225719/manifest.json"
+    },
+    {
+      "run_id": "pathologies-horizon-20260622-225653",
+      "branch": "claude/awesome-chebyshev-9c6c11",
+      "title": "Horizon sweep \u2014 NaN iteration vs. rollout length",
+      "status": "completed",
+      "created": "2026-06-23T05:56:53.326851+00:00",
+      "manifest": "runs/claude/awesome-chebyshev-9c6c11/pathologies-horizon-20260622-225653/manifest.json"
+    },
+    {
+      "run_id": "pathologies-instrument-f32-20260622-225642",
+      "branch": "claude/awesome-chebyshev-9c6c11",
+      "title": "Gradient instrumentation \u2014 512 steps, f32",
+      "status": "completed",
+      "created": "2026-06-23T05:56:42.347782+00:00",
+      "manifest": "runs/claude/awesome-chebyshev-9c6c11/pathologies-instrument-f32-20260622-225642/manifest.json"
+    },
+    {
+      "run_id": "diffmpm-20260622-211223",
       "branch": "claude/elegant-bassi-cb7174",
       "title": "DiffMPM: optimize initial velocity to reach a target",
       "status": "completed",
-      "created": "2026-06-21T04:27:10.756002+00:00",
-      "manifest": "runs/claude/elegant-bassi-cb7174/diffmpm-20260620-212710/manifest.json"
+      "created": "2026-06-23T04:12:24.078222+00:00",
+      "manifest": "runs/claude/elegant-bassi-cb7174/diffmpm-20260622-211223/manifest.json"
     }
   ]
 }

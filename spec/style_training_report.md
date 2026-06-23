@@ -46,5 +46,15 @@ plaintext (the "red paragraph" failure), so these are not optional:
 - Brace every multi-character sub/superscript: `x_{T,p}`, not `x_T,p`.
 - Stick to the KaTeX support table; do not assume a LaTeX-only macro exists. `\lVert \rVert`,
   `\operatorname{...}`, `\tfrac`, `\mathbf`, `\mathrel{...}` are safe and used here.
+- **Multiline display math must use fenced `$$`.** `remark-math` v6 parses block math like a fenced
+  code block: the closing `$$` must be on its own line. Writing `$$...content...$$` where `$$` ends
+  mid-line is not closed — the parser swallows everything to end-of-document and KaTeX renders it all
+  red. Always use the three-line form:
+  ```
+  $$
+  ...equation...
+  $$
+  ```
+  Single-line `$$f(x)$$` (open and close on the same line) is fine. This bit `01-mls-mpm-forward.md`.
 - Render-check every new math-bearing report in the dashboard before calling it done — KaTeX errors
   are silent in the source and only visible when rendered.

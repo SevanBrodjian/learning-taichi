@@ -5,8 +5,10 @@ This is the engine every later idea sits on. One step moves information particle
 ## Particle to grid
 Each particle deposits mass and momentum onto its surrounding nodes. The momentum it deposits carries both its plain velocity and an internal-stress plus affine term, folded into one matrix $A_p$.
 
-$$(m v)_i \mathrel{+}= \sum_p w_{ip}\big(m_p v_p + A_p (x_i - x_p)\big),\qquad
-A_p = -\frac{4\,\Delta t\,E\,V_p (J_p-1)}{\Delta x^2}\,I + m_p C_p.$$
+$$
+(m v)_i \mathrel{+}= \sum_p w_{ip}\big(m_p v_p + A_p (x_i - x_p)\big),\qquad
+A_p = -\frac{4\,\Delta t\,E\,V_p (J_p-1)}{\Delta x^2}\,I + m_p C_p.
+$$
 
 The first part of $A_p$ is the elastic stress. It grows with how far the volume ratio $J_p$ has departed from rest, so compressed material pushes outward. The second part is the APIC affine state $C_p$ that preserves local rotation and shear.
 
@@ -20,10 +22,12 @@ The division by $m_i$ is the first quiet hazard, since a node barely touched by 
 ## Grid to particle
 Each particle gathers a fresh velocity and a fresh affine matrix from its nodes, advects, and updates its volume.
 
-$$v_p = \sum_i w_{ip} v_i,\qquad
+$$
+v_p = \sum_i w_{ip} v_i,\qquad
 C_p = \frac{4}{\Delta x^2}\sum_i w_{ip} v_i (x_i - x_p)^\top,\qquad
 x_p \mathrel{+}= \Delta t\,v_p,\qquad
-J_p \mathrel{*}= (1 + \Delta t\,\operatorname{tr} C_p).$$
+J_p \mathrel{*}= (1 + \Delta t\,\operatorname{tr} C_p).
+$$
 
 After this the grid is discarded and the next step rebuilds it. The seed forward code is `sim/mpm88.py`, the canonical 88-line MLS-MPM, and `sim/diffmpm.py` is the time-indexed version built for gradients. The wall clamps live at `sim/mpm88.py` lines 49 to 59 and 77.
 

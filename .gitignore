@@ -222,4 +222,6 @@ node_modules/
 *.local
 
 # Claude Code local tooling (launch.json carries worktree-specific absolute paths)
-.claude/
+# Use .claude/* (not .claude/) so the settings.json exception below can take effect.
+.claude/*
+!.claude/settings.json

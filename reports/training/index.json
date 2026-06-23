@@ -1,0 +1,23 @@
+{
+  "title": "Differentiable MPM — a ground-up textbook",
+  "intro": "The teaching companion to the DiffMPM work. Prerequisites collect standing background and math you can skim to taste. Core sections build the method and its failure modes from first principles. Runs link into these sections instead of restating them, so the teaching accumulates in one organized place rather than scattering across tasks.",
+  "groups": [
+    {
+      "id": "prerequisites",
+      "title": "Prerequisites (skim as needed)",
+      "sections": [
+        { "id": "mpm-in-context", "title": "MPM in context", "file": "prerequisites/01-mpm-in-context.md" },
+        { "id": "math-toolkit", "title": "Math toolkit", "file": "prerequisites/02-math-toolkit.md" }
+      ]
+    },
+    {
+      "id": "core",
+      "title": "Core",
+      "sections": [
+        { "id": "mls-mpm-forward", "title": "The MLS-MPM forward step", "file": "core/01-mls-mpm-forward.md" },
+        { "id": "differentiating-the-rollout", "title": "Differentiating the rollout", "file": "core/02-differentiating-the-rollout.md" },
+        { "id": "failure-modes", "title": "Failure modes", "file": "core/03-failure-modes.md" }
+      ]
+    }
+  ]
+}

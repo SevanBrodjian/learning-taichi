@@ -1,0 +1,12 @@
+# Core simulation
+taichi==1.7.4
+numpy
+
+# Phase 1 artifacts: loss plots + video/frame export for the dashboard
+matplotlib
+imageio
+imageio-ffmpeg
+
+# Master data server (harness/server) that feeds the dashboard live across worktrees
+fastapi
+uvicorn[standard]

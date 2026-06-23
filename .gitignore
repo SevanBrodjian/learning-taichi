@@ -216,3 +216,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Node / dashboard
+node_modules/
+*.local
+
+# Claude Code local tooling (launch.json carries worktree-specific absolute paths)
+.claude/

@@ -1,0 +1,50 @@
+# Style: training reports
+
+> The long-prompt for how `reports/training/<topic>.md` is written. An agent should be able to follow
+> this to produce a report you'd actually learn from. Co-authored — refine `TODO(you)` lines.
+
+## Audience & goal
+Written for **me** (see `researcher_profile.md`): Background in ML, generative modeling, and simulation with mixed depth. After
+reading, I should be able to **explain the topic at a whiteboard**, give a presentation, and reuse the
+concepts. Teach from first principles, but never condescend or pad. In general, it's preferred that you overexplain rather than underexplain. It's easier to skim past things I know than to have to go back and search to fill gaps.
+
+## Structure (default; adapt as needed)
+*This structure works well as a loose commitment. I like the idea of separating out background knowledge / pre-requisites from the core teaching material. That way we can accumulate both at the same time, and I can easily reference the pre-reqs (which should include a lot of the math) to skim what I know and dive into what I want to learn. That way I'm not doing this constantly while going through the core training document. We can lean into that idea even more with this report. Hyperlinking and organizing into sections is a much better idea than following a chronology specific to the order in which things were written. It should be much closer to something like a textbook, or smaller training document like that.*
+1. **Motivation** — what problem this solves and why it matters to the world-models vision.
+2. **Intuition** — the mental model before the math.
+3. **The math** — derived, not asserted; KaTeX (`$...$`, `$$...$$`); define all notation.
+4. **Implementation mapping** — tie the math to the *actual code* (reference `sim/...` files and line
+   ranges); explain the Taichi idioms used.
+5. **Failure modes & fixes** — what broke, *why* (mechanistically), and what resolved it. This section
+   is mandatory and often the most valuable.
+6. **What's open** — honest limits, what's hard, what's an active research question.
+
+## Voice & rigor
+- First-principles and concrete; prefer a worked example over abstraction.
+- **Honest about hand-waving** — flag where an argument is informal.
+- Use small diagrams/figures where a picture beats prose (reference images the run exported).
+- Depth over breadth; no filler, no marketing tone.
+- Use confident, clear, concise, precise writing style. Avoid complicated sentence structure, avoid em dashes and semicolons, avoid colons unless clearly beneficial.
+- Avoid generic phrasing and LLM language. In particular, avoid any phrasing along the lines of "we ask a simpler question" or "our method asks whether" or all these variants of "asking". LLMs dramatically overuse this. Additionally, avoid overuse of colons. LLM writing really overuses colons followed by lists or claims. Just rework writing to avoid them.
+- Tie ideas back to my core objectively strongly and frequently. If you are struggling to do this, then the connection probably isn't very clear, and I'm probably going to lose interest. Even if it's a negative connection, like "this idea does this, which is common and considered standard, but it probably will get overwritten by approaches that do this in your work".
+- Write in an engaging format, not dense and cold technicality. It can be lightly humorous, although I prefer dry humor. Don't be cringy. If something is genuinely interesting to you, or you think there's a real connection to my core research, don't hold back. Let the enthusiasm shine through.
+
+## Length & math
+The length should be as long as needed. There's really no limit, and in some sense longer is better. The key is to grow it appropriately and slowly but steadily. If every task is adding 3 pages that may be overloading to try and keep up. But if many tasks accumulate steadily into a 20 page training document and I kept up along the way that's an excellent outcome in my eyes.
+
+Mathematical rigor is preferred but used precisely. In general I struggle to feel engaged with the math unless I understand why I'm learning it. Also, don't hesitate to explain the principles needed before showing equations. I don't just want to learn what an equation for this system looks like, I want to learn the underlying mathematics and physics that explains where it came from and how someone could have arrived at that idea.
+
+## Notation conventions
+> TODO(you): any standing preferences (e.g. matrices bold capital, particle index $p$, grid node $i$)?
+> Default: state notation locally per report.
+
+**KaTeX-safe math (hard rules — these already bit us twice).** The dashboard renders math with KaTeX,
+which is stricter than full LaTeX. One bad token makes KaTeX render the *entire* expression as red
+plaintext (the "red paragraph" failure), so these are not optional:
+- Never write `\*`. It is undefined in KaTeX. For a star/superscript-star use `x^{*}` (literal) or `x^{\ast}`.
+- Escape a literal dollar amount in prose as `\$` so `remark-math` does not open a stray math span.
+- Brace every multi-character sub/superscript: `x_{T,p}`, not `x_T,p`.
+- Stick to the KaTeX support table; do not assume a LaTeX-only macro exists. `\lVert \rVert`,
+  `\operatorname{...}`, `\tfrac`, `\mathbf`, `\mathrel{...}` are safe and used here.
+- Render-check every new math-bearing report in the dashboard before calling it done — KaTeX errors
+  are silent in the source and only visible when rendered.

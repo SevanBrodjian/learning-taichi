@@ -1,0 +1,13 @@
+{
+  "schema_version": "0",
+  "runs": [
+    {
+      "run_id": "diffmpm-20260620-212710",
+      "branch": "claude/elegant-bassi-cb7174",
+      "title": "DiffMPM: optimize initial velocity to reach a target",
+      "status": "completed",
+      "created": "2026-06-21T04:27:10.756002+00:00",
+      "manifest": "runs/claude/elegant-bassi-cb7174/diffmpm-20260620-212710/manifest.json"
+    }
+  ]
+}

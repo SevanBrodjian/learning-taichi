@@ -1,0 +1,25 @@
+{
+  "name": "learning-taichi-dashboard",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Dashboard for learning-taichi: differentiable-simulation runs, reports, and demos.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 5174 --host"
+  },
+  "dependencies": {
+    "katex": "^0.16.11",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^9.0.1",
+    "rehype-katex": "^7.0.1",
+    "remark-gfm": "^4.0.0",
+    "remark-math": "^6.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.8"
+  }
+}

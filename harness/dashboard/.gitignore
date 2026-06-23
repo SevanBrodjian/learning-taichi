@@ -1,0 +1,7 @@
+node_modules/
+dist/
+# Real run media synced in from ../runs is large and regenerable; keep the committed sample fixture.
+public/data/runs/
+!public/data/runs/sample/
+public/data/reports/
+!public/data/reports/training/sample.md

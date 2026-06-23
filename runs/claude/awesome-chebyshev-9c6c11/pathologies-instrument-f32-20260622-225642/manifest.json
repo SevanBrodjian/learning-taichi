@@ -1,0 +1,30 @@
+{
+  "schema_version": "1",
+  "run_id": "pathologies-instrument-f32-20260622-225642",
+  "branch": "claude/awesome-chebyshev-9c6c11",
+  "title": "Gradient instrumentation \u2014 512 steps, f32",
+  "created": "2026-06-23T05:56:42.347782+00:00",
+  "status": "completed",
+  "summary": "Per-step backward gradient norms through 512-step MLS-MPM (f32). NaN first at iter 7.",
+  "metrics": {
+    "final_loss": 0.08473514020442963,
+    "nan_at_iter": 7,
+    "iterations": 8,
+    "series": "runs/claude/awesome-chebyshev-9c6c11/pathologies-instrument-f32-20260622-225642/metrics.json"
+  },
+  "media": {},
+  "training_refs": [
+    "failure-modes"
+  ],
+  "params": {
+    "experiment": "instrument",
+    "n_steps": 512,
+    "iters": 80,
+    "lr": 0.1,
+    "precision": "f32",
+    "target": [
+      0.7,
+      0.35
+    ]
+  }
+}

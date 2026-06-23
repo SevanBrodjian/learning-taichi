@@ -17,8 +17,9 @@
     {
       "id": "long-rollout-pathologies",
       "title": "Long-rollout gradient pathologies",
-      "status": "active",
-      "note": "Exploding/vanishing gradients vs. number of steps; the iter-67 NaN; checkpointing trade-offs; gradient clipping; f64. The hottest lead from the baseline run."
+      "status": "done",
+      "branch": "claude/awesome-chebyshev-9c6c11",
+      "note": "Root cause identified: near-zero grid mass (m~1e-12) amplifies backward gradient by 1/m, compounded by 512-step Jacobian product → f32 overflow. Evidence: horizon sweep (128 steps no NaN; 256→iter11; 512→iter7), f64 runs cleanly (overflow not singularity), contact isolation (center target fails earlier → not contact-driven). Fix: mass stabilisation (max(m, eps=1e-4) in grid_op) → 100 iters clean, loss 0.15→9.5e-6. Training report expanded in 03-failure-modes.md."
     },
     {
       "id": "material-variants",

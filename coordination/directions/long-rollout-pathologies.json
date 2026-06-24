@@ -2,11 +2,12 @@
   "id": "long-rollout-pathologies",
   "name": "Long-rollout gradient pathologies",
   "status": "active",
-  "summary": "Why backprop through a long rollout NaNs, and how to tame it.",
+  "summary": "Gradient health when you differentiate through a long rollout. Arguably the central difficulty of differentiable simulation, since the gradient is a product of many per-step Jacobians.",
   "tasks": [
     { "id": "nan-root-cause", "title": "Root-cause and fix the long-rollout NaN", "status": "done" },
-    { "id": "softened-wall", "title": "Softened wall contact for smooth boundary gradients", "status": "proposed" },
-    { "id": "checkpointing-long-horizon", "title": "Gradient checkpointing for 1024+ step horizons", "status": "proposed" },
-    { "id": "jacobian-norms", "title": "Per-step Jacobian-norm estimation", "status": "proposed" }
+    { "id": "softened-wall", "title": "Softened wall contact for smooth boundary gradients", "status": "proposed", "note": "The hard wall clamp is a non-smooth kink in the gradient. Replace it with a smooth ramp and measure whether gradient quality improves, independent of the (already-fixed) mass overflow. Tests the contact-differentiability hypothesis directly." },
+    { "id": "checkpointing-long-horizon", "title": "Gradient checkpointing for 1024+ step horizons", "status": "proposed", "note": "Storing every intermediate state caps the horizon at memory. Implement gradient checkpointing (recompute instead of store) to reach 1024+ steps, and measure the real compute/memory trade-off on the GPU." },
+    { "id": "resolution-memory", "title": "Gradient memory and throughput vs resolution", "status": "proposed", "note": "How do grid and particle counts trade against GPU throughput and the memory of the stored backward tape? Maps the practical envelope of what is differentiable, at what cost." },
+    { "id": "jacobian-norms", "title": "Per-step Jacobian-norm estimation", "status": "proposed", "note": "Estimate the per-step Jacobian norm via finite differences to see exactly where in the rollout the gradient becomes ill-conditioned. The clearest picture of the amplification, more informative than the forward-state proxy used so far." }
   ]
 }

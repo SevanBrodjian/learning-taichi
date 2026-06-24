@@ -19,6 +19,7 @@ export default function App() {
   const [overview, setOverview] = useState(null);
   const [error, setError] = useState(null);
   const [selected, setSelected] = useState(null); // { key, detail, title, ... }
+  const [taskFilter, setTaskFilter] = useState("all"); // Tasks-tab direction filter
 
   useEffect(() => {
     fetchOverview().then(setOverview).catch((e) => setError(String(e)));
@@ -52,6 +53,8 @@ export default function App() {
     return [...m.entries()].map(([id, v]) => ({ id, ...v }));
   }, [realTasks]);
 
+  const visibleGroups = taskFilter === "all" ? groups : groups.filter((g) => g.id === taskFilter);
+
   return (
     <div className="app">
       <aside className="sidebar">
@@ -75,7 +78,15 @@ export default function App() {
 
         {section === "tasks" && (
           <nav className="task-nav">
-            {groups.map((g) => (
+            {groups.length > 1 && (
+              <select className="task-filter" value={taskFilter} onChange={(e) => setTaskFilter(e.target.value)}>
+                <option value="all">All directions</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            )}
+            {visibleGroups.map((g) => (
               <div className="task-group" key={g.id}>
                 <div className="side-label">{g.name}</div>
                 {g.tasks.map((t) => (

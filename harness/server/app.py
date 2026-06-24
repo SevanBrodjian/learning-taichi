@@ -246,6 +246,7 @@ def overview() -> dict:
             has = (did, tid) in arts
             tasks.append({
                 "id": tid, "title": t.get("title", tid), "status": t.get("status", "proposed"),
+                "note": t.get("note", ""),
                 "has_artifact": has, "detail": f"/api/task/{did}/{tid}" if has else None,
             })
         directions.append({

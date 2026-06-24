@@ -1,9 +1,9 @@
 {
   "id": "learned-dynamics",
-  "name": "Toward learned dynamics",
+  "name": "Learned dynamics",
   "status": "proposed",
-  "summary": "Replace part of the sim with a learned component. The first real step toward structured world models.",
+  "summary": "Replace part of the explicit simulator with a learned component while keeping the rest differentiable. The first concrete step toward structured generative worlds.",
   "tasks": [
-    { "id": "learned-residual", "title": "Learn a residual correction to the grid update", "status": "proposed" }
+    { "id": "learned-residual", "title": "Learn a residual correction to the grid update", "status": "proposed", "note": "Keep the MLS-MPM step but add a small learned residual on the grid velocity, trained through the differentiable rollout. A minimal hybrid that tests whether gradients can train a network embedded in physics." }
   ]
 }

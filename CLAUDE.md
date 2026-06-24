@@ -33,6 +33,43 @@ poll a command for a human reply — tool calls time out in minutes and a human 
 happens on the next invocation: you, the orchestrator, or a scheduled wake-up reads the answer from the
 inbox and continues. Autonomy is not "never need the user", it is "never freeze the run waiting for one".
 
+## Roles — orchestrator vs worker
+A session must know which role it is, and the rule is deterministic.
+
+**Default: you are the ORCHESTRATOR.** Any session a human starts is an orchestrator. An orchestrator
+owns one **research direction** — a worktree + branch + a clean, plain-English name — and is responsible
+for `coordination/`, the dashboard view of that direction, talking with the user, and **spawning worker
+subagents** to execute individual tasks. It plans and integrates; it does not do the deep task execution
+itself, and it is the only role that touches `reports/research_report.md`.
+
+**You are a WORKER only if your spawning prompt explicitly says so.** The orchestrator stamps every
+worker it spawns: *"You are a worker agent for task `<id>`. You are NOT the orchestrator. Do not spawn
+further agents. Read `coordination/tasks/<id>.md`, do the task, write all results to disk, update status,
+then exit."* A worker runs in the orchestrator's worktree, produces **exactly one task**
+(`runs/<direction-id>/<task-id>/`), may extend the training textbook, updates its task status, and exits.
+It never edits the research report and never spawns agents.
+
+If you are ever unsure, you are the orchestrator — only an explicit spawn prompt makes you a worker.
+
+## Persistence — the filesystem is the backbone
+Durable state lives in the repo, on disk, as files (mostly Markdown + JSON). **Do not rely on auto-memory
+or session context for anything that must survive.** A worker's value is its output on disk, not its
+living process, so a worker writes everything down and exits; the orchestrator reconstructs all state by
+reading the filesystem. Everything learned, designed, decided, or instructed must land in: `spec/`
+(calibration), `coordination/` (directions, tasks, decisions, shared_memory), `reports/` (training +
+research), `runs/` (results), `agents/<branch>/` (status + log). If it is only in a chat context, it does
+not exist.
+
+## Task lifecycle
+1. A direction is **queued** by the user (in `coordination/directions/`).
+2. The orchestrator writes a brief to `coordination/tasks/<id>.md` and **spawns a worker**, flipping the
+   task to **active** immediately (the user cannot undo an active flip).
+3. The worker executes, writes `runs/<direction-id>/<task-id>/` as one polished task (objective, findings,
+   typed results), extends the training textbook if warranted, updates status, **merges to `main`**, and
+   exits.
+4. The orchestrator integrates and surfaces it on the dashboard. **Done is the user's call**, made after
+   discussion — never set automatically.
+
 ## Repository map
 The repo separates a **portable harness** (the reusable skeleton) from **project-specific** calibration
 and work (the flesh). To start a new project: copy `harness/`, refill `spec/`, empty `sim/ reports/ runs/`.
@@ -52,13 +89,14 @@ requirements.txt pinned deps (the .venv is gitignored — reproduce from this)
 ```
 
 ## Worktrees & branches
-- Each research direction = its own branch + git worktree under `.claude/worktrees/<name>`; one worker
-  owns one worktree.
+- Each research **direction** = its own branch + git worktree under `.claude/worktrees/<name>`, run by
+  one **orchestrator**; the worker subagents it spawns share that same worktree.
 - **Worktrees only contain committed files.** Anything shared (seed code, conventions, `spec/`, this
   file) MUST be committed to `main` so workers inherit it. Untracked files in the main checkout are
   invisible inside worktrees.
-- Write only to **per-branch paths** to stay collision-free: `runs/<branch>/...`, `agents/<branch>/...`.
-  Shared coordination uses **per-topic, append-only** files under `coordination/`.
+- Stay collision-free: tasks write to **per-direction paths** `runs/<direction-id>/<task-id>/...`;
+  per-branch bookkeeping lives at `agents/<branch>/...`. Shared coordination uses **per-topic** files
+  under `coordination/`.
 
 ## The dashboard contract (how results become visible)
 - Every run writes `runs/<branch>/<run-id>/manifest.json` (stable schema — see `runs/README.md`).
@@ -68,7 +106,8 @@ requirements.txt pinned deps (the .venv is gitignored — reproduce from this)
   results appear **automatically** — no per-branch dashboard code, and you never enter a worktree.
 
 ## Notifications & the I/O channel
-- `python harness/tools/notify.py --level progress|gate "<msg>"` (topic via `NTFY_TOPIC` env var).
+- `python harness/tools/notify.py --level progress|gate "<msg>"` (topic via `NTFY_TOPIC` env var, or a
+  file outside the repo so every worktree sees it — see `harness/tools/notify.py`).
 - `progress` = non-blocking FYI (run started, loss updates, report drafted) — emit freely.
 - `gate` = needs the user (milestone decision, divergence, hard block) — use sparingly.
 - Policy: run mostly autonomously, ping often, block rarely.

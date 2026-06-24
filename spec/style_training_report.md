@@ -19,6 +19,20 @@ concepts. Teach from first principles, but never condescend or pad. In general, 
    is mandatory and often the most valuable.
 6. **What's open** — honest limits, what's hard, what's an active research question.
 
+**Top-level organization (the textbook groups).** The report is organized like a textbook into three
+groups, each a folder of sections with stable anchors:
+1. **Motivation & Background** — *currently the weakest part and the most important to fix.* Why this whole
+   line of work matters, where it sits in the field, and the conceptual backstory a newcomer needs before
+   any math. This is its **own group**, not a one-line preamble at the top of a core section.
+2. **Prerequisites** — the standing math and machinery (see "Prerequisites" below), skim-friendly.
+3. **Core** — the actual method, built up section by section. The numbered shape above (intuition → math →
+   implementation mapping → failure modes → what's open) is the per-section template *within* Core.
+
+**This is a teaching document, not a research log or a planning doc.** It records what is *understood* and
+*why it works*, with honest open questions. It must **never** contain a worker's TODO list, a "things to
+try next" list, or research planning — those belong in `coordination/directions/`. "What's open" means a
+genuine intellectual limit that teaches something, not a backlog of experiments to run.
+
 ## Voice & rigor
 - First-principles and concrete; prefer a worked example over abstraction.
 - **Honest about hand-waving** — flag where an argument is informal.

@@ -20,3 +20,7 @@ export const fetchTraining = () => get("/api/training", "json");
 export const fetchDirections = () => get("/api/directions", "json");
 export const fetchReports = () => get("/api/reports", "json");
 export const fetchDecisions = () => get("/api/decisions", "json");
+
+// Direction -> Task model: the Overview board and a single task's detail.
+export const fetchOverview = () => get("/api/overview", "json");
+export const fetchTask = (detail) => get(detail, "json"); // detail is /api/task/<dir>/<task>

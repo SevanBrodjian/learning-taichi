@@ -1,0 +1,9 @@
+{
+  "id": "diffmpm-baseline",
+  "name": "Differentiable MPM baseline",
+  "status": "active",
+  "summary": "Make the forward MLS-MPM blob differentiable and solve an inverse-control task by backprop through the rollout.",
+  "tasks": [
+    { "id": "throw-to-target", "title": "Throw a blob to a target by backprop", "status": "done" }
+  ]
+}

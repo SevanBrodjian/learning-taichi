@@ -1,0 +1,9 @@
+{
+  "id": "material-variants",
+  "name": "Material variants",
+  "status": "proposed",
+  "summary": "Swap the constitutive model (elastic vs weakly-compressible fluid vs snow plasticity) and see how each optimizes. The most visually striking for the demo.",
+  "tasks": [
+    { "id": "fluid-vs-snow", "title": "Elastic vs fluid vs snow under the same control task", "status": "proposed" }
+  ]
+}

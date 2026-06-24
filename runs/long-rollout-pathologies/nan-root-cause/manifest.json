@@ -1,0 +1,18 @@
+{
+  "schema_version": "2",
+  "task_id": "nan-root-cause",
+  "direction": "long-rollout-pathologies",
+  "title": "Root-cause and fix the long-rollout NaN",
+  "status": "done",
+  "created": "2026-06-23T06:10:45Z",
+  "objective": "Explain why backpropagation through the long MLS-MPM rollout returns a NaN even though the forward loss stays finite, and find a fix that lets optimization continue cleanly past the failure point.",
+  "findings": "The NaN is a float32 overflow, not a mathematical singularity. Near-zero grid-mass nodes (mass as small as 1e-12, present at 511 of 512 steps) make the grid step's backward pass, which scales like 1/m, amplify the gradient by up to 1e12. Once such a node coincides with one carrying real loss-gradient, the signal overflows the f32 ceiling and becomes NaN. Three independent results confirm it: f64 runs clean (270 orders of magnitude more headroom), longer horizons fail earlier, and a no-contact center target fails earlier than a wall target (ruling out wall contact). The fix is mass stabilization, dividing by max(m, eps) with eps=1e-4, which caps per-step amplification at 1e4. The stabilized 512-step f32 run completes 100 iterations with zero NaN and reaches loss 9.5e-6, far past the old failure point. Full derivation in the failure-modes textbook section.",
+  "results": [
+    { "type": "plot", "kind": "loss", "series": "runs/long-rollout-pathologies/nan-root-cause/metrics.json", "log": true, "caption": "Mass-stabilized 512-step f32 run: 100 iterations, no NaN, loss reaches 9.5e-6." },
+    { "type": "video", "src": "runs/long-rollout-pathologies/nan-root-cause/video.mp4", "caption": "Stabilized optimization reaching the target with no gradient blow-up." },
+    { "type": "table", "caption": "Horizon sweep: longer rollouts fail earlier (the fingerprint of long-rollout amplification)", "columns": ["rollout length", "NaN first at iter", "final loss"], "rows": [["128 steps", "never (80 iters)", "3.1e-2"], ["256 steps", "iter 11", "—"], ["512 steps", "iter 7", "—"]] },
+    { "type": "table", "caption": "Precision: f64 has the headroom f32 lacks (overflow, not singularity)", "columns": ["precision", "overflow threshold", "outcome (512 steps)"], "rows": [["f32", "3.4e38", "NaN at iter 7"], ["f64", "1.8e308", "no NaN, loss 4.5e-5"]] },
+    { "type": "table", "caption": "Contact isolation: the no-contact target fails earlier, ruling out walls", "columns": ["target", "NaN at iter"], "rows": [["center (0.5, 0.5), no wall contact", "3"], ["wall (0.08, 0.35)", "32"]] }
+  ],
+  "training_refs": ["failure-modes"]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "long-rollout-pathologies",
+  "name": "Long-rollout gradient pathologies",
+  "status": "active",
+  "summary": "Why backprop through a long rollout NaNs, and how to tame it.",
+  "tasks": [
+    { "id": "nan-root-cause", "title": "Root-cause and fix the long-rollout NaN", "status": "done" },
+    { "id": "softened-wall", "title": "Softened wall contact for smooth boundary gradients", "status": "proposed" },
+    { "id": "checkpointing-long-horizon", "title": "Gradient checkpointing for 1024+ step horizons", "status": "proposed" },
+    { "id": "jacobian-norms", "title": "Per-step Jacobian-norm estimation", "status": "proposed" }
+  ]
+}

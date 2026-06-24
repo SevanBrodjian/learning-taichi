@@ -1,0 +1,9 @@
+{
+  "id": "learned-dynamics",
+  "name": "Toward learned dynamics",
+  "status": "proposed",
+  "summary": "Replace part of the sim with a learned component. The first real step toward structured world models.",
+  "tasks": [
+    { "id": "learned-residual", "title": "Learn a residual correction to the grid update", "status": "proposed" }
+  ]
+}

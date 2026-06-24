@@ -1,62 +1,56 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchIndex, fetchJSON } from "./api.js";
-import RunView from "./components/RunView.jsx";
+import { fetchOverview } from "./api.js";
+import OverviewView from "./components/OverviewView.jsx";
+import TaskView from "./components/TaskView.jsx";
 import TrainingView from "./components/TrainingView.jsx";
-import DirectionsView from "./components/DirectionsView.jsx";
 import ReportsView from "./components/ReportsView.jsx";
 import InboxView from "./components/InboxView.jsx";
 
-// Top-level sections. Runs is the experiment browser (Direction -> Run); the rest are the
-// shared, repo-level doc sets served from main.
 const SECTIONS = [
-  { id: "runs", label: "Runs" },
+  { id: "overview", label: "Overview" },
+  { id: "tasks", label: "Tasks" },
   { id: "training", label: "Training" },
-  { id: "directions", label: "Directions" },
   { id: "reports", label: "Reports" },
   { id: "inbox", label: "Inbox" },
 ];
 
-const loadManifest = (entry) => fetchJSON(entry.manifest);
-
 export default function App() {
-  const [section, setSection] = useState("runs");
-  const [index, setIndex] = useState(null);
+  const [section, setSection] = useState("overview");
+  const [overview, setOverview] = useState(null);
   const [error, setError] = useState(null);
-  const [branch, setBranch] = useState(null);
-  const [runId, setRunId] = useState(null);
-  const [manifest, setManifest] = useState(null);
+  const [selected, setSelected] = useState(null); // { key, detail, title, ... }
 
   useEffect(() => {
-    fetchIndex().then(setIndex).catch((e) => setError(String(e)));
+    fetchOverview().then(setOverview).catch((e) => setError(String(e)));
   }, []);
 
-  const runs = index?.runs ?? [];
-  const branches = useMemo(() => [...new Set(runs.map((r) => r.branch))], [index]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Tasks that have an actual result artifact (active/done) — these populate the Tasks tab.
+  const realTasks = useMemo(() => {
+    const dirs = overview?.directions || [];
+    return dirs.flatMap((d) =>
+      d.tasks
+        .filter((t) => t.has_artifact)
+        .map((t) => ({ ...t, direction: d.id, directionName: d.name, key: `${d.id}/${t.id}` }))
+    );
+  }, [overview]);
 
   useEffect(() => {
-    if (branches.length && (branch == null || !branches.includes(branch))) setBranch(branches[0]);
-  }, [branches]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!selected && realTasks.length) setSelected(realTasks[0]);
+  }, [realTasks]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const branchRuns = useMemo(() => runs.filter((r) => r.branch === branch), [runs, branch]);
+  const openTask = (t) => {
+    setSelected({ ...t, key: `${t.direction}/${t.id}` });
+    setSection("tasks");
+  };
 
-  useEffect(() => {
-    setRunId(branchRuns.length ? branchRuns[0].run_id : null);
-  }, [branch, index]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    const entry = runs.find((r) => r.branch === branch && r.run_id === runId);
-    if (!entry) {
-      setManifest(null);
-      return;
+  const groups = useMemo(() => {
+    const m = new Map();
+    for (const t of realTasks) {
+      if (!m.has(t.direction)) m.set(t.direction, { name: t.directionName, tasks: [] });
+      m.get(t.direction).tasks.push(t);
     }
-    let alive = true;
-    loadManifest(entry)
-      .then((m) => alive && setManifest(m))
-      .catch((e) => alive && setError(String(e)));
-    return () => {
-      alive = false;
-    };
-  }, [runId, branch, index]); // eslint-disable-line react-hooks/exhaustive-deps
+    return [...m.entries()].map(([id, v]) => ({ id, ...v }));
+  }, [realTasks]);
 
   return (
     <div className="app">
@@ -79,48 +73,34 @@ export default function App() {
 
         {error && <div className="error">{error}</div>}
 
-        {section === "runs" && (
-          <>
-            {branches.length > 1 && (
-              <div className="side-block">
-                <div className="side-label">Direction</div>
-                <div className="branches">
-                  {branches.map((b) => (
-                    <button
-                      key={b}
-                      className={`branch ${b === branch ? "active" : ""}`}
-                      onClick={() => setBranch(b)}
-                      title={b}
-                    >
-                      {b.split("/").pop()}
-                    </button>
-                  ))}
-                </div>
+        {section === "tasks" && (
+          <nav className="task-nav">
+            {groups.map((g) => (
+              <div className="task-group" key={g.id}>
+                <div className="side-label">{g.name}</div>
+                {g.tasks.map((t) => (
+                  <button
+                    key={t.key}
+                    className={`runitem ${selected?.key === t.key ? "active" : ""}`}
+                    onClick={() => setSelected(t)}
+                  >
+                    <span className="runtitle">{t.title}</span>
+                    <span className={`status status-${t.status === "done" ? "done" : "active"}`}>
+                      {t.status === "done" ? "Done" : "Active"}
+                    </span>
+                  </button>
+                ))}
               </div>
-            )}
-            <div className="side-label">Runs</div>
-            <nav className="runlist">
-              {branchRuns.map((r) => (
-                <button
-                  key={r.run_id}
-                  className={`runitem ${r.run_id === runId ? "active" : ""}`}
-                  onClick={() => setRunId(r.run_id)}
-                >
-                  <span className="runtitle">{r.title || r.run_id}</span>
-                  <span className={`status status-${r.status}`}>{r.status}</span>
-                </button>
-              ))}
-              {index && branchRuns.length === 0 && <div className="muted pad">No runs yet.</div>}
-              {!index && !error && <div className="muted pad">Loading runs…</div>}
-            </nav>
-          </>
+            ))}
+            {groups.length === 0 && <div className="muted pad">No tasks with results yet.</div>}
+          </nav>
         )}
       </aside>
 
       <main className="content">
-        {section === "runs" && <RunView manifest={manifest} />}
+        {section === "overview" && <OverviewView overview={overview} onOpenTask={openTask} />}
+        {section === "tasks" && <TaskView detail={selected?.detail} />}
         {section === "training" && <TrainingView />}
-        {section === "directions" && <DirectionsView />}
         {section === "reports" && <ReportsView />}
         {section === "inbox" && <InboxView />}
       </main>

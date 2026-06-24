@@ -1,0 +1,16 @@
+{
+  "schema_version": "2",
+  "task_id": "throw-to-target",
+  "direction": "diffmpm-baseline",
+  "title": "Throw a blob to a target by backprop",
+  "status": "done",
+  "created": "2026-06-23T04:12:24Z",
+  "objective": "Make the forward MLS-MPM blob differentiable and solve an inverse-control task end to end: find a single shared initial velocity v0 so the blob's center of mass lands on the target (0.7, 0.35) after 512 simulation steps, purely by backpropagating through the simulation.",
+  "findings": "Backprop through the full 512-step rollout yields usable gradients. Adam drove the loss from 0.144 to 1.8e-4 in 68 iterations and the blob lands on the target, which proves the rollout is genuinely differentiable from end to end. The same run exposed the project's first real pathology, a NaN gradient at long horizon, which became its own direction (Long-rollout gradient pathologies).",
+  "results": [
+    { "type": "plot", "kind": "loss", "series": "runs/diffmpm-baseline/throw-to-target/metrics.json", "log": true, "caption": "Optimization loss over 68 Adam iterations (log scale)." },
+    { "type": "video", "src": "runs/diffmpm-baseline/throw-to-target/video.mp4", "caption": "The optimized initial velocity throws the blob onto the target (red cross)." },
+    { "type": "table", "caption": "Run parameters", "columns": ["parameter", "value"], "rows": [["optimizer", "Adam (lr 0.1)"], ["grid", "64 x 64"], ["particles", "4096"], ["steps", "512"], ["target", "(0.7, 0.35)"], ["v0 final", "(3.56, -1.46)"], ["final loss", "1.8e-4"]] }
+  ],
+  "training_refs": ["mls-mpm-forward", "differentiating-the-rollout"]
+}

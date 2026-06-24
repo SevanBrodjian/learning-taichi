@@ -193,6 +193,78 @@ def decisions_list() -> dict:
     return {"decisions": items}
 
 
+# ---- Direction -> Task model (schema v2) ----
+# A direction is coordination/directions/<id>.json; a task's detail lives at
+# runs/<direction>/<task-id>/manifest.json (schema_version "2"). The Overview<->Task link is structural:
+# a task has a detail iff that manifest exists. No agent maintains the link.
+
+def _v2_tasks() -> dict:
+    """(direction, task_id) -> artifact info, for every schema-2 manifest across all roots."""
+    out: dict = {}
+    for rid, root in list_roots().items():
+        for mf in sorted(root.glob("runs/**/manifest.json")):
+            try:
+                m = json.loads(mf.read_text("utf-8"))
+            except Exception:
+                continue
+            if str(m.get("schema_version")) != "2":
+                continue
+            d, t = m.get("direction"), m.get("task_id")
+            if not d or not t or (d, t) in out:
+                continue
+            out[(d, t)] = {"root": rid, "rel": mf.relative_to(root).as_posix(),
+                           "status": m.get("status", "done")}
+    return out
+
+
+def rewrite_task(m: dict, rid: str) -> dict:
+    """Rewrite a schema-2 task manifest's result src/series into absolute /api/data URLs."""
+    def url(p):
+        return f"/api/data/{rid}/{p}" if isinstance(p, str) and not p.startswith("/api/") else p
+    for r in m.get("results", []):
+        if isinstance(r, dict):
+            for k in ("src", "series"):
+                if isinstance(r.get(k), str):
+                    r[k] = url(r[k])
+    return m
+
+
+def overview() -> dict:
+    """Directions (coordination/directions/*.json on main) joined with their executed tasks."""
+    ddir = MAIN_ROOT / "coordination" / "directions"
+    arts = _v2_tasks()
+    directions = []
+    for f in (sorted(ddir.glob("*.json")) if ddir.is_dir() else []):
+        try:
+            d = json.loads(f.read_text("utf-8"))
+        except Exception:
+            continue
+        did = d.get("id", f.stem)
+        tasks = []
+        for t in d.get("tasks", []):
+            tid = t.get("id")
+            has = (did, tid) in arts
+            tasks.append({
+                "id": tid, "title": t.get("title", tid), "status": t.get("status", "proposed"),
+                "has_artifact": has, "detail": f"/api/task/{did}/{tid}" if has else None,
+            })
+        directions.append({
+            "id": did, "name": d.get("name", did), "status": d.get("status", "proposed"),
+            "summary": d.get("summary", ""), "tasks": tasks,
+        })
+    listed = {(dd["id"], t["id"]) for dd in directions for t in dd["tasks"]}
+    orphans = [{"direction": k[0], "task": k[1]} for k in arts if k not in listed]
+    return {"directions": directions, "orphans": orphans}
+
+
+def task_detail(direction: str, task: str) -> dict | None:
+    info = _v2_tasks().get((direction, task))
+    if not info:
+        return None
+    target = resolve(info["root"], info["rel"])
+    return rewrite_task(json.loads(target.read_text("utf-8")), info["root"])
+
+
 def _build_app():
     from fastapi import FastAPI, HTTPException
     from fastapi.middleware.cors import CORSMiddleware
@@ -217,7 +289,9 @@ def _build_app():
         except FileNotFoundError:
             raise HTTPException(404, "not found")
         if target.name == "manifest.json":
-            return JSONResponse(rewrite_manifest(json.loads(target.read_text("utf-8")), rid))
+            m = json.loads(target.read_text("utf-8"))
+            rw = rewrite_task if str(m.get("schema_version")) == "2" else rewrite_manifest
+            return JSONResponse(rw(m, rid))
         return FileResponse(target)
 
     @app.get("/api/training")
@@ -235,6 +309,17 @@ def _build_app():
     @app.get("/api/decisions")
     def api_decisions():
         return decisions_list()
+
+    @app.get("/api/overview")
+    def api_overview():
+        return overview()
+
+    @app.get("/api/task/{direction}/{task}")
+    def api_task(direction: str, task: str):
+        d = task_detail(direction, task)
+        if d is None:
+            raise HTTPException(404, "task not found")
+        return d
 
     return app
 

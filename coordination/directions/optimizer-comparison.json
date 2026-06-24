@@ -1,0 +1,9 @@
+{
+  "id": "optimizer-comparison",
+  "name": "Optimizer comparison",
+  "status": "proposed",
+  "summary": "SGD vs Adam vs L-BFGS backpropagating through the rollout.",
+  "tasks": [
+    { "id": "sgd-adam-lbfgs", "title": "Compare SGD / Adam / L-BFGS on the throw task", "status": "proposed" }
+  ]
+}

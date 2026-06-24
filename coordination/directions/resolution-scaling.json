@@ -1,0 +1,9 @@
+{
+  "id": "resolution-scaling",
+  "name": "Resolution / performance scaling",
+  "status": "proposed",
+  "summary": "Grid and particle count vs GPU throughput and gradient memory.",
+  "tasks": [
+    { "id": "grid-particle-scaling", "title": "Throughput and gradient memory vs grid/particle count", "status": "proposed" }
+  ]
+}

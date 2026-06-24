@@ -190,14 +190,11 @@ Checkpointing reduces the memory footprint of long-horizon differentiation by re
 
 ---
 
-## What to try next
+## Open questions
 
-Each suspect suggests a concrete probe, and these are the experiments that turn a crash into understanding.
-
-- ~~Gradient clipping or a non-finite skip, to confirm the optimization is otherwise healthy.~~ Done: skip-only is insufficient; the NaN is in the backward not the Adam update.
-- ~~Higher precision with `default_fp=ti.f64`, to see whether the NaN is a near-overflow rather than a true singularity.~~ Done: f64 runs cleanly — confirmed overflow, not singularity.
-- ~~A shorter horizon, to isolate long-rollout amplification from the other two.~~ Done: 128 steps never NaN; 256 → iter 11; 512 → iter 7.
-- ~~Mass stabilisation, to fix the near-zero mass singularity directly.~~ Done: no NaN in 100 iters; loss 0.152 → 9.5e-6.
-- **A softened wall condition** replacing the hard zero with a smooth ramp, to test the contact hypothesis (hypothesis 1) cleanly. The isolation experiment already suggests contact is not the primary cause, but a smooth wall would also improve gradient flow through boundary events and is worth implementing regardless.
-- **Gradient checkpointing** for the longer-horizon experiments (1024+ steps), to test the compute/memory trade-off empirically.
-- **Per-step Jacobian norm estimation** via finite differences: perturb $v_0$ by $\epsilon$, measure $\Delta v_t$ at each step, estimate $\|J_t\|$ as a function of timestep. This would give the clearest picture of where in the rollout the Jacobian becomes ill-conditioned — more informative than the forward-state proxy used here.
+The near-zero-mass overflow is understood and fixed. What remains open is genuinely intellectual rather
+than a checklist. Whether a smooth wall contact would further improve gradient quality (the isolation
+experiment says contact is not the *cause* of the NaN, but a hard zero is still a non-smooth kink in the
+gradient), and whether the near-zero-mass amplification re-emerges as the dominant problem at much longer
+horizons once stabilisation is in place. Concrete experiments toward these live in
+`coordination/directions/`, not here. This document teaches what is known; it does not plan work.

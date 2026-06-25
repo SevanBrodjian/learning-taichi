@@ -24,6 +24,10 @@ Sevan — researcher in generative interactive simulations and world models. Ful
   Do not rely on auto-memory or session context (see `CLAUDE.md` -> Persistence).
 - **The demo and the UX matter.** The end demo must make even a non-technical person *feel* why it
   matters. He gives detailed, specific UI feedback and notices rough edges. Take them seriously.
+- **Hates overclaiming (gating).** A result on one task is one data point, not a general truth. Scope
+  claims to the evidence, separate observation from hypothesis, and test generality across several tasks
+  before asserting a pattern. He flags this as make-or-break for the project (see `CLAUDE.md` -> Evidence
+  discipline). He also wants each task to include a *why/hypothesis* discussion that seeds new tasks.
 
 ## Practical
 - The dashboard is a fixed-URL PWA on his iPad, port 5174 only. **Touch matters**: HTML5 drag-and-drop

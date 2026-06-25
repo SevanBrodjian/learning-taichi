@@ -63,15 +63,32 @@ reading the filesystem. Everything learned, designed, decided, or instructed mus
 research), `runs/` (results), `agents/<branch>/` (status + log). If it is only in a chat context, it does
 not exist.
 
+## Evidence discipline — scope every claim to what you tested
+The fastest way to make this project worthless is to overclaim, and it is the single biggest failure mode
+of agent-run research. A result on one task is a result on **one task**, not a truth about the method, the
+optimizer, the material, or the world. This is non-negotiable here:
+- **State what was actually tested** — which task, how many conditions, what was held fixed — and scope
+  every claim to exactly that. A single example, especially a near-toy one (one blob, one target),
+  supports a **hypothesis**, not a general conclusion.
+- **To claim generality, test generality.** Run the question across several tasks/conditions before
+  asserting a broad pattern. If you have not, say so plainly and label the broad version a conjecture.
+- Keep three registers separate: what you **observed** (the data), what you **hypothesize** explains it
+  (the mechanism), and what would **test** that (future tasks). Every task carries an honest
+  **limitations/scope** note, and findings prefer "on this task, X" over "X is true".
+Confident, specific, falsifiable, and **bounded** beats sweeping. This is the difference between
+accumulating real understanding and accumulating confident nonsense, and it gates whether the whole
+project means anything.
+
 ## Task lifecycle
 1. The user **queues a task** (drags a proposed task to `queued`, or asks for one). The proposed task's
    `note` is only a seed for that decision, not an executable spec.
 2. The orchestrator **expands that seed into a full contract** at `coordination/tasks/<id>.md` (objective,
    concrete experiments, deliverables, the schema-v2 manifest, definition-of-done, paths, KaTeX rules),
    **spawns a worker**, and flips the task to **active** (not user-undoable).
-3. The worker executes and writes one polished task to `runs/<direction-id>/<task-id>/` (objective,
-   findings, typed results), extends the training textbook if warranted, and exits, leaving its work **on
-   disk** (it does not commit).
+3. The worker executes and writes one polished task to `runs/<direction-id>/<task-id>/` — an **objective**,
+   **scoped findings** (what was tested, no overclaiming), a **hypothesis** for *why* the result holds and
+   what would test its generality, an honest **limitations** note, and typed results — extends the training
+   textbook if warranted, and exits, leaving its work **on disk** (it does not commit).
 4. The orchestrator **reviews, commits, and surfaces** it on the dashboard. **Done is the user's call**,
    made after discussion — never set automatically.
 

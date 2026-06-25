@@ -15,8 +15,10 @@ runs/
 ```
 
 ## manifest.json (schema_version "2")
-A task MUST surface an objective, findings, and at least one result. Absent results are simply omitted
-from the display (no placeholders).
+A task MUST surface an objective, findings, and at least one result. It SHOULD also carry a `hypothesis`
+(why the result holds, and what would test its generality) and `limitations` (what was not tested).
+**Scope findings to what was actually tested — no overclaiming from one example** (see `CLAUDE.md` ->
+Evidence discipline). Absent results are simply omitted from the display (no placeholders).
 
 ```json
 {
@@ -27,7 +29,9 @@ from the display (no placeholders).
   "status": "done",
   "created": "2026-06-23T04:12:24Z",
   "objective": "One paragraph: what this task set out to do.",
-  "findings": "One paragraph: what was found, with the key numbers.",
+  "findings": "One paragraph: what was found, scoped to what was actually tested (no overclaiming).",
+  "hypothesis": "Why the result holds (the mechanism), and what would test its generality on other tasks.",
+  "limitations": "What was NOT tested; the scope the claims are bound to (e.g. one task, one target).",
   "results": [
     { "type": "plot",  "kind": "loss", "series": "runs/<dir>/<task>/metrics.json", "log": true, "caption": "..." },
     { "type": "video", "src": "runs/<dir>/<task>/video.mp4", "caption": "..." },
@@ -42,6 +46,8 @@ from the display (no placeholders).
   an optional sandboxed iframe block for a bespoke interactive panel (sliders, buttons).
 - Paths (`src`, `series`) are repo-root-relative; the server rewrites them to absolute `/api/data/...` URLs.
 - `training_refs` are section ids from `reports/training/index.json`, transcluded (collapsed) under the task.
+- `hypothesis` and `limitations` render as their own sections; use them to keep observation, explanation,
+  and scope cleanly separate, and to seed follow-up tasks.
 - `status` is `active` while a worker runs it; the user marks it `done` after review (never automatic).
 
 ## How the dashboard joins it

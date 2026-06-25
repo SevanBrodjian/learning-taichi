@@ -82,7 +82,7 @@ function Result({ r }) {
   }
   if (!body) return null;
   return (
-    <figure className="result">
+    <figure className={"result type-" + r.type}>
       {body}
       {r.caption && <figcaption>{r.caption}</figcaption>}
     </figure>
@@ -126,6 +126,8 @@ export default function TaskView({ detail, reloadToken, onChange }) {
   if (!task) return <div className="muted pad">Loading task…</div>;
 
   const results = (task.results || []).filter(Boolean);
+  const media = results.filter((r) => r.type !== "table"); // video/image/plot -> masonry
+  const tableResults = results.filter((r) => r.type === "table"); // full-width, below
   const act = (status, note) => setTaskStatus(task.direction, task.task_id, status, note).then(() => onChange && onChange());
 
   return (
@@ -194,12 +196,29 @@ export default function TaskView({ detail, reloadToken, onChange }) {
         </section>
       )}
 
+      {task.hypothesis && (
+        <section className="task-block">
+          <h2>Why / hypothesis</h2>
+          <p>{task.hypothesis}</p>
+        </section>
+      )}
+
+      {task.limitations && (
+        <section className="task-block">
+          <h2>Limitations and scope</h2>
+          <p>{task.limitations}</p>
+        </section>
+      )}
+
       {results.length > 0 && (
         <section className="task-block">
           <h2>Results</h2>
-          <div className="results-grid">
-            {results.map((r, i) => <Result key={i} r={r} />)}
-          </div>
+          {media.length > 0 && (
+            <div className="results-grid">
+              {media.map((r, i) => <Result key={i} r={r} />)}
+            </div>
+          )}
+          {tableResults.map((r, i) => <Result key={"t" + i} r={r} />)}
         </section>
       )}
 

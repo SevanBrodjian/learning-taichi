@@ -187,6 +187,9 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
 /* Results: masonry packing so tiles never leave row-aligned gaps */
 .results-grid { display: block; columns: 340px; column-gap: 18px; }
 .results-grid > .result { break-inside: avoid; margin: 0 0 18px; width: 100%; display: inline-block; }
+/* Tables render full-width below the masonry media (a wide table never fits a 340px column). */
+.task-block > .type-table { margin: 0 0 16px; overflow-x: auto; }
+.type-table .result-table { min-width: 100%; }
 
 /* Proposed-task detail modal (easy to exit: click backdrop or ×) */
 .modal-backdrop { position: fixed; inset: 0; background: rgba(3, 6, 10, .66); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 50; }

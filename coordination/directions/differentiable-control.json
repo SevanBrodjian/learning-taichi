@@ -7,7 +7,7 @@
     {
       "id": "throw-to-target",
       "title": "Throw a blob to a target by backprop",
-      "status": "done"
+      "status": "queued"
     },
     {
       "id": "optimizer-comparison",

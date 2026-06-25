@@ -1,0 +1,85 @@
+{
+  "schema_version": "2",
+  "task_id": "softened-wall",
+  "direction": "long-rollout-pathologies",
+  "title": "Softened wall contact \u2014 does smoothing the contact kink improve gradient quality?",
+  "status": "active",
+  "created": "2026-06-25T06:21:22.574723+00:00",
+  "objective": "The hard wall zeroes the inward-normal velocity with a non-smooth clamp \u2014 a kink in the per-step map where the gradient is ill-defined. Replace it with a smooth ramp (smoothstep gate across a boundary band of width `ramp_cells`) and measure honestly whether gradient quality improves on a task that drives the blob into a wall. Mass stabilisation is kept ON throughout so the already-fixed near-zero-mass overflow cannot confound the comparison. This is NOT a claim that contact caused the NaN (it did not \u2014 mass overflow did); it is a scoped test of whether smoothing contact helps the gradient.",
+  "findings": "On a single wall-driving task (target (0.06, 0.5) near the left boundary, 400-step rollout, fixed seed, Adam lr 0.15, mass stabilisation ON in every condition), smoothing the wall contact gave a modest improvement in gradient ACCURACY and, at a narrow band width, also a better final loss; a wide band hurt accuracy via physics distortion. Measured at a SHARED sweep of contact-active v0 (vx in {-4,-5,-6,-7}, identical for every wall model so only the contact treatment differs), the autodiff-vs-finite-difference mean relative gradient error (lower = better) on this run was hard 3.502e-02, soft r=3 2.173e-02, soft r=6 2.046e-02. Across three repeat runs the robust pattern is that BOTH soft walls beat hard (hard ~3.3e-2 vs soft ~2.0e-2), consistent with the smoothstep gate making the per-step map C^1 so the analytic gradient predicts the true loss change near contact better than across the hard kink; the difference BETWEEN the two soft widths (~2.2e-2 vs ~2.0e-2) is within run-to-run noise (GPU atomic-add non-determinism) and should not be read as r=6 beating r=3. Final loss is the stable discriminator (it barely moved across runs): hard 3.371e-03, soft r=3 1.897e-03 (best \u2014 tight band removes the kink while keeping the physics close to hard), soft r=6 4.721e-03 (worst \u2014 the wide band damps particles BEFORE true contact, distorting the forward solution; soft r=6 settled with 0% of particles in the band vs 7% for hard and 17% for soft r=3). The iter-to-iter gradient-direction cosine was indistinguishable across conditions (hard 0.994, soft r=3 0.996, soft r=6 0.997), so the smoothing benefit shows up in gradient ACCURACY (FD agreement), not in path stability, on this task. Net: with mass stabilisation already in place, the hard-wall kink is a small but real gradient-quality cost that a NARROW smoothing band removes while also improving accuracy, whereas a wide band trades physics fidelity for no further gradient gain.",
+  "hypothesis": "A hard one-sided clamp `vel = max(vel, 0)` is C^0 but not C^1: at the moment a node's inward velocity crosses zero the local Jacobian jumps discontinuously, so the linearisation the autodiff returns is a poor predictor of the true loss change near contact, and the optimiser sees a kinked landscape. A smoothstep gate makes the map C^1, so the analytic gradient should agree better with a finite difference and the descent direction should vary less abruptly. The trade-off: a wide band starts damping particles before they truly touch the wall, distorting the forward physics and biasing the converged solution. The right test of generality is to repeat this across several contact-heavy tasks (different wall, multiple walls, sliding contact) and horizons, and to check whether any FD-agreement gain survives once mass stabilisation already removes the dominant gradient pathology.",
+  "limitations": "ONE contact scenario: a single blob driven toward the LEFT wall, one seed, one horizon (400 steps), one optimiser (Adam, lr 0.15), 2-D, f32, mass stabilisation ON. Two softness settings only (ramp_cells in {3, 6}). 'Gradient quality' is proxied by (a) autodiff-vs-finite-difference agreement over a 4-point shared sweep of contact-active v0 and (b) mean iter-to-iter gradient-direction cosine; neither is the full Jacobian spectrum, and the FD reference itself has O(h^2) truncation error. The FD-sweep mean relative error is also NOT bitwise-reproducible run to run (p2g atomic adds are non-associative on GPU), so the hard-vs-soft gap is read from 3 repeat runs, not one \u2014 and the small gap between the two soft widths is within that noise. Final loss, by contrast, was stable to ~1% across runs. No claim about other tasks, other contact geometries, longer horizons, or that contact was ever the NaN cause (it was not \u2014 mass overflow was). Other workers shared the GPU during this run (observed ~2 GB / 30% util baseline); rerun if results look off.",
+  "results": [
+    {
+      "type": "image",
+      "src": "runs/long-rollout-pathologies/softened-wall/loss_compare.png",
+      "caption": "Loss vs iteration, hard vs soft wall (log scale). Same task, seed, horizon."
+    },
+    {
+      "type": "image",
+      "src": "runs/long-rollout-pathologies/softened-wall/gradnorm_compare.png",
+      "caption": "Gradient norm |grad v0| vs iteration, hard vs soft wall (log scale)."
+    },
+    {
+      "type": "table",
+      "columns": [
+        "variant",
+        "final loss",
+        "final |grad|",
+        "mean grad-cos",
+        "FD rel-err",
+        "max wall contact",
+        "NaN"
+      ],
+      "rows": [
+        [
+          "hard",
+          "3.371e-03",
+          "6.235e-04",
+          "0.994",
+          "3.502e-02",
+          "7%",
+          "no NaN"
+        ],
+        [
+          "soft r=3",
+          "1.897e-03",
+          "8.262e-04",
+          "0.996",
+          "2.173e-02",
+          "17%",
+          "no NaN"
+        ],
+        [
+          "soft r=6",
+          "4.721e-03",
+          "1.104e-03",
+          "0.997",
+          "2.046e-02",
+          "0%",
+          "no NaN"
+        ]
+      ],
+      "caption": "Per-variant summary. 'mean grad-cos' = mean cosine between consecutive gradient directions (higher = smoother path). 'FD rel-err' = mean relative error between autodiff and central-finite-difference gradient over a SHARED sweep of contact-active v0 (vx in {-4,-5,-6,-7}); same v0 for every wall model, so lower = better gradient quality attributable to the contact treatment. 'max wall contact' = peak fraction of particles inside the boundary band during the final rollout."
+    },
+    {
+      "type": "video",
+      "src": "runs/long-rollout-pathologies/softened-wall/video_hard.mp4",
+      "caption": "Final rollout \u2014 hard wall. Red band = left boundary contact zone."
+    },
+    {
+      "type": "video",
+      "src": "runs/long-rollout-pathologies/softened-wall/video_soft_r3.mp4",
+      "caption": "Final rollout \u2014 soft r=3 wall. Red band = left boundary contact zone."
+    },
+    {
+      "type": "video",
+      "src": "runs/long-rollout-pathologies/softened-wall/video_soft_r6.mp4",
+      "caption": "Final rollout \u2014 soft r=6 wall. Red band = left boundary contact zone."
+    }
+  ],
+  "custom_html": null,
+  "training_refs": [
+    "failure-modes"
+  ]
+}

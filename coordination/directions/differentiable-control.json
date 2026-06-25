@@ -12,8 +12,14 @@
     {
       "id": "optimizer-comparison",
       "title": "SGD vs Adam vs L-BFGS through the rollout",
-      "status": "done",
-      "note": "How much does the optimizer matter when the gradient comes through 500+ sim steps? Compare convergence and stability of SGD, Adam, and L-BFGS on the throw task. Cheap, and a clean way to build intuition for the loss landscape of a physics rollout."
+      "status": "queued",
+      "note": "How much does the optimizer matter when the gradient comes through 500+ sim steps? Compare convergence and stability of SGD, Adam, and L-BFGS on the throw task. Cheap, and a clean way to build intuition for the loss landscape of a physics rollout.",
+      "rework_history": [
+        {
+          "time": 1782367039,
+          "note": "We should examine the optimizer comparison across a few varied tasks to be able to make more general claims."
+        }
+      ]
     }
   ]
 }

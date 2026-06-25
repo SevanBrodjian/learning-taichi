@@ -34,4 +34,11 @@
 - On each completion: scope-check claims (Evidence discipline), verify `hypothesis`+`limitations` present,
   render-check, commit the worker's files, leave status `active` for the user's Done call. Do NOT auto-mark
   done.
+- **optimizer-comparison FAILED (2026-06-25 night):** worker came to rest with broken output — degenerate
+  optimization (control stuck at [0,0], loss flat) and an incomplete manifest (1 of N tasks). Quarantined
+  to `runs/differentiable-control/optimizer-comparison/manifest.failed.json` (task shows in-progress, no
+  result). Cannot resume a subagent in bypass mode, so **RE-SPAWN it fresh once the GPU frees** (after
+  softened-wall + resolution-memory finish); the brief now has a "Known failure to avoid" section
+  (verify gradients flow + scope to ~3 tasks). Root cause: a control-parameterization bug + 3-way GPU
+  contention. Lesson: spawning 3 GPU-heavy workers at once over-contends a single GPU.
 - Optional later: cold-start orchestrator test (a fresh session orchestrates from the filesystem alone).

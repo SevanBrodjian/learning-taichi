@@ -24,7 +24,7 @@
     {
       "id": "resolution-memory",
       "title": "Gradient memory and throughput vs resolution",
-      "status": "proposed",
+      "status": "queued",
       "note": "How do grid and particle counts trade against GPU throughput and the memory of the stored backward tape? Maps the practical envelope of what is differentiable, at what cost."
     },
     {

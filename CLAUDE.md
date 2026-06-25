@@ -36,18 +36,21 @@ inbox and continues. Autonomy is not "never need the user", it is "never freeze 
 ## Roles — orchestrator vs worker
 A session must know which role it is, and the rule is deterministic.
 
-**Default: you are the ORCHESTRATOR.** Any session a human starts is an orchestrator. An orchestrator
-owns one **research direction** — a worktree + branch + a clean, plain-English name — and is responsible
-for `coordination/`, the dashboard view of that direction, talking with the user, and **spawning worker
-subagents** to execute individual tasks. It plans and integrates; it does not do the deep task execution
-itself, and it is the only role that touches `reports/research_report.md`.
+**Default: you are the ORCHESTRATOR.** Any session a human starts is an orchestrator. There is normally
+**one** orchestrator and it operates on **main**, where it owns all of `coordination/` and the single
+dashboard, talks with the user, expands queued tasks into briefs, and **spawns worker subagents** to
+execute them. It plans and integrates; it does not do the deep task execution itself, and it is the only
+role that touches `reports/research_report.md`. A *direction* is an organizing axis inside
+`coordination/directions/`, **not** a separate session — parallelism comes from spawning several workers
+at once (each isolatable in its own worktree), not from running multiple orchestrators.
 
 **You are a WORKER only if your spawning prompt explicitly says so.** The orchestrator stamps every
 worker it spawns: *"You are a worker agent for task `<id>`. You are NOT the orchestrator. Do not spawn
-further agents. Read `coordination/tasks/<id>.md`, do the task, write all results to disk, update status,
-then exit."* A worker runs in the orchestrator's worktree, produces **exactly one task**
-(`runs/<direction-id>/<task-id>/`), may extend the training textbook, updates its task status, and exits.
-It never edits the research report and never spawns agents.
+further agents. Read `coordination/tasks/<id>.md`, do the task, write all results to disk, then exit."* A
+worker runs as a spawned subagent (optionally isolated in its own git worktree), produces **exactly one
+task** (`runs/<direction-id>/<task-id>/`), may extend the training textbook, and exits, leaving its work
+**on disk for the orchestrator to review and commit** — it does not commit. It never edits the research
+report and never spawns agents.
 
 If you are ever unsure, you are the orchestrator — only an explicit spawn prompt makes you a worker.
 
@@ -61,14 +64,16 @@ research), `runs/` (results), `agents/<branch>/` (status + log). If it is only i
 not exist.
 
 ## Task lifecycle
-1. A direction is **queued** by the user (in `coordination/directions/`).
-2. The orchestrator writes a brief to `coordination/tasks/<id>.md` and **spawns a worker**, flipping the
-   task to **active** immediately (the user cannot undo an active flip).
-3. The worker executes, writes `runs/<direction-id>/<task-id>/` as one polished task (objective, findings,
-   typed results), extends the training textbook if warranted, updates status, **merges to `main`**, and
-   exits.
-4. The orchestrator integrates and surfaces it on the dashboard. **Done is the user's call**, made after
-   discussion — never set automatically.
+1. The user **queues a task** (drags a proposed task to `queued`, or asks for one). The proposed task's
+   `note` is only a seed for that decision, not an executable spec.
+2. The orchestrator **expands that seed into a full contract** at `coordination/tasks/<id>.md` (objective,
+   concrete experiments, deliverables, the schema-v2 manifest, definition-of-done, paths, KaTeX rules),
+   **spawns a worker**, and flips the task to **active** (not user-undoable).
+3. The worker executes and writes one polished task to `runs/<direction-id>/<task-id>/` (objective,
+   findings, typed results), extends the training textbook if warranted, and exits, leaving its work **on
+   disk** (it does not commit).
+4. The orchestrator **reviews, commits, and surfaces** it on the dashboard. **Done is the user's call**,
+   made after discussion — never set automatically.
 
 ## Repository map
 The repo separates a **portable harness** (the reusable skeleton) from **project-specific** calibration
@@ -89,8 +94,9 @@ requirements.txt pinned deps (the .venv is gitignored — reproduce from this)
 ```
 
 ## Worktrees & branches
-- Each research **direction** = its own branch + git worktree under `.claude/worktrees/<name>`, run by
-  one **orchestrator**; the worker subagents it spawns share that same worktree.
+- The orchestrator runs on **main** and owns `coordination/`. Each **spawned worker** can get its own git
+  worktree under `.claude/worktrees/<name>` for isolation when several run in parallel; the data server
+  aggregates their `runs/` automatically, so the single dashboard sees them without any merge step.
 - **Worktrees only contain committed files.** Anything shared (seed code, conventions, `spec/`, this
   file) MUST be committed to `main` so workers inherit it. Untracked files in the main checkout are
   invisible inside worktrees.

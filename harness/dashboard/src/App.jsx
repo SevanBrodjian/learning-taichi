@@ -23,11 +23,16 @@ export default function App() {
   const [reloadToken, setReloadToken] = useState(0); // bump to force task-detail refetch
 
   // After any write-back (drag / Mark Done) re-pull the board and re-fetch the open task.
-  const reloadAll = () => {
-    fetchOverview().then(setOverview).catch((e) => setError(String(e)));
-    setReloadToken((k) => k + 1);
-  };
-  useEffect(() => { reloadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const reloadOverview = () => fetchOverview().then(setOverview).catch((e) => setError(String(e)));
+  // Write-backs also bump the token so the open task re-fetches. The poll below only refreshes the
+  // board, so external changes (orchestrator flips, finished workers) appear live without remounting
+  // and restarting an open task's video.
+  const reloadAll = () => { reloadOverview(); setReloadToken((k) => k + 1); };
+  useEffect(() => {
+    reloadOverview();
+    const id = setInterval(() => { if (!document.hidden) reloadOverview(); }, 4000);
+    return () => clearInterval(id);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const realTasks = useMemo(() => {
     const dirs = overview?.directions || [];

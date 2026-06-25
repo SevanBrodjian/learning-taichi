@@ -104,6 +104,9 @@ requirements.txt pinned deps (the .venv is gitignored — reproduce from this)
   `/api/index` + `/api/data/...` across all branches — no merge step, no copy step.
 - **One** dashboard runs on **main** (`harness/dashboard`, proxying `/api` to the server). Per-branch
   results appear **automatically** — no per-branch dashboard code, and you never enter a worktree.
+- **Fixed port: 5174 only.** The dashboard is a pinned-URL PWA on the user's iPad, so it must always run
+  on port 5174 (`strictPort` is set so Vite fails loudly rather than drifting to 5175+). To restart, kill
+  whatever holds 5174 first, then start a single instance. Never run two, and never let it move ports.
 
 ## Notifications & the I/O channel
 - `python harness/tools/notify.py --level progress|gate "<msg>"` (topic via `NTFY_TOPIC` env var, or a

@@ -1,0 +1,234 @@
+{
+  "schema_version": "2",
+  "task_id": "resolution-memory",
+  "direction": "long-rollout-pathologies",
+  "title": "Gradient memory & throughput vs resolution",
+  "status": "active",
+  "created": "2026-06-25T06:25:18.868667+00:00",
+  "objective": "Map the practical envelope of the differentiable 512-step MLS-MPM rollout: how forward+backward wall-clock per iteration and the stored backward-tape memory scale with grid resolution and particle count on this GPU, and where it OOMs.",
+  "findings": "Swept grid in [32, 64, 128, 256, 512, 1024] x particles in [1024, 4096, 16384, 65536] for the 512-step differentiable MLS-MPM rollout on an RTX 4090 (24 GB), each config isolated in its own subprocess so a crash/OOM records a boundary instead of killing the sweep. Two distinct high-resolution walls emerged. In the FAITHFUL sim (sim/diffmpm.py kernels verbatim), the binding wall at high resolution is NOT memory: every grid>=256 config crashed with CUDA_ERROR_ILLEGAL_ADDRESS -- particles leave the domain at fine dx and write out of bounds (a long-rollout escape pathology), and this hits at ~1.4 GB tape, far below VRAM. With index-safe grid writes (clamped to bounds; field sizes UNCHANGED, so memory is identical), the sweep pushes past the escape wall: the largest config that ran was grid=1024 (~23.9 GB tape); no config in the matrix cleanly OOMed. The analytic tape is dominated by the time-indexed grid fields once the grid is fine: it scales as steps x (grid^2 + particles) x (value+grad), so grid resolution (quadratic) drives the memory wall far faster than particle count (linear). Measured GPU footprint (via the whole-GPU used-memory delta, since per-PID accounting was unavailable on this Windows/WDDM driver, so it includes the CUDA context and is noisier under load) tracked the analytic tape with a roughly constant additive offset of order ~600 MiB at small sizes (CUDA context + allocator slack), converging onto the analytic line once the tape is large (measured/analytic ratio ~1.00 for the >5 GB configs, i.e. measured ~= analytic). This confirms the time-indexed fields dominate the footprint and the analytic field-size estimate is a faithful proxy for the tape. NOTE: other GPU workers were running during this sweep (pre-sweep GPU used=2059 MiB, util=4%; load varied across the run), so absolute timings and the exact OOM threshold are polluted -- the reliable signal is the SCALING SHAPE (how time/memory grow with grid and particles) and the qualitative ordering of the two walls, not one-off seconds or the precise GB at which OOM struck. Re-run solo for clean absolutes.",
+  "hypothesis": "Two separate limits bound the differentiable envelope, and which one you hit first depends on the sim's robustness, not just hardware. (1) MEMORY: the stored tape is linear in steps and linear in (grid^2 + particles); the grid term is quadratic in resolution, so doubling the grid quadruples grid memory while doubling particles only doubles the particle term. At fine grids the grid fields dominate, and the differentiable envelope is bounded mainly by grid^2: the max grid is the one whose steps x grid^2 x (per-cell components x 2 for value+grad) x 4 bytes approaches VRAM. Trading horizon for resolution is linear-vs-quadratic: halving steps buys a ~1.41x finer grid. This predicts that to differentiate longer horizons or finer grids one needs gradient checkpointing (recompute forward in segments) rather than storing the full tape. (2) STABILITY: at the same dt=2e-4, finer dx raises effective wave/advection speeds, so particles can move several cells per step and leave the domain; the bare kernels then index out of bounds (illegal address). I hypothesise this escape wall arrives BEFORE the memory wall for this fixed-dt sim -- observed here as illegal-address crashes from grid=256 up while the index-safe variant runs the same configs fine. The implication: the practical max resolution for the faithful sim is set by a CFL-style stability limit (shrink dt as grid grows, or clamp indices), and only once that is handled does memory become the true ceiling. Time/iter should scale ~linearly with total work, backward a roughly constant multiple of forward.",
+  "limitations": "Scoped to THIS GPU (single RTX 4090, 24 GB) and THIS sim (2-D MLS-MPM, fp32, 512 steps, fixed dt=2e-4, the specific fields in sim/diffmpm.py, with the seeded blob / v0=[0.5,1.0] / target). Absolute wall-clock numbers are polluted by concurrent GPU workers (load varied from ~2059 MiB used at start to ~796 MiB at end) and should NOT be quoted as throughput; only the scaling shape is trustworthy -- re-run solo for clean absolute timing. The OOM threshold likewise shifts with concurrent VRAM use: a config that OOMed under load might fit solo, so any recorded memory wall is a conservative, load-polluted boundary, not the theoretical max. The escape (illegal-address) wall is a property of the faithful kernels at fixed dt; the index-safe variant CLAMPS escaped particles to edge cells -- that is physically wrong (it lets the memory sweep proceed) and its results past the escape point are not a valid simulation, only a memory/throughput probe at the right field sizes. Per-PID nvidia-smi memory attribution was unavailable on this Windows/WDDM driver, so measured memory is the whole-GPU used-memory delta (includes CUDA context and any concurrent change); the analytic numbers are exact for the field buffers but omit the CUDA context (~hundreds of MiB) and allocator slack. Only fp32 and 2-D tested; fp64 doubles memory and 3-D makes the grid term grid^3. Timing used few iters/config; not a rigorous benchmark.",
+  "results": [
+    {
+      "type": "image",
+      "src": "runs/long-rollout-pathologies/resolution-memory/time_vs_resolution.png",
+      "caption": "Forward+backward wall-clock per iteration vs particle count, one line per grid (log-log), index-safe pass. Concurrent GPU load inflates absolutes -- read the SHAPE: at these sizes time is nearly flat (launch/latency-bound), not compute-bound."
+    },
+    {
+      "type": "image",
+      "src": "runs/long-rollout-pathologies/resolution-memory/memory_vs_resolution.png",
+      "caption": "Tape memory vs analytic field-size: exact analytic estimate (dashed) with the measured whole-GPU used-memory delta overlaid, escape wall and any OOM wall marked. Measured deltas are noisy under concurrent load."
+    },
+    {
+      "type": "table",
+      "columns": [
+        "grid",
+        "particles",
+        "tape mem MB (est / meas)",
+        "fwd+bwd s/iter",
+        "status"
+      ],
+      "rows": [
+        [
+          "32",
+          "1024",
+          "59 (est) / 647 (meas)",
+          "0.307",
+          "ok"
+        ],
+        [
+          "64",
+          "1024",
+          "122 (est) / 694 (meas)",
+          "0.304",
+          "ok"
+        ],
+        [
+          "32",
+          "4096",
+          "172 (est) / 765 (meas)",
+          "0.316",
+          "ok"
+        ],
+        [
+          "64",
+          "4096",
+          "235 (est) / 832 (meas)",
+          "0.315",
+          "ok"
+        ],
+        [
+          "128",
+          "1024",
+          "373 (est) / 951 (meas)",
+          "0.312",
+          "ok"
+        ],
+        [
+          "128",
+          "4096",
+          "487 (est) / 1904 (meas)",
+          "0.282",
+          "ok"
+        ],
+        [
+          "32",
+          "16384",
+          "625 (est) / 1151 (meas)",
+          "0.287",
+          "ok"
+        ],
+        [
+          "64",
+          "16384",
+          "688 (est) / 1239 (meas)",
+          "0.286",
+          "ok"
+        ],
+        [
+          "128",
+          "16384",
+          "940 (est) / 1495 (meas)",
+          "0.304",
+          "ok"
+        ],
+        [
+          "256",
+          "1024",
+          "1380 (est) / 1911 (meas)",
+          "0.290",
+          "ok"
+        ],
+        [
+          "256",
+          "4096",
+          "1493 (est) / 2005 (meas)",
+          "0.286",
+          "ok"
+        ],
+        [
+          "256",
+          "16384",
+          "1946 (est) / 2455 (meas)",
+          "0.367",
+          "ok"
+        ],
+        [
+          "32",
+          "65536",
+          "2437 (est) / 2903 (meas)",
+          "0.287",
+          "ok"
+        ],
+        [
+          "64",
+          "65536",
+          "2500 (est) / 2967 (meas)",
+          "0.293",
+          "ok"
+        ],
+        [
+          "128",
+          "65536",
+          "2751 (est) / 3223 (meas)",
+          "0.290",
+          "ok"
+        ],
+        [
+          "256",
+          "65536",
+          "3758 (est) / 4183 (meas)",
+          "1.246",
+          "ok"
+        ],
+        [
+          "512",
+          "1024",
+          "5406 (est) / 5751 (meas)",
+          "0.285",
+          "ok"
+        ],
+        [
+          "512",
+          "4096",
+          "5520 (est) / 5847 (meas)",
+          "0.290",
+          "ok"
+        ],
+        [
+          "512",
+          "16384",
+          "5973 (est) / 5452 (meas)",
+          "0.299",
+          "ok"
+        ],
+        [
+          "512",
+          "65536",
+          "7785 (est) / 8027 (meas)",
+          "1.034",
+          "ok"
+        ],
+        [
+          "1024",
+          "1024",
+          "21513 (est) / 21112 (meas)",
+          "0.303",
+          "ok"
+        ],
+        [
+          "1024",
+          "4096",
+          "21626 (est) / 21208 (meas)",
+          "0.297",
+          "ok"
+        ],
+        [
+          "1024",
+          "16384",
+          "22079 (est) / 21656 (meas)",
+          "0.373",
+          "ok"
+        ],
+        [
+          "1024",
+          "65536",
+          "23891 (est) / 23119 (meas)",
+          "4.944",
+          "ok"
+        ]
+      ],
+      "caption": "Index-safe sweep matrix (memory result). Memory = analytic field-size estimate, plus measured whole-GPU delta where attributable. status: ok / OOM / escape (illegal-address in the faithful sim) / err. Timings polluted by concurrent workers -- treat as shape, not absolutes."
+    }
+  ],
+  "custom_html": null,
+  "training_refs": [
+    "differentiating-the-rollout"
+  ],
+  "_provenance": {
+    "gpu_pre_sweep": {
+      "total_mib": 24564,
+      "used_mib": 2059,
+      "free_mib": 22084,
+      "util_pct": 4
+    },
+    "gpu_between_passes": {
+      "total_mib": 24564,
+      "used_mib": 786,
+      "free_mib": 23356,
+      "util_pct": 2
+    },
+    "gpu_post_sweep": {
+      "total_mib": 24564,
+      "used_mib": 796,
+      "free_mib": 23347,
+      "util_pct": 84
+    },
+    "concurrent_load_flag": true,
+    "iters_per_config": 4,
+    "escape_wall_first": "grid=256,particles=1024",
+    "memory_oom_first": null,
+    "raw": "runs/long-rollout-pathologies/resolution-memory/sweep_raw.json"
+  }
+}

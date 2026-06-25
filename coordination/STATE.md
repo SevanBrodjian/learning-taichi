@@ -26,7 +26,12 @@
 - **Tasks need a hypothesis/why section** (added to schema-v2 + the dashboard) that also seeds follow-up tasks.
 - A worker should ideally test a question across **several tasks/conditions**, not one toy example.
 
-## Next (NOT started — await the user's go)
-- **Bigger test: two worker subagents on bigger tasks, in parallel.** Make the evidence/hypothesis/table
-  changes first, report, then launch.
+## In flight (bigger test — launched 2026-06-25 overnight, 3 parallel workers)
+- **optimizer-comparison** (re-run ACROSS several tasks, for generality — fixes the earlier overclaim),
+  **softened-wall**, **resolution-memory**. All three `active`; workers write to disk and do NOT commit;
+  the orchestrator reviews + commits each on completion. The GPU is shared by all three, so
+  resolution-memory's timing/memory numbers may need a solo re-run.
+- On each completion: scope-check claims (Evidence discipline), verify `hypothesis`+`limitations` present,
+  render-check, commit the worker's files, leave status `active` for the user's Done call. Do NOT auto-mark
+  done.
 - Optional later: cold-start orchestrator test (a fresh session orchestrates from the filesystem alone).

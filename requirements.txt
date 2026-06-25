@@ -1,6 +1,7 @@
 # Core simulation
 taichi==1.7.4
 numpy
+scipy
 
 # Phase 1 artifacts: loss plots + video/frame export for the dashboard
 matplotlib

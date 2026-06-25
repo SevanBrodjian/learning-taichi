@@ -4,7 +4,16 @@
   "status": "active",
   "summary": "Solve inverse and control problems by backpropagating through the differentiable MLS-MPM rollout. The foundational axis everything else builds on.",
   "tasks": [
-    { "id": "throw-to-target", "title": "Throw a blob to a target by backprop", "status": "done" },
-    { "id": "optimizer-comparison", "title": "SGD vs Adam vs L-BFGS through the rollout", "status": "proposed", "note": "How much does the optimizer matter when the gradient comes through 500+ sim steps? Compare convergence and stability of SGD, Adam, and L-BFGS on the throw task. Cheap, and a clean way to build intuition for the loss landscape of a physics rollout." }
+    {
+      "id": "throw-to-target",
+      "title": "Throw a blob to a target by backprop",
+      "status": "done"
+    },
+    {
+      "id": "optimizer-comparison",
+      "title": "SGD vs Adam vs L-BFGS through the rollout",
+      "status": "queued",
+      "note": "How much does the optimizer matter when the gradient comes through 500+ sim steps? Compare convergence and stability of SGD, Adam, and L-BFGS on the throw task. Cheap, and a clean way to build intuition for the loss landscape of a physics rollout."
+    }
   ]
 }

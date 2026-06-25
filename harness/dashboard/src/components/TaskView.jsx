@@ -29,6 +29,12 @@ function VideoResult({ src }) {
     const v = ref.current;
     if (v) (v.paused ? v.play() : v.pause());
   };
+  const fullscreen = () => {
+    const v = ref.current;
+    if (!v) return;
+    if (v.requestFullscreen) v.requestFullscreen();
+    else if (v.webkitEnterFullscreen) v.webkitEnterFullscreen(); // iOS Safari (native fullscreen player)
+  };
   return (
     <div className="vid" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)} onClick={() => setShow((s) => !s)}>
       <video
@@ -47,6 +53,7 @@ function VideoResult({ src }) {
           className="vid-seek" type="range" min="0" max={dur || 0} step="0.01" value={cur}
           onChange={(e) => { if (ref.current) ref.current.currentTime = parseFloat(e.target.value); }}
         />
+        <button className="vid-btn" onClick={fullscreen} aria-label="fullscreen">⛶</button>
       </div>
     </div>
   );
@@ -85,6 +92,8 @@ function Result({ r }) {
 export default function TaskView({ detail, reloadToken, onChange }) {
   const [task, setTask] = useState(null);
   const [refs, setRefs] = useState([]);
+  const [reopening, setReopening] = useState(false);
+  const [reopenNote, setReopenNote] = useState("");
 
   useEffect(() => {
     if (!detail) { setTask(null); setRefs([]); return; }
@@ -117,7 +126,7 @@ export default function TaskView({ detail, reloadToken, onChange }) {
   if (!task) return <div className="muted pad">Loading task…</div>;
 
   const results = (task.results || []).filter(Boolean);
-  const act = (status) => setTaskStatus(task.direction, task.task_id, status).then(() => onChange && onChange());
+  const act = (status, note) => setTaskStatus(task.direction, task.task_id, status, note).then(() => onChange && onChange());
 
   return (
     <div className="taskview">
@@ -128,12 +137,48 @@ export default function TaskView({ detail, reloadToken, onChange }) {
         </span>
         <div className="task-actions">
           {task.status === "done" ? (
-            <button className="act-btn" onClick={() => act("queued")}>Reopen</button>
+            <button className="act-btn" onClick={() => setReopening(true)}>Reopen</button>
           ) : (
             <button className="act-btn primary" onClick={() => act("done")}>Mark Done</button>
           )}
         </div>
       </div>
+
+      {reopening && (
+        <div className="reopen-box">
+          <p>
+            Reopening re-queues a task that has <em>already run</em>. Say what should change or be
+            extended, otherwise a worker has no way to know what to do differently.
+          </p>
+          <textarea
+            className="reopen-input"
+            value={reopenNote}
+            onChange={(e) => setReopenNote(e.target.value)}
+            placeholder="What needs changing or extending?"
+            rows={3}
+          />
+          <div className="reopen-actions">
+            <button className="act-btn" onClick={() => { setReopening(false); setReopenNote(""); }}>Cancel</button>
+            <button
+              className="act-btn primary"
+              disabled={!reopenNote.trim()}
+              onClick={() => { act("queued", reopenNote.trim()); setReopening(false); setReopenNote(""); }}
+            >
+              Reopen with this note
+            </button>
+          </div>
+        </div>
+      )}
+
+      {task.rework_history?.length > 0 && (
+        <div className="rework-banner">
+          <strong>This task already ran and was reopened.</strong> The result below reflects the last run.
+          Requested changes:
+          <ul>
+            {task.rework_history.map((h, i) => <li key={i}>{h.note}</li>)}
+          </ul>
+        </div>
+      )}
 
       {task.objective && (
         <section className="task-block">

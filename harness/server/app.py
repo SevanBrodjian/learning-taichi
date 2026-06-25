@@ -271,6 +271,7 @@ def task_detail(direction: str, task: str) -> dict | None:
             for t in json.loads(f.read_text("utf-8")).get("tasks", []):
                 if t.get("id") == task:
                     m["status"] = t.get("status", m.get("status"))
+                    m["rework_history"] = t.get("rework_history", [])
                     break
         except Exception:
             pass
@@ -299,7 +300,9 @@ def set_task_status(direction: str, task: str, status: str, note: str | None = N
         if t.get("id") == task:
             t["status"] = status
             if note:
-                t["rework_note"] = note
+                hist = t.get("rework_history") or []
+                hist.append({"time": int(time.time()), "note": note})
+                t["rework_history"] = hist
             found = True
             break
     if not found:

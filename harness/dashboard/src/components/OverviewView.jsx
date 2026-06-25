@@ -39,6 +39,12 @@ export default function OverviewView({ overview, onOpenTask, onChange }) {
     setOver(null);
   };
 
+  // Tap-friendly path (drag-and-drop does not work on touch / iPad): move via the modal.
+  const move = (t, status) => {
+    setTaskStatus(t.direction, t.id, status).then(() => onChange && onChange());
+    setModal(null);
+  };
+
   return (
     <div className="overview">
       <div className="dir-filter">
@@ -104,6 +110,14 @@ export default function OverviewView({ overview, onOpenTask, onChange }) {
             <h3>{modal.title}</h3>
             <p className="modal-note">{modal.note || "No description yet."}</p>
             <div className="modal-status">Status: {modal.status}</div>
+            <div className="modal-actions">
+              {modal.status === "proposed" && (
+                <button className="act-btn primary" onClick={() => move(modal, "queued")}>Queue</button>
+              )}
+              {modal.status === "queued" && (
+                <button className="act-btn" onClick={() => move(modal, "proposed")}>Move to Proposed</button>
+              )}
+            </div>
           </div>
         </div>
       )}

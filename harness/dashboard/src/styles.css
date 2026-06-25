@@ -230,3 +230,14 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
 .notif-x { margin-left: auto; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; }
 .notif-x:hover { color: var(--text); }
 .notif-msg { font-size: 13px; color: var(--text); margin-top: 5px; line-height: 1.45; }
+
+/* Modal action buttons (tap-friendly Queue), reopen-with-note flow, rework banner */
+.modal-actions { margin-top: 16px; display: flex; gap: 8px; }
+.act-btn[disabled] { opacity: .5; cursor: not-allowed; }
+.reopen-box { background: var(--panel); border: 1px solid var(--border); border-radius: 5px; padding: 14px 16px; margin: 0 0 22px; max-width: 80ch; }
+.reopen-box p { margin: 0 0 10px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.reopen-input { width: 100%; background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; font-family: var(--sans); font-size: 14px; resize: vertical; }
+.reopen-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+.rework-banner { background: #2a2114; border: 1px solid #4a3a1a; border-radius: 5px; padding: 12px 14px; margin: 0 0 22px; font-size: 14px; line-height: 1.5; max-width: 80ch; color: var(--text); }
+.rework-banner ul { margin: 8px 0 0; padding-left: 20px; }
+.rework-banner li { margin: 3px 0; }

@@ -41,4 +41,18 @@
   softened-wall + resolution-memory finish); the brief now has a "Known failure to avoid" section
   (verify gradients flow + scope to ~3 tasks). Root cause: a control-parameterization bug + 3-way GPU
   contention. Lesson: spawning 3 GPU-heavy workers at once over-contends a single GPU.
+- **UPDATE (later that night):** softened-wall + resolution-memory both finished, were reviewed +
+  committed (both `active`, awaiting the user's Done; both honest with hypothesis+limitations). The
+  optimizer task was **re-spawned SOLO** on the now-free GPU with bug-avoidance baked into the prompt
+  (verify gradients move the control before sweeping; scope to ~3 tasks). It is IN PROGRESS — do NOT
+  re-spawn it again; await its completion, then review + commit (leave active for the user's Done).
+- **UPDATE 2 — the solo re-run ALSO stalled (no output written).** Same pattern: the worker backgrounded
+  a long sweep and yielded to "wait", stranding itself (subagents do NOT reliably resume from their own
+  background children, and I cannot resume a subagent in bypass mode). The committed single-task result
+  remains in place (task `active`, reopened, shows the rework banner). **DO NOT auto-re-spawn — it fails
+  the same way twice.** The optimizer multi-task comparison is OPEN for the user: re-brief it to run the
+  sweep **inline** (no backgrounded long command, no yield-to-wait), or the orchestrator runs it directly.
+- **Harness lessons (write into CLAUDE.md / the worker brief template next):** (1) cap concurrent
+  GPU-heavy workers at 1-2, queue the rest. (2) Workers must run long sweeps **inline / in chunks** and
+  must NOT spawn a long background command then end their turn to wait for it — that strands them.
 - Optional later: cold-start orchestrator test (a fresh session orchestrates from the filesystem alone).

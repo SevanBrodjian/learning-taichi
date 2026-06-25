@@ -1,18 +1,23 @@
 import { useState } from "react";
+import { setTaskStatus } from "../api.js";
 
-// The live pipeline. Done is intentionally NOT a column (it would crowd the board); it lives in a
-// collapsed section below. Cards are tasks, filterable by direction. A proposed task (no artifact yet)
-// opens a detail modal instead of navigating, so you can judge its worth before queueing it.
+// The live pipeline. Done is a collapsed section below (not a crowding column). Cards are tasks,
+// filterable by direction. Proposed and queued cards can be dragged between those two columns
+// (the user's call). A proposed/queued card with no artifact opens a detail modal; a card with a
+// result navigates to its task.
 const COLUMNS = [
   { id: "proposed", label: "Proposed" },
   { id: "queued", label: "Queued" },
   { id: "active", label: "Active" },
 ];
+const DRAGGABLE = new Set(["proposed", "queued"]);
 
-export default function OverviewView({ overview, onOpenTask }) {
+export default function OverviewView({ overview, onOpenTask, onChange }) {
   const [filter, setFilter] = useState("all");
   const [showDone, setShowDone] = useState(false);
   const [modal, setModal] = useState(null);
+  const [drag, setDrag] = useState(null);
+  const [over, setOver] = useState(null);
 
   if (!overview) return <div className="muted pad">Loading…</div>;
   const dirs = overview.directions || [];
@@ -25,6 +30,14 @@ export default function OverviewView({ overview, onOpenTask }) {
   const columns = COLUMNS.map((c) => ({ ...c, items: tasks.filter((t) => t.status === c.id) }));
 
   const openCard = (t) => (t.has_artifact ? onOpenTask(t) : setModal(t));
+
+  const drop = (colId) => {
+    if (drag && DRAGGABLE.has(colId) && drag.status !== colId) {
+      setTaskStatus(drag.direction, drag.id, colId).then(() => onChange && onChange());
+    }
+    setDrag(null);
+    setOver(null);
+  };
 
   return (
     <div className="overview">
@@ -39,10 +52,23 @@ export default function OverviewView({ overview, onOpenTask }) {
 
       <div className="board3">
         {columns.map((c) => (
-          <div className={`board-col col-${c.id}`} key={c.id}>
+          <div
+            className={`board-col col-${c.id} ${over === c.id && DRAGGABLE.has(c.id) ? "drop-ok" : ""}`}
+            key={c.id}
+            onDragOver={(e) => { if (drag && DRAGGABLE.has(c.id)) { e.preventDefault(); setOver(c.id); } }}
+            onDragLeave={() => setOver((o) => (o === c.id ? null : o))}
+            onDrop={() => drop(c.id)}
+          >
             <div className="board-col-head">{c.label} <span className="board-count">{c.items.length}</span></div>
             {c.items.map((t) => (
-              <button key={t.direction + "/" + t.id} className={`task-card ${t.has_artifact ? "has" : ""}`} onClick={() => openCard(t)}>
+              <button
+                key={t.direction + "/" + t.id}
+                className={`task-card ${t.has_artifact ? "has" : ""} ${DRAGGABLE.has(t.status) ? "drag" : ""}`}
+                draggable={DRAGGABLE.has(t.status)}
+                onDragStart={() => setDrag({ direction: t.direction, id: t.id, status: t.status })}
+                onDragEnd={() => { setDrag(null); setOver(null); }}
+                onClick={() => openCard(t)}
+              >
                 <div className="task-card-title">{t.title}</div>
                 <div className="task-card-dir">{t.directionName}</div>
                 <div className="task-card-open">{t.has_artifact ? "view result →" : "details →"}</div>

@@ -1,7 +1,15 @@
 {
   "title": "Differentiable MPM — a ground-up textbook",
-  "intro": "The teaching companion to the DiffMPM work. Prerequisites collect standing background and math you can skim to taste. Core sections build the method and its failure modes from first principles. Runs link into these sections instead of restating them, so the teaching accumulates in one organized place rather than scattering across tasks.",
+  "intro": "The teaching companion to the DiffMPM work. Motivation sets up why differentiable physics matters and where MPM sits in the field, with no equations. Prerequisites build the simulation machinery and its math from zero, skim-friendly once you have them. Core sections build the method and its failure modes from first principles. Runs link into these sections instead of restating them, so the teaching accumulates in one organized place rather than scattering across tasks.",
   "groups": [
+    {
+      "id": "motivation",
+      "title": "Motivation & Background",
+      "sections": [
+        { "id": "why-differentiable-physics", "title": "Why differentiable physics", "file": "motivation/01-why-differentiable-physics.md" },
+        { "id": "where-mpm-sits", "title": "Where MPM sits", "file": "motivation/02-where-mpm-sits.md" }
+      ]
+    },
     {
       "id": "prerequisites",
       "title": "Prerequisites (skim as needed)",

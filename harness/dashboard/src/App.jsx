@@ -18,14 +18,17 @@ export default function App() {
   const [section, setSection] = useState("overview");
   const [overview, setOverview] = useState(null);
   const [error, setError] = useState(null);
-  const [selected, setSelected] = useState(null); // { key, detail, title, ... }
-  const [taskFilter, setTaskFilter] = useState("all"); // Tasks-tab direction filter
+  const [selected, setSelected] = useState(null);
+  const [taskFilter, setTaskFilter] = useState("all");
+  const [reloadToken, setReloadToken] = useState(0); // bump to force task-detail refetch
 
-  useEffect(() => {
+  // After any write-back (drag / Mark Done) re-pull the board and re-fetch the open task.
+  const reloadAll = () => {
     fetchOverview().then(setOverview).catch((e) => setError(String(e)));
-  }, []);
+    setReloadToken((k) => k + 1);
+  };
+  useEffect(() => { reloadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Tasks that have an actual result artifact (active/done) — these populate the Tasks tab.
   const realTasks = useMemo(() => {
     const dirs = overview?.directions || [];
     return dirs.flatMap((d) =>
@@ -109,8 +112,8 @@ export default function App() {
       </aside>
 
       <main className="content">
-        {section === "overview" && <OverviewView overview={overview} onOpenTask={openTask} />}
-        {section === "tasks" && <TaskView detail={selected?.detail} />}
+        {section === "overview" && <OverviewView overview={overview} onOpenTask={openTask} onChange={reloadAll} />}
+        {section === "tasks" && <TaskView detail={selected?.detail} reloadToken={reloadToken} onChange={reloadAll} />}
         {section === "training" && <TrainingView />}
         {section === "reports" && <ReportsView />}
         {section === "inbox" && <InboxView />}

@@ -1,6 +1,14 @@
 # The MLS-MPM forward step
 
-This is the engine every later idea sits on. One step moves information particle to grid (P2G), updates the grid, then moves it back grid to particle (G2P). The background grid is rebuilt from scratch each step. Notation follows the [[math-toolkit]], with particle index $p$, grid node $i$, weight $w_{ip}$, timestep $\Delta t$, cell size $\Delta x$, and Young's modulus $E$.
+This is the engine every later idea sits on. If you have read the prerequisites you already know the
+story in words. Each step moves information particle to grid (P2G), updates the grid, then moves it back
+grid to particle (G2P), and the background grid is rebuilt from scratch each step. The concepts behind
+every term here, what a transfer is, why a particle carries a velocity and an affine matrix, what the
+grid is for, and the meaning of mass, momentum, the volume ratio $J$, and stress, are built up from zero
+in [[mpm-in-context]], with the formulas in [[math-toolkit]]. This section's job is to assemble those
+pieces into the actual step and show where the gradient hazards hide. Notation follows the
+[[math-toolkit]], with particle index $p$, grid node $i$, weight $w_{ip}$, timestep $\Delta t$, cell
+size $\Delta x$, and Young's modulus $E$, the stiffness constant that scales how hard stress pushes back.
 
 ## Particle to grid
 Each particle deposits mass and momentum onto its surrounding nodes. The momentum it deposits carries both its plain velocity and an internal-stress plus affine term, folded into one matrix $A_p$.

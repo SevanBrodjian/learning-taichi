@@ -200,3 +200,33 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
 
 /* Tasks-tab compact direction filter */
 .task-filter { width: 100%; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 8px 9px; font-size: 13px; font-family: var(--sans); margin-bottom: 14px; }
+
+/* Video: clean autoplay loop, minimal controls on hover/tap */
+.vid { position: relative; line-height: 0; border-radius: 8px; overflow: hidden; }
+.vid-controls { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: linear-gradient(transparent, rgba(0, 0, 0, .62)); opacity: 0; transition: opacity .15s; pointer-events: none; }
+.vid-controls.show { opacity: 1; pointer-events: auto; }
+.vid-btn { background: rgba(0, 0, 0, .5); border: 1px solid rgba(255, 255, 255, .25); color: #fff; border-radius: 3px; width: 32px; height: 26px; cursor: pointer; font-size: 11px; line-height: 1; flex: none; }
+.vid-seek { flex: 1; accent-color: var(--accent); height: 4px; cursor: pointer; }
+
+/* Write-back: drag affordance, drop target, task actions */
+.task-card.drag { cursor: grab; }
+.task-card.drag:active { cursor: grabbing; }
+.board-col.drop-ok { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.task-actions { margin-left: auto; display: flex; gap: 8px; }
+.act-btn { background: var(--panel); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
+.act-btn:hover { border-color: #2b3a4d; }
+.act-btn.primary { background: var(--accent-2); border-color: var(--accent-2); color: var(--bg); font-weight: 600; }
+
+/* Inbox: decisions + ntfy notification feed */
+.inbox-block { margin-bottom: 30px; }
+.inbox-block > h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); font-family: var(--mono); margin: 0 0 12px; }
+.notif-feed { display: flex; flex-direction: column; gap: 8px; max-width: 80ch; }
+.notif { background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 4px; padding: 10px 12px; }
+.notif.p4, .notif.p5 { border-left-color: var(--danger); }   /* gate / high priority */
+.notif.p1, .notif.p2 { border-left-color: #3a4658; }          /* low priority */
+.notif-row { display: flex; align-items: center; gap: 10px; }
+.notif-title { font-weight: 600; font-size: 13px; }
+.notif-time { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+.notif-x { margin-left: auto; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; }
+.notif-x:hover { color: var(--text); }
+.notif-msg { font-size: 13px; color: var(--text); margin-top: 5px; line-height: 1.45; }

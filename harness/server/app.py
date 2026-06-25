@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import time
 from pathlib import Path
 
 # harness/server/app.py -> repo root is three parents up.
@@ -262,8 +263,90 @@ def task_detail(direction: str, task: str) -> dict | None:
     info = _v2_tasks().get((direction, task))
     if not info:
         return None
-    target = resolve(info["root"], info["rel"])
-    return rewrite_task(json.loads(target.read_text("utf-8")), info["root"])
+    m = rewrite_task(json.loads(resolve(info["root"], info["rel"]).read_text("utf-8")), info["root"])
+    # The direction file is authoritative for board status (proposed/queued/active/done).
+    f = MAIN_ROOT / "coordination" / "directions" / f"{direction}.json"
+    if f.is_file():
+        try:
+            for t in json.loads(f.read_text("utf-8")).get("tasks", []):
+                if t.get("id") == task:
+                    m["status"] = t.get("status", m.get("status"))
+                    break
+        except Exception:
+            pass
+    return m
+
+
+# ---- write-back (Overview drag / Mark Done) + ntfy notification feed ----
+
+def _git_commit(path: Path, msg: str) -> None:
+    """Persist a dashboard edit. Non-fatal: the file write already took effect for the live server."""
+    try:
+        subprocess.run(["git", "add", str(path)], cwd=MAIN_ROOT, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-q", "-m", msg], cwd=MAIN_ROOT, check=True, capture_output=True)
+    except Exception:
+        pass
+
+
+def set_task_status(direction: str, task: str, status: str, note: str | None = None) -> dict:
+    """Atomically change a task's status in its direction file (the Overview write-back)."""
+    f = MAIN_ROOT / "coordination" / "directions" / f"{direction}.json"
+    if not f.is_file():
+        return {"ok": False, "error": "no such direction"}
+    data = json.loads(f.read_text("utf-8"))
+    found = False
+    for t in data.get("tasks", []):
+        if t.get("id") == task:
+            t["status"] = status
+            if note:
+                t["rework_note"] = note
+            found = True
+            break
+    if not found:
+        return {"ok": False, "error": "no such task"}
+    f.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    _git_commit(f, f"dashboard: {direction}/{task} -> {status}")
+    return {"ok": True}
+
+
+def _topic() -> str | None:
+    topic = os.environ.get("NTFY_TOPIC")
+    if topic:
+        return topic
+    tf = Path.home() / ".learning-taichi" / "ntfy_topic"
+    if tf.is_file():
+        return tf.read_text("utf-8").strip() or None
+    return None
+
+
+def notifications() -> dict:
+    """Pull the recent ntfy message cache for our topic, server-side, so the secret topic never
+    reaches the browser."""
+    import urllib.request
+    topic = _topic()
+    if not topic:
+        return {"configured": False, "notifications": []}
+    server = os.environ.get("NTFY_SERVER", "https://ntfy.sh")
+    try:
+        since = int(time.time()) - 7 * 86400  # ntfy `since` wants a unix ts / duration in h,m,s
+        with urllib.request.urlopen(f"{server}/{topic}/json?poll=1&since={since}", timeout=8) as resp:
+            lines = resp.read().decode("utf-8").splitlines()
+    except Exception as e:
+        return {"configured": True, "notifications": [], "error": str(e)}
+    msgs = []
+    for ln in lines:
+        try:
+            m = json.loads(ln)
+        except Exception:
+            continue
+        if m.get("event") != "message":
+            continue
+        msgs.append({
+            "id": m.get("id"), "time": m.get("time", 0), "title": m.get("title", ""),
+            "message": m.get("message", ""), "priority": m.get("priority", 3), "tags": m.get("tags", []),
+        })
+    msgs.sort(key=lambda x: x.get("time", 0), reverse=True)
+    return {"configured": True, "notifications": msgs}
 
 
 def _build_app():
@@ -321,6 +404,17 @@ def _build_app():
         if d is None:
             raise HTTPException(404, "task not found")
         return d
+
+    @app.post("/api/task-status")
+    def api_task_status(payload: dict):
+        d, t, s = payload.get("direction"), payload.get("task"), payload.get("status")
+        if not (d and t and s):
+            raise HTTPException(400, "direction, task, status required")
+        return set_task_status(d, t, s, payload.get("note"))
+
+    @app.get("/api/notifications")
+    def api_notifications():
+        return notifications()
 
     return app
 

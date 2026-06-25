@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { fetchTask, fetchJSON, fetchText, fetchTraining } from "../api.js";
+import { useEffect, useRef, useState } from "react";
+import { fetchTask, fetchJSON, fetchText, fetchTraining, setTaskStatus } from "../api.js";
 import LossChart from "./LossChart.jsx";
 import MarkdownReport from "./MarkdownReport.jsx";
 
@@ -16,11 +16,47 @@ function LossResult({ series, log }) {
   return <LossChart series={data} log={log !== false} />;
 }
 
+// Clean autoplay loop with on-demand controls. Native `controls` on iOS keeps a big overlay up over an
+// autoplaying video until tapped, which is obstructive when flicking through tasks. Instead the video
+// plays clean and a minimal control bar (play/pause + scrub) appears on hover (desktop) or tap (touch).
+function VideoResult({ src }) {
+  const ref = useRef(null);
+  const [playing, setPlaying] = useState(true);
+  const [cur, setCur] = useState(0);
+  const [dur, setDur] = useState(0);
+  const [show, setShow] = useState(false);
+  const toggle = () => {
+    const v = ref.current;
+    if (v) (v.paused ? v.play() : v.pause());
+  };
+  return (
+    <div className="vid" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)} onClick={() => setShow((s) => !s)}>
+      <video
+        ref={ref}
+        className="task-video"
+        src={src}
+        autoPlay loop muted playsInline preload="auto"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onTimeUpdate={(e) => setCur(e.currentTarget.currentTime)}
+        onLoadedMetadata={(e) => setDur(e.currentTarget.duration || 0)}
+      />
+      <div className={`vid-controls ${show ? "show" : ""}`} onClick={(e) => e.stopPropagation()}>
+        <button className="vid-btn" onClick={toggle} aria-label={playing ? "pause" : "play"}>{playing ? "❚❚" : "▶"}</button>
+        <input
+          className="vid-seek" type="range" min="0" max={dur || 0} step="0.01" value={cur}
+          onChange={(e) => { if (ref.current) ref.current.currentTime = parseFloat(e.target.value); }}
+        />
+      </div>
+    </div>
+  );
+}
+
 // One typed result. Anything absent or unknown renders nothing (no placeholders cluttering the view).
 function Result({ r }) {
   let body = null;
   if (r.type === "video" && r.src) {
-    body = <video className="task-video" src={r.src} autoPlay loop muted playsInline controls />;
+    body = <VideoResult src={r.src} />;
   } else if (r.type === "image" && r.src) {
     body = <img className="task-image" src={r.src} alt={r.caption || ""} />;
   } else if (r.type === "plot" && r.series) {
@@ -46,7 +82,7 @@ function Result({ r }) {
   );
 }
 
-export default function TaskView({ detail }) {
+export default function TaskView({ detail, reloadToken, onChange }) {
   const [task, setTask] = useState(null);
   const [refs, setRefs] = useState([]);
 
@@ -75,12 +111,13 @@ export default function TaskView({ detail }) {
       })
       .catch(() => {});
     return () => { alive = false; };
-  }, [detail]);
+  }, [detail, reloadToken]);
 
   if (!detail) return <div className="muted pad">Select a task.</div>;
   if (!task) return <div className="muted pad">Loading task…</div>;
 
   const results = (task.results || []).filter(Boolean);
+  const act = (status) => setTaskStatus(task.direction, task.task_id, status).then(() => onChange && onChange());
 
   return (
     <div className="taskview">
@@ -89,6 +126,13 @@ export default function TaskView({ detail }) {
         <span className={`status status-${task.status === "done" ? "done" : "active"}`}>
           {task.status === "done" ? "Done" : "Active"}
         </span>
+        <div className="task-actions">
+          {task.status === "done" ? (
+            <button className="act-btn" onClick={() => act("queued")}>Reopen</button>
+          ) : (
+            <button className="act-btn primary" onClick={() => act("done")}>Mark Done</button>
+          )}
+        </div>
       </div>
 
       {task.objective && (

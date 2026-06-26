@@ -2,148 +2,420 @@
   "schema_version": "2",
   "task_id": "optimizer-comparison",
   "direction": "differentiable-control",
-  "title": "SGD vs Adam vs L-BFGS through the rollout",
+  "title": "SGD vs Adam vs L-BFGS across several control tasks",
   "status": "active",
-  "created": "2026-06-25T05:31:12.465836+00:00",
-  "objective": "Quantify how much the choice of optimizer matters when the gradient is backpropagated through a 512-step MLS-MPM rollout. On the throw-to-target control problem (one shared initial velocity v0, target (0.7, 0.35), 512 steps), compare SGD with momentum, Adam, and scipy L-BFGS-B under an identical task, seed, horizon and mass-stabilized grid step, so the optimizer is the only variable. The goal is one clean, intuition-building result about the loss landscape of a long differentiable rollout, measured honestly in gradient evaluations (forward+backward passes) rather than nominal iterations, since L-BFGS spends several gradient evaluations per iteration in its line search.",
-  "findings": "With mass stabilization (vel = grid_v_in / max(m, 0.0001)) the known long-rollout NaN never fires, so all three run cleanly and the comparison is purely about optimization quality. Read everything below as a result on ONE near-toy task (a single blob thrown to a single target, one seed): it is a strong hypothesis, not a general law about optimizers. On this task, L-BFGS wins decisively. L-BFGS reaches loss 1.14e-13 in only 10 gradient evaluations, while the best Adam and SGD-with-momentum reach over 60 gradient evaluations are 9.21e-07 and 4.02e-05. That is roughly ten orders of magnitude lower loss for L-BFGS at about a fifth of the gradient budget. All three converge to nearly the same v0* (around (6.0, -2.9)), which is the real headline: the optimizer matters enormously for *speed* but barely at all for *reachability*. Every method finds the same basin, so the loss landscape of this control problem is benign and effectively convex near v0*, with no flat plateaus or bad local minima. That smoothness is exactly what lets L-BFGS's quasi-Newton steps pay off. The gradient through 512 chained physics steps is not merely finite, it is well-conditioned enough that an estimated inverse Hessian gives a near-perfect step. A second, honest detail the plot shows: the first-order methods overshoot. With the aggressive learning rate the lr sweep selected, SGD and Adam dip into the basin and then bounce back up rather than settling, so their *final* loss is worse than their *best* loss (hence both columns in the table). A smaller step would let them land, but no fixed first-order step competes with curvature-awareness here. Plain SGD is the slow, lr-sensitive baseline, Adam is the robust default that descends without tuning curvature, and L-BFGS is the specialist that exploits the smoothness. The lesson for steering physics rollouts: when the landscape is smooth, reach for a curvature-aware optimizer before throwing more iterations at a first-order one.",
-  "hypothesis": "Mechanism: L-BFGS exploits curvature, so it pays off precisely when the loss surface is smooth and well-conditioned. That all three optimizers reach the same v0* says this particular control objective has a single benign basin near the optimum, with no plateaus or bad local minima, which is exactly the regime where a quasi-Newton step lands near-perfectly. The open question is how special that is. Plausibly the throw task is unusually smooth because it maps a 2-D input through an averaging (center-of-mass) objective; harder controls (per-particle actuation, walking, multi-target or via-point objectives, contact-rich tasks, longer horizons, fluid or snow materials) may be non-convex or ill-conditioned enough that L-BFGS's advantage shrinks or its curvature estimate misleads. Each of those is a concrete follow-up task that would test how far this generalizes.",
-  "limitations": "One task, one target (0.7, 0.35), one particle seed, one horizon (512 steps), a 2-D control input only. The simulator here is the mass-stabilized variant (divide by max(m, 1e-4)), a slightly different regularized system from the unstabilized baseline, so the optimum v0* (around (6.0, -2.9)) is not directly comparable to the baseline's. The headline 1.1e-13 is the f32 loss floor (the center of mass equals the target to single-precision accuracy), not ten orders of meaningful signal: the honest claim is that L-BFGS reaches machine precision in ~10 gradient evaluations while Adam and SGD do not. Nothing here warrants a claim about other tasks, materials, horizons, or control dimensions.",
+  "created": "2026-06-25T06:39:54.203577+00:00",
+  "objective": "Test how far the earlier single-task optimizer finding generalizes. The original optimizer-comparison ran SGD+momentum, Adam, and scipy L-BFGS-B on ONE near-toy task (a single blob thrown to one target, shared 2-D v0) and found L-BFGS dominant with all methods reaching the same basin. Here we run the identical three optimizers, fair scoring (loss vs gradient evaluations, since L-BFGS spends several grad-evals per line search), and identical task/seed/horizon/mass-stabilization across 3 genuinely different control tasks: throw-far (smooth, 2-D), into-wall (a target pressed against the left boundary so the contact clamp shapes the basin, 2-D), and split-field (a higher-dimensional per-region initial-velocity field, 18-D, with a two-target objective that a single shared v0 provably cannot satisfy). A gradient-flow probe gates every task before sweeping, so no flat/degenerate run is reported.",
+  "findings": "On these 3 tasks (one seed, one horizon of 512 steps, mass-stabilized grid), L-BFGS reaches the lowest loss per gradient budget on 1/3. [throw-far] winner=L-BFGS; best loss L-BFGS=3.55e-15 (in 13 grad-evals), Adam=4.21e-06, SGD=4.35e-05 (both in ~60 grad-evals); same-basin: yes. [into-wall] winner=Adam; best loss L-BFGS=1.70e-03 (in 32 grad-evals), Adam=1.53e-03, SGD=1.88e-03 (both in ~60 grad-evals); same-basin: no (spread 1.39). [split-field] winner=Adam; best loss L-BFGS=1.66e-03 (in 141 grad-evals), Adam=2.31e-05, SGD=1.38e-01 (both in ~60 grad-evals); same-basin: no (spread 76.13). The cross-task pattern: L-BFGS's curvature-awareness pays off most on the smooth low-dim throw-far task (machine-precision in ~10 grad-evals), and its margin over Adam/SGD shrinks as the task gets harder \u2014 the boundary clamp in into-wall and especially the higher-dimensional split-field control give a less trivially-convex surface where the first-order methods are relatively more competitive and 'same basin' is no longer automatic. So the earlier headline ('L-BFGS dominates; all reach the same basin') holds as a SPEED statement on smooth low-dim control, but the 'same basin' half is task-dependent: it is a property of the throw objective's single benign optimum, not a universal fact about steering this simulator. Scores are best-loss-reached in gradient evaluations; the smallest losses on throw-far are at the f32 loss floor (center of mass equals target to single precision), so read them as 'reached machine precision', not as many orders of meaningful signal.",
+  "hypothesis": "Mechanism: L-BFGS estimates the inverse Hessian, so its advantage tracks how smooth and well-conditioned the loss surface is. throw-far maps a 2-D input through a center-of-mass average to one target \u2014 a single benign basin, the ideal quasi-Newton regime, hence the ~10-grad-eval machine-precision result and identical v0* across methods. into-wall adds an active boundary constraint (the left-wall velocity clamp), which can flatten gradients near contact and bend the basin, so the first-order methods close some of the gap. split-field is genuinely higher-dimensional (18 parameters) with a two-target objective that requires the field to differentiate left from right; its surface is less trivially convex, the methods need not agree on a single point, and L-BFGS's limited-memory curvature model is a weaker fit. Prediction: the L-BFGS margin shrinks monotonically with (a) control dimension, (b) active contact/constraints, and (c) non-convexity of the objective. Concrete follow-ups that would test this further: per-particle actuation, multi-via-point or shape-matching objectives, longer horizons (1024 steps), and softer/fluid materials where the rollout itself is more chaotic.",
+  "limitations": "Still one particle seed, one horizon (512 steps), one simulator (mass-stabilized, divide by max(m,1e-4)), and a modest gradient budget per task. Only three tasks and a 2-3 point lr grid per first-order optimizer, so 'winner' is scoped to these settings, not a tuned-optimal comparison. The split-field objective is one particular two-target choice; other higher-dim objectives could behave differently. 'Same basin' is judged by L2 distance of the final control vectors with a fixed threshold, a coarse proxy. f32 loss floor applies to the very low throw-far numbers. No claim is made about other materials, contact-rich scenes, or control parameterizations beyond these three.",
   "results": [
     {
-      "type": "image",
-      "src": "runs/differentiable-control/optimizer-comparison/comparison.png",
-      "caption": "Loss vs gradient evaluations (log-y) for SGD, Adam, and L-BFGS on the same 512-step throw-to-target task. The x-axis counts forward+backward passes, so L-BFGS's line-search cost is paid honestly."
-    },
-    {
       "type": "table",
-      "caption": "Best loss reached, final loss, iterations, and gradient evaluations per optimizer (same task, seed, horizon, stabilization). Best vs final diverge for the first-order methods because their aggressive learning rate overshoots and bounces back up in the curved basin.",
+      "caption": "Cross-task summary over 3 control tasks (same seed, horizon, stabilization; best loss reached, scored in gradient evaluations). 'same v0*?' asks whether all three optimizers converged to the same control vector.",
       "columns": [
-        "optimizer",
-        "best loss",
-        "final loss",
-        "iterations",
-        "grad-evals",
-        "stable?",
-        "notes"
+        "task",
+        "winner",
+        "L-BFGS best",
+        "Adam best",
+        "SGD best",
+        "same v0*?"
       ],
       "rows": [
         [
-          "SGD",
-          "4.02e-05",
-          "5.86e-04",
-          "60",
-          "60",
-          "yes",
-          "momentum 0.9, lr 1.0"
-        ],
-        [
-          "Adam",
-          "9.21e-07",
-          "1.06e-04",
-          "60",
-          "60",
-          "yes",
-          "lr 0.5"
-        ],
-        [
+          "throw-far",
           "L-BFGS",
-          "1.14e-13",
-          "1.14e-13",
-          "8",
-          "10",
-          "yes",
-          "line search -> multiple grad-evals/iter"
+          "3.55e-15",
+          "4.21e-06",
+          "4.35e-05",
+          "yes"
+        ],
+        [
+          "into-wall",
+          "Adam",
+          "1.70e-03",
+          "1.53e-03",
+          "1.88e-03",
+          "no (spread 1.39)"
+        ],
+        [
+          "split-field",
+          "Adam",
+          "1.66e-03",
+          "2.31e-05",
+          "1.38e-01",
+          "no (spread 76.13)"
         ]
       ]
     },
     {
+      "type": "image",
+      "src": "runs/differentiable-control/optimizer-comparison/comparison_throw-far.png",
+      "caption": "Task 'throw-far' (Throw far (smooth, low-dim), control dim 2): loss vs gradient evaluations (log-y) for SGD, Adam, L-BFGS."
+    },
+    {
+      "type": "image",
+      "src": "runs/differentiable-control/optimizer-comparison/comparison_into-wall.png",
+      "caption": "Task 'into-wall' (Throw into the left wall (contact-influenced), control dim 2): loss vs gradient evaluations (log-y) for SGD, Adam, L-BFGS."
+    },
+    {
+      "type": "image",
+      "src": "runs/differentiable-control/optimizer-comparison/comparison_split-field.png",
+      "caption": "Task 'split-field' (Per-region field: split blob to two targets, control dim 18): loss vs gradient evaluations (log-y) for SGD, Adam, L-BFGS."
+    },
+    {
       "type": "video",
-      "src": "runs/differentiable-control/optimizer-comparison/video.mp4",
-      "caption": "Best run (L-BFGS) throws the blob onto the target (red cross)."
+      "src": "runs/differentiable-control/optimizer-comparison/video_throw-far.mp4",
+      "caption": "Task 'throw-far' best run (L-BFGS). Blob (green) to the target (red cross)."
+    },
+    {
+      "type": "video",
+      "src": "runs/differentiable-control/optimizer-comparison/video_into-wall.mp4",
+      "caption": "Task 'into-wall' best run (Adam). Blob (green) to the target (red cross)."
+    },
+    {
+      "type": "video",
+      "src": "runs/differentiable-control/optimizer-comparison/video_split-field.mp4",
+      "caption": "Task 'split-field' best run (Adam). Left half (green) -> red target, right half (blue) -> yellow target."
     }
   ],
   "training_refs": [
-    "differentiating-the-rollout",
-    "failure-modes"
+    "differentiating-the-rollout"
   ],
   "params": {
-    "target": [
-      0.7,
-      0.35
-    ],
+    "tasks": {
+      "throw-far": {
+        "kind": "single",
+        "target": [
+          0.7,
+          0.35
+        ],
+        "dim_ctrl": 2,
+        "title": "Throw far (smooth, low-dim)"
+      },
+      "into-wall": {
+        "kind": "single",
+        "target": [
+          0.08,
+          0.35
+        ],
+        "dim_ctrl": 2,
+        "title": "Throw into the left wall (contact-influenced)"
+      },
+      "split-field": {
+        "kind": "split",
+        "target_L": [
+          0.3,
+          0.2
+        ],
+        "target_R": [
+          0.8,
+          0.55
+        ],
+        "dim_ctrl": 18,
+        "title": "Per-region field: split blob to two targets"
+      }
+    },
     "steps": 512,
     "n_grid": 64,
     "n_particles": 4096,
     "mass_eps": 0.0001,
     "seed": 0,
     "budget": 60,
-    "sgd_lr": 1.0,
-    "sgd_momentum": 0.9,
-    "adam_lr": 0.5,
-    "v0_final": {
-      "SGD": [
-        6.222251691130845,
-        -2.9599225900218045
-      ],
-      "Adam": [
-        6.0471343480879005,
-        -2.8606898992895005
-      ],
-      "L-BFGS": [
-        5.857149011743714,
-        -2.863593597333475
-      ]
-    },
-    "lr_sweep": [
-      {
-        "optimizer": "SGD",
-        "lr": 0.03,
-        "final_loss": 0.14877794682979584,
-        "stable": true
+    "K": 3,
+    "n_regions": 9,
+    "branch": "main",
+    "probe": {
+      "throw-far": {
+        "task": "throw-far",
+        "L_start": 0.15078575909137726,
+        "L_end": 0.10250500589609146,
+        "drop": 0.0482807531952858,
+        "grad_norm0": 0.033484479606776314,
+        "ctrl_moved": 1.6955484593543633,
+        "dim_ctrl": 2,
+        "ok": true
       },
-      {
-        "optimizer": "SGD",
-        "lr": 0.1,
-        "final_loss": 0.14400716125965118,
-        "stable": true
+      "into-wall": {
+        "task": "into-wall",
+        "L_start": 0.10009167343378067,
+        "L_end": 0.06017932668328285,
+        "drop": 0.03991234675049782,
+        "grad_norm0": 0.028758699973836684,
+        "ctrl_moved": 1.6902530187058769,
+        "dim_ctrl": 2,
+        "ok": true
       },
-      {
-        "optimizer": "SGD",
-        "lr": 0.3,
-        "final_loss": 0.12718108296394348,
-        "stable": true
-      },
-      {
-        "optimizer": "SGD",
-        "lr": 1.0,
-        "final_loss": 0.07589821517467499,
-        "stable": true
-      },
-      {
-        "optimizer": "Adam",
-        "lr": 0.03,
-        "final_loss": 0.07125569880008698,
-        "stable": true
-      },
-      {
-        "optimizer": "Adam",
-        "lr": 0.1,
-        "final_loss": 0.0031804637983441353,
-        "stable": true
-      },
-      {
-        "optimizer": "Adam",
-        "lr": 0.3,
-        "final_loss": 0.00014010390441399068,
-        "stable": true
-      },
-      {
-        "optimizer": "Adam",
-        "lr": 0.5,
-        "final_loss": 9.359786054119468e-05,
-        "stable": true
+      "split-field": {
+        "task": "split-field",
+        "L_start": 0.22444190084934235,
+        "L_end": 0.17184261977672577,
+        "drop": 0.05259928107261658,
+        "grad_norm0": 0.01686982096003274,
+        "ctrl_moved": 4.657141401141718,
+        "dim_ctrl": 18,
+        "ok": true
       }
-    ]
+    },
+    "per_task": [
+      {
+        "task": "throw-far",
+        "winner": "L-BFGS",
+        "best_by": {
+          "SGD": 4.353765325504355e-05,
+          "Adam": 4.208598966215504e-06,
+          "L-BFGS": 3.552713678800501e-15
+        },
+        "same_basin": "yes",
+        "ctrl_spread": 0.36889035021391003,
+        "dim_ctrl": 2
+      },
+      {
+        "task": "into-wall",
+        "winner": "Adam",
+        "best_by": {
+          "SGD": 0.0018781566759571433,
+          "Adam": 0.0015339741948992014,
+          "L-BFGS": 0.0016967173432931304
+        },
+        "same_basin": "no (spread 1.39)",
+        "ctrl_spread": 1.388742048816355,
+        "dim_ctrl": 2
+      },
+      {
+        "task": "split-field",
+        "winner": "Adam",
+        "best_by": {
+          "SGD": 0.1383427530527115,
+          "Adam": 2.3146922103478573e-05,
+          "L-BFGS": 0.0016625477001070976
+        },
+        "same_basin": "no (spread 76.13)",
+        "ctrl_spread": 76.12672504528757,
+        "dim_ctrl": 18
+      }
+    ],
+    "best_lr": {
+      "throw-far": {
+        "SGD": 1.0,
+        "Adam": 0.5
+      },
+      "into-wall": {
+        "SGD": 1.0,
+        "Adam": 0.3
+      },
+      "split-field": {
+        "SGD": 1.0,
+        "Adam": 0.5
+      }
+    },
+    "final_controls": {
+      "throw-far": {
+        "SGD": [
+          6.201533525307443,
+          -2.9957791375218434
+        ],
+        "Adam": [
+          6.065434563000508,
+          -2.8566533815312827
+        ],
+        "L-BFGS": [
+          5.857143537951121,
+          -2.863583725008197
+        ]
+      },
+      "into-wall": {
+        "SGD": [
+          -5.434862843786443,
+          -3.091430181155918
+        ],
+        "Adam": [
+          -6.752294269827197,
+          -3.115352607975915
+        ],
+        "L-BFGS": [
+          -5.3777634576115485,
+          -2.91718721134866
+        ]
+      },
+      "split-field": {
+        "SGD": [
+          0.41702635631233503,
+          -1.8589488151661646,
+          0.8906289933854621,
+          -2.2050805225293293,
+          1.867527011930852,
+          -2.468325089852976,
+          1.5204369995790454,
+          -0.9820687512370587,
+          1.2644429817829164,
+          -1.7016289804659044,
+          1.4380591900218114,
+          -2.0116120385389906,
+          2.492851116106532,
+          -0.09538304970884302,
+          1.8810510735786563,
+          -0.6833844899023118,
+          1.104360209157843,
+          -0.3923425568407751
+        ],
+        "Adam": [
+          -0.7199320011292166,
+          -13.663196756901707,
+          0.1633486408647522,
+          -11.934870084626821,
+          7.980035309513723,
+          -9.598750298745214,
+          -3.027908149515559,
+          -3.3995245565300105,
+          0.35853583906583364,
+          -8.551709345619544,
+          6.207744781634825,
+          -10.176012707907288,
+          2.793707389412247,
+          8.67460847032218,
+          10.773081126547831,
+          6.159204782421329,
+          11.479866641548345,
+          -8.8544982127567
+        ],
+        "L-BFGS": [
+          -10.402816637264989,
+          -46.80547559028942,
+          1.7502381021451583,
+          -29.85116103544419,
+          9.376853053807992,
+          -18.4417017759034,
+          8.614503831689952,
+          -16.160899400600975,
+          -2.0663399064383676,
+          -1.6149091616315212,
+          10.499974949107491,
+          -20.571286425536044,
+          28.050622099231994,
+          23.57666681527326,
+          0.1267184688288244,
+          -14.500335396745696,
+          22.413424657547203,
+          -1.5771478826939254
+        ]
+      }
+    },
+    "lr_sweep": {
+      "throw-far": [
+        {
+          "optimizer": "SGD",
+          "lr": 0.1,
+          "best_loss": 0.08555389940738678,
+          "stable": true
+        },
+        {
+          "optimizer": "SGD",
+          "lr": 0.3,
+          "best_loss": 0.013784526847302914,
+          "stable": true
+        },
+        {
+          "optimizer": "SGD",
+          "lr": 1.0,
+          "best_loss": 4.24277714046184e-05,
+          "stable": true
+        },
+        {
+          "optimizer": "Adam",
+          "lr": 0.1,
+          "best_loss": 0.003130332101136446,
+          "stable": true
+        },
+        {
+          "optimizer": "Adam",
+          "lr": 0.3,
+          "best_loss": 7.772519893478602e-05,
+          "stable": true
+        },
+        {
+          "optimizer": "Adam",
+          "lr": 0.5,
+          "best_loss": 1.1584990716073662e-05,
+          "stable": true
+        }
+      ],
+      "into-wall": [
+        {
+          "optimizer": "SGD",
+          "lr": 0.1,
+          "best_loss": 0.0571432039141655,
+          "stable": true
+        },
+        {
+          "optimizer": "SGD",
+          "lr": 0.3,
+          "best_loss": 0.013686496764421463,
+          "stable": true
+        },
+        {
+          "optimizer": "SGD",
+          "lr": 1.0,
+          "best_loss": 0.0018829477485269308,
+          "stable": true
+        },
+        {
+          "optimizer": "Adam",
+          "lr": 0.1,
+          "best_loss": 0.0037584875244647264,
+          "stable": true
+        },
+        {
+          "optimizer": "Adam",
+          "lr": 0.3,
+          "best_loss": 0.001550442655570805,
+          "stable": true
+        },
+        {
+          "optimizer": "Adam",
+          "lr": 0.5,
+          "best_loss": 0.0016421456821262836,
+          "stable": true
+        }
+      ],
+      "split-field": [
+        {
+          "optimizer": "SGD",
+          "lr": 0.1,
+          "best_loss": 0.2111421525478363,
+          "stable": true
+        },
+        {
+          "optimizer": "SGD",
+          "lr": 0.3,
+          "best_loss": 0.18775664269924164,
+          "stable": true
+        },
+        {
+          "optimizer": "SGD",
+          "lr": 1.0,
+          "best_loss": 0.13842105865478516,
+          "stable": true
+        },
+        {
+          "optimizer": "Adam",
+          "lr": 0.1,
+          "best_loss": 0.0246406402438879,
+          "stable": true
+        },
+        {
+          "optimizer": "Adam",
+          "lr": 0.3,
+          "best_loss": 4.998981603421271e-05,
+          "stable": true
+        },
+        {
+          "optimizer": "Adam",
+          "lr": 0.5,
+          "best_loss": 3.794310032390058e-05,
+          "stable": true
+        }
+      ]
+    }
   }
 }

@@ -12,7 +12,7 @@
     {
       "id": "softened-wall",
       "title": "Softened wall contact for smooth boundary gradients",
-      "status": "active",
+      "status": "done",
       "note": "The hard wall clamp is a non-smooth kink in the gradient. Replace it with a smooth ramp and measure whether gradient quality improves, independent of the (already-fixed) mass overflow. Tests the contact-differentiability hypothesis directly."
     },
     {

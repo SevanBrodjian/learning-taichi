@@ -1,12 +1,10 @@
 {
   "permissions": {
+    "defaultMode": "acceptEdits",
     "allow": [
-      "Bash(git fetch *)",
-      "Bash(git merge *)",
-      "Bash(git push *)",
-      "Bash(git branch *)",
-      "Bash(git worktree remove *)",
-      "Bash(git worktree list *)"
+      "Bash(*)",
+      "WebFetch(*)",
+      "WebSearch(*)"
     ]
   }
 }

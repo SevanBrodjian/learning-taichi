@@ -1,7 +1,7 @@
 # STATE — orchestrator working memory
 
 > At-a-glance state, reconstructable from the repo but kept here for convenience. Read `CLAUDE.md`,
-> `spec/`, and `coordination/` for the full picture. _Updated 2026-06-25._
+> `spec/`, and `coordination/` for the full picture. _Updated 2026-06-28._
 
 ## Where we are
 - The **harness is built and live**: portable `harness/` (dashboard, data server, tools), a Direction->Task
@@ -55,4 +55,54 @@
 - **Harness lessons (write into CLAUDE.md / the worker brief template next):** (1) cap concurrent
   GPU-heavy workers at 1-2, queue the rest. (2) Workers must run long sweeps **inline / in chunks** and
   must NOT spawn a long background command then end their turn to wait for it — that strands them.
+- **CORRECTION (morning):** "UPDATE 2" above was WRONG. The solo optimizer re-run did NOT stall — it
+  SUCCEEDED. I checked its run dir during a gap while its background sweep was still finishing, saw only
+  old files, and prematurely declared it dead. It then completed a real 3-task comparison (throw-far /
+  into-wall / split-field) and is committed (`1d4153e`): **L-BFGS wins only 1/3** (the smooth throw); Adam
+  wins on into-wall (contact) and split-field (higher-dim), and "same basin" breaks on both — correctly
+  overturning the original single-task overclaim. Status `active`, awaiting the user's Done. RETRACT the
+  "workers must run sweeps inline" lesson (it was based on my error; the backgrounded sweep finished
+  fine). The real lesson: **do not declare a worker failed until its background work is confirmed done** —
+  a `came to rest` notification can fire during a gap. The 3-way-GPU-contention cap still stands.
 - Optional later: cold-start orchestrator test (a fresh session orchestrates from the filesystem alone).
+
+## Harness overhaul (2026-06-28) — 14-point feedback pass, all landed on `main`
+Sevan reviewed the harness end-to-end and requested structural changes; all implemented this session and
+committed to `main` (this work was done from a worktree session but edited `main`'s tree directly, since
+the server, dashboard, and the next orchestrator all live on `main`). The stale worktree branch
+`claude/elegant-bassi-cb7174` is behind `main` and is being retired — do not merge it.
+- **Orchestrator-on-main is now concrete.** All edits land on `main`; the next session starts there as the
+  orchestrator. Workers still get worktrees.
+- **CLAUDE.md:** added "Orchestrator responsibilities — schedule, propose, ask" (scheduler-style worker
+  concurrency, *not* strictly serial; propose tasks sparingly; ask via inbox on real forks). Rewrote
+  Notifications so **workers** own start/finish pings.
+- **Notifications:** `notify.py` now has `--kind started|finished|blocked|note|gate` (+ `--task`); workers
+  fire two human, one-sentence pings; orchestrator pings sparingly. Legacy `--level` still works.
+- **Specs:** training spec gained hard objective-voice rules (no first person, avoid second person, no
+  transient/brief refs, standalone), an "explain every symbol/why" rule, "many short pages" granularity,
+  and a visuals section. Research spec reframed: end target = technical paper, **current use = a ≤1-page
+  evolving directions scratchpad** (graduates only at the user's direction).
+- **Content:** rewrote `core/01-mls-mpm-forward.md` (added $V_p$, $A_p$ intuition, affine/offset roles,
+  explicit $m_i$ accumulation) and `core/03-failure-modes.md` (de-logbooked into textbook voice). Fixed
+  first-person/brief offenders in `prerequisites/01-mpm-in-context.md`. Reframed `reports/research_report.md`
+  into the scratchpad form.
+- **`/execute` skill** (`.claude/skills/execute/SKILL.md`): orchestrator burns down the whole queued
+  backlog, scheduling concurrency intelligently, reviewing + committing each, leaving status `active`.
+- **Worker brief template** `coordination/tasks/_TEMPLATE.md`: role stamp, two pings, evidence discipline,
+  **visualization standard** (show the optimized quantity, e.g. plot center-of-mass vs target; grid+heatmap
+  demos), required training-page contribution.
+- **Dashboard authoring/editing:** server gained `POST /api/file` (edit any displayed `.md`),
+  `/api/task-create`, `/api/task-edit`, `/api/direction-create`, and `mtime` on training sections. Frontend:
+  `DocEditor` (Edit→raw-markdown textarea→Save) on every doc; Overview `+ Task`/`+ Direction` + task edit;
+  training **"New" tag** (per-device localStorage read-tracking); **persist-place** in `App.jsx` so the iPad
+  PWA resume keeps section/filter/open-task.
+- **Verified:** `py_compile` clean; `npm run build` clean. Data server restarted so the new endpoints are
+  live; Vite on 5174 HMR-reloads the frontend.
+
+## Pending follow-ups (orchestrator todo)
+- **Training "you"→impersonal sweep.** The explicit first-person/brief offenders are fixed, but generic
+  second-person "you" is still pervasive across `reports/training/**` (motivation + prerequisites + core).
+  Do a consistency pass to the new impersonal voice. Tracked here rather than as a board "direction"
+  (it is orchestrator housekeeping, not a research task).
+- Two queued tasks await `/execute`: `material-variants/fluid-vs-snow`, `learned-dynamics/learned-residual`.
+- Fold the softened-wall finding into `core/03-failure-modes.md` open-questions if not already covered.

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { fetchText } from "../api.js";
 import MarkdownReport from "./MarkdownReport.jsx";
+import DocEditor from "./DocEditor.jsx";
 
-// Generic single-markdown panel (Directions, Reports, a single inbox item).
+// Generic single-markdown panel (Directions, Reports, a single inbox item). Editable in place.
 export default function DocView({ url, empty }) {
   const [body, setBody] = useState(null);
   const [missing, setMissing] = useState(false);
@@ -27,7 +28,9 @@ export default function DocView({ url, empty }) {
   if (body == null) return <div className="muted pad">Loading…</div>;
   return (
     <div className="content-doc">
-      <MarkdownReport markdown={body} />
+      <DocEditor url={url} body={body} onSaved={setBody}>
+        <MarkdownReport markdown={body} />
+      </DocEditor>
     </div>
   );
 }

@@ -3,6 +3,23 @@
 > The long-prompt for `reports/research_report.md` — the conservative, shippable deliverable. Distinct
 > from training reports (which teach me) and from running logs (which track work). Co-authored.
 
+## Current use vs end target (read this first)
+This spec describes the **end target**: a conservative, shippable technical research report, the kind of
+thing that could sit on a portfolio next to a paper. Everything below defines that target, and it is
+genuinely where `reports/research_report.md` is headed.
+
+**Right now the file is not that yet — it is an evolving scratchpad.** Early in a project it is a short,
+living note of **proposed research directions and the threads worth pulling**, added to carefully as real
+results land. Treat it like a researcher's running notes *toward* a paper, not the paper. Concretely, for
+now:
+- Keep it to **one page, and never more than two.**
+- Add to it **conservatively** — a direction earns its place only once there is a real reason to believe
+  it, not on speculation. Prune freely.
+- Still write in the **end-target voice and rigor** described below, just at scratchpad length and scope.
+- It **graduates** from scratchpad toward the full structured report **only at the user's direction**, at
+  deliberate moments, never gradually on its own. The orchestrator does not quietly inflate it into "the
+  paper" — that transition is a decision the user makes.
+
 ## Audience & purpose
 External readers — portfolio/website visitors and peers. Communicates the **core principles and
 results** worth shipping: what was built, what it shows, and why it's interesting. Evolves **slowly and

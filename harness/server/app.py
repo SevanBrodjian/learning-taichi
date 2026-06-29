@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -155,6 +156,9 @@ def training_toc() -> dict:
         for sec in group.get("sections", []):
             if "file" in sec:
                 sec["url"] = _shared_url(f"reports/training/{sec['file']}")
+                fp = MAIN_ROOT / "reports" / "training" / sec["file"]
+                # mtime powers the client-side "New" tag (new or edited-since-last-read).
+                sec["mtime"] = int(fp.stat().st_mtime) if fp.is_file() else 0
     return toc
 
 
@@ -280,11 +284,11 @@ def task_detail(direction: str, task: str) -> dict | None:
 
 # ---- write-back (Overview drag / Mark Done) + ntfy notification feed ----
 
-def _git_commit(path: Path, msg: str) -> None:
+def _git_commit(path: Path, msg: str, cwd: Path = MAIN_ROOT) -> None:
     """Persist a dashboard edit. Non-fatal: the file write already took effect for the live server."""
     try:
-        subprocess.run(["git", "add", str(path)], cwd=MAIN_ROOT, check=True, capture_output=True)
-        subprocess.run(["git", "commit", "-q", "-m", msg], cwd=MAIN_ROOT, check=True, capture_output=True)
+        subprocess.run(["git", "add", str(path)], cwd=cwd, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-q", "-m", msg], cwd=cwd, check=True, capture_output=True)
     except Exception:
         pass
 
@@ -310,6 +314,87 @@ def set_task_status(direction: str, task: str, status: str, note: str | None = N
     f.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     _git_commit(f, f"dashboard: {direction}/{task} -> {status}")
     return {"ok": True}
+
+
+def _slug(s: str) -> str:
+    s = re.sub(r"[^a-z0-9]+", "-", (s or "").lower()).strip("-")
+    return s or "untitled"
+
+
+def resolve_write(rid: str, path: str) -> tuple[Path, Path]:
+    """Resolve {rid}/{path} for writing, guarding traversal. Returns (target, owning_root).
+    Unlike `resolve`, the file need not already exist."""
+    roots = list_roots()
+    root = roots.get(rid)
+    if root is None:
+        raise FileNotFoundError(rid)
+    target = (root / path).resolve()
+    if os.path.commonpath([str(target), str(root)]) != str(root):
+        raise PermissionError(path)
+    return target, root
+
+
+def write_file(rid: str, path: str, content: str) -> dict:
+    """Write back an edited markdown doc (training page, report, decision). Markdown only."""
+    if not path.endswith(".md"):
+        return {"ok": False, "error": "only .md files are editable from the dashboard"}
+    target, root = resolve_write(rid, path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(content, encoding="utf-8")
+    _git_commit(target, f"dashboard: edit {path}", cwd=root)
+    return {"ok": True}
+
+
+def create_task(direction: str, title: str, note: str = "",
+                status: str = "proposed", task_id: str | None = None) -> dict:
+    """Add a task to an existing direction (Overview authoring)."""
+    f = MAIN_ROOT / "coordination" / "directions" / f"{direction}.json"
+    if not f.is_file():
+        return {"ok": False, "error": "no such direction"}
+    data = json.loads(f.read_text("utf-8"))
+    tid = task_id or _slug(title)
+    if any(t.get("id") == tid for t in data.get("tasks", [])):
+        return {"ok": False, "error": "a task with that id already exists"}
+    data.setdefault("tasks", []).append({"id": tid, "title": title, "status": status, "note": note})
+    f.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    _git_commit(f, f"dashboard: add task {direction}/{tid}")
+    return {"ok": True, "id": tid}
+
+
+def edit_task(direction: str, task: str, title: str | None = None, note: str | None = None) -> dict:
+    """Refine an existing task's title and/or note (Overview authoring)."""
+    f = MAIN_ROOT / "coordination" / "directions" / f"{direction}.json"
+    if not f.is_file():
+        return {"ok": False, "error": "no such direction"}
+    data = json.loads(f.read_text("utf-8"))
+    found = False
+    for t in data.get("tasks", []):
+        if t.get("id") == task:
+            if title is not None:
+                t["title"] = title
+            if note is not None:
+                t["note"] = note
+            found = True
+            break
+    if not found:
+        return {"ok": False, "error": "no such task"}
+    f.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    _git_commit(f, f"dashboard: edit task {direction}/{task}")
+    return {"ok": True}
+
+
+def create_direction(name: str, summary: str = "",
+                     did: str | None = None, status: str = "proposed") -> dict:
+    """Create a new direction file (Overview authoring)."""
+    did = did or _slug(name)
+    f = MAIN_ROOT / "coordination" / "directions" / f"{did}.json"
+    if f.is_file():
+        return {"ok": False, "error": "a direction with that id already exists"}
+    f.parent.mkdir(parents=True, exist_ok=True)
+    payload = {"id": did, "name": name, "status": status, "summary": summary, "tasks": []}
+    f.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    _git_commit(f, f"dashboard: add direction {did}")
+    return {"ok": True, "id": did}
 
 
 def _topic() -> str | None:
@@ -414,6 +499,41 @@ def _build_app():
         if not (d and t and s):
             raise HTTPException(400, "direction, task, status required")
         return set_task_status(d, t, s, payload.get("note"))
+
+    @app.post("/api/file")
+    def api_file(payload: dict):
+        rid, path, content = payload.get("rid"), payload.get("path"), payload.get("content")
+        if rid is None or path is None or content is None:
+            raise HTTPException(400, "rid, path, content required")
+        try:
+            return write_file(rid, path, content)
+        except PermissionError:
+            raise HTTPException(403, "forbidden")
+        except FileNotFoundError:
+            raise HTTPException(404, "not found")
+
+    @app.post("/api/task-create")
+    def api_task_create(payload: dict):
+        d, title = payload.get("direction"), payload.get("title")
+        if not (d and title):
+            raise HTTPException(400, "direction, title required")
+        return create_task(d, title, payload.get("note", ""),
+                           payload.get("status", "proposed"), payload.get("id"))
+
+    @app.post("/api/task-edit")
+    def api_task_edit(payload: dict):
+        d, t = payload.get("direction"), payload.get("task")
+        if not (d and t):
+            raise HTTPException(400, "direction, task required")
+        return edit_task(d, t, payload.get("title"), payload.get("note"))
+
+    @app.post("/api/direction-create")
+    def api_direction_create(payload: dict):
+        name = payload.get("name")
+        if not name:
+            raise HTTPException(400, "name required")
+        return create_direction(name, payload.get("summary", ""),
+                               payload.get("id"), payload.get("status", "proposed"))
 
     @app.get("/api/notifications")
     def api_notifications():

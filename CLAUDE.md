@@ -54,6 +54,28 @@ report and never spawns agents.
 
 If you are ever unsure, you are the orchestrator — only an explicit spawn prompt makes you a worker.
 
+## Orchestrator responsibilities — schedule, propose, ask
+Beyond expanding tasks and reviewing output, the orchestrator **manages the worker fleet like a scheduler
+manages a CPU**. It decides what runs in parallel and what runs serially to **maximize throughput without
+thrashing the shared GPU**. Independent, light, or CPU-only work can run several at once; GPU-heavy
+training/optimization runs get staggered or serialized so they do not contend for one device and corrupt
+each other's timings and results. There is **no fixed "always serial" rule** — judge each batch by its
+weight and its resource needs, and pack the schedule like a good scheduler would. **Contention is a
+scheduling problem, not a failure**: if workers collide on the GPU, re-run the affected ones serially
+rather than abandoning the result. (Hard-won: spawning three GPU-heavy workers at once over-contended one
+GPU and produced garbage timings; the fix was to serialize them, not to give up.)
+
+The orchestrator also **curates the backlog and the conversation**. When the evidence calls for it, it may
+**propose a small number of new tasks** (written as `proposed` in `coordination/directions/`, never
+overboard) that follow naturally from what was just learned. When the next direction is genuinely unclear
+— a taste or priorities call about where to take the research — it **asks the user a question via the
+inbox** (`coordination/decisions/` + a `gate` ping) rather than spraying speculative proposals. Proposing
+is for obvious next steps; asking is for forks only the user can resolve.
+
+Reviewing a finished worker means more than committing its run: check its claims against **Evidence
+discipline**, render-check its math, and **review the training page it added** (voice, standalone-ness,
+length) per `spec/style_training_report.md`, fixing or extending it before committing.
+
 ## Persistence — the filesystem is the backbone
 Durable state lives in the repo, on disk, as files (mostly Markdown + JSON). **Do not rely on auto-memory
 or session context for anything that must survive.** A worker's value is its output on disk, not its
@@ -80,15 +102,21 @@ accumulating real understanding and accumulating confident nonsense, and it gate
 project means anything.
 
 ## Task lifecycle
-1. The user **queues a task** (drags a proposed task to `queued`, or asks for one). The proposed task's
-   `note` is only a seed for that decision, not an executable spec.
+The user can queue, add, edit, and refine tasks **directly from the dashboard** (every markdown view has an
+Edit button, and the Overview can create/edit tasks and directions). Sending **`/execute`** tells the
+orchestrator to pick up the whole `queued` backlog and run it to completion (see the `/execute` skill).
+1. The user **queues a task** (drags a proposed task to `queued`, adds one on the dashboard, or asks for
+   one). The proposed task's `note` is only a seed for that decision, not an executable spec.
 2. The orchestrator **expands that seed into a full contract** at `coordination/tasks/<id>.md` (objective,
    concrete experiments, deliverables, the schema-v2 manifest, definition-of-done, paths, KaTeX rules),
    **spawns a worker**, and flips the task to **active** (not user-undoable).
-3. The worker executes and writes one polished task to `runs/<direction-id>/<task-id>/` — an **objective**,
-   **scoped findings** (what was tested, no overclaiming), a **hypothesis** for *why* the result holds and
-   what would test its generality, an honest **limitations** note, and typed results — extends the training
-   textbook if warranted, and exits, leaving its work **on disk** (it does not commit).
+3. The worker **fires a `started` ping**, executes, and writes one polished task to
+   `runs/<direction-id>/<task-id>/` — an **objective**, **scoped findings** (what was tested, no
+   overclaiming), a **hypothesis** for *why* the result holds and what would test its generality, an honest
+   **limitations** note, and typed results with **informative visuals** (see the visualization standard in
+   `coordination/tasks/_TEMPLATE.md`). It **adds at least one short, standalone training page** in the
+   objective textbook voice (`spec/style_training_report.md`), **fires a `finished` ping**, and exits,
+   leaving everything **on disk** (it does not commit).
 4. The orchestrator **reviews, commits, and surfaces** it on the dashboard. **Done is the user's call**,
    made after discussion — never set automatically.
 
@@ -132,13 +160,24 @@ requirements.txt pinned deps (the .venv is gitignored — reproduce from this)
   whatever holds 5174 first, then start a single instance. Never run two, and never let it move ports.
 
 ## Notifications & the I/O channel
-- `python harness/tools/notify.py --level progress|gate "<msg>"` (topic via `NTFY_TOPIC` env var, or a
-  file outside the repo so every worktree sees it — see `harness/tools/notify.py`).
-- `progress` = non-blocking FYI (run started, loss updates, report drafted) — emit freely.
-- `gate` = needs the user (milestone decision, divergence, hard block) — use sparingly.
-- Policy: run mostly autonomously, ping often, block rarely.
-- **Anything that needs the user goes to `coordination/decisions/` (the inbox) and fires a `gate`** —
-  surfaced in the dashboard. Never bury a question for the user inside a design/technical doc.
+Pings go through ntfy and surface in the dashboard Inbox. `harness/tools/notify.py` resolves the topic
+from `--topic` > `NTFY_TOPIC` > a file outside the repo (so every worktree and subagent can read it).
+
+**Workers own the routine pings, and they keep them human, not technical.** A worker fires exactly two
+(rarely three): `--kind started` when it begins, and `--kind finished` when its results are on disk (or
+`--kind blocked` if it hit a hard stop). Each is **one plain sentence the agent writes itself** about what
+it is doing or has done — **never a results dump, a metric, or a technical report.** That keeps the
+worker's context clean and keeps your notifications readable at a glance. Categories:
+`started | finished | blocked | note`.
+```
+python harness/tools/notify.py --kind started  --task <id> "Starting the fluid-vs-snow control sweep."
+python harness/tools/notify.py --kind finished --task <id> "Done; results and a training page are on disk."
+```
+**The orchestrator pings sparingly** — mainly `--kind gate` for the one thing that needs the user. It does
+not narrate routine progress, because the workers' start/finish pings already do.
+
+**Anything that needs the user goes to `coordination/decisions/` (the inbox) and fires a `gate`** —
+surfaced in the dashboard. Never bury a question for the user inside a design/technical doc.
 
 ## Documents
 - All prose is **Markdown + KaTeX** (`$...$`, `$$...$$`). Renders in the dashboard; Pandoc → PDF later.

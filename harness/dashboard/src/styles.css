@@ -244,3 +244,43 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
 .rework-banner { background: #2a2114; border: 1px solid #4a3a1a; border-radius: 5px; padding: 12px 14px; margin: 0 0 22px; font-size: 14px; line-height: 1.5; max-width: 80ch; color: var(--text); }
 .rework-banner ul { margin: 8px 0 0; padding-left: 20px; }
 .rework-banner li { margin: 3px 0; }
+
+/* Overview authoring: + Task / + Direction, and the author/edit forms */
+.dir-filter-spacer { flex: 1 1 auto; }
+.chip.add { color: var(--accent); border-color: #173243; }
+.chip.add:hover { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+.chip.add[disabled] { opacity: .4; cursor: not-allowed; }
+.author-form { display: flex; flex-direction: column; gap: 6px; }
+.author-form label { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); font-family: var(--mono); margin-top: 8px; }
+.author-form input, .author-form select, .author-form textarea {
+  width: 100%; background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 4px; padding: 9px 10px; font-family: var(--sans); font-size: 14px; resize: vertical;
+}
+.author-form textarea { line-height: 1.5; }
+
+/* "New" tag on training sections */
+.toc-item { display: flex; align-items: center; gap: 8px; }
+.toc-item-title { flex: 1 1 auto; min-width: 0; }
+.new-tag { flex: none; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
+  color: var(--bg); background: var(--accent-2); border-radius: 3px; padding: 1px 5px; font-family: var(--mono); }
+
+/* In-place markdown editing (Edit button + raw-source textarea) */
+.doc-editable { position: relative; }
+.doc-edit-btn { position: absolute; top: 0; right: 0; z-index: 5; background: var(--panel-2);
+  border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 5px 12px;
+  font-size: 12px; font-family: var(--mono); cursor: pointer; }
+.doc-edit-btn:hover { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+.doc-editor { display: flex; flex-direction: column; gap: 10px; }
+.doc-editor-bar { display: flex; align-items: center; gap: 12px; }
+.doc-editor-label { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); font-family: var(--mono); }
+.doc-editor-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.doc-editor-area { width: 100%; min-height: 70vh; background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; font-family: var(--mono);
+  font-size: 13px; line-height: 1.6; resize: vertical; tab-size: 2; }
+.error-inline { color: var(--danger); font-size: 12px; }
+.btn { background: var(--panel); border: 1px solid var(--border); color: var(--text); border-radius: 4px;
+  padding: 6px 14px; font-size: 13px; cursor: pointer; }
+.btn:hover { border-color: #2b3a4d; }
+.btn.primary { background: var(--accent-2); border-color: var(--accent-2); color: var(--bg); font-weight: 600; }
+.btn.ghost { color: var(--muted); }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }

@@ -45,10 +45,10 @@ start and never changed, so you can mostly treat it as a constant. Its job is to
 heavier lump pushes harder and is harder to push.
 
 **Velocity.** How fast this lump is moving and in what direction. This is the one that deserves a real
-explanation, because *why a particle carries a velocity at all* is the question the task brief flagged as
-unexplained, and it is genuinely the crux.
+explanation, because *why a particle carries a velocity at all* is genuinely the crux and is easy to take
+for granted.
 
-Here is the reasoning. The physics you want to simulate is Newton's law. Force changes momentum, momentum
+Here is the reasoning. The physics being simulated is Newton's law. Force changes momentum, momentum
 is mass times velocity, and velocity changes position. To step a lump of material forward in time you
 need to know how fast it is going so you can move it, and you need to know its momentum so that when it
 interacts with its neighbors, the interaction conserves the total momentum the way real physics does.
@@ -101,8 +101,8 @@ shape, stress is the force that memory generates, and $J$ is the bare-minimum ve
 
 ## Transfers, the central idea
 
-Now the word the brief singled out. A **transfer** is the act of moving information between the particles
-and the grid. There are exactly two, one in each direction, and together they are the engine of MPM.
+A **transfer** is the act of moving information between the particles and the grid. There are exactly two,
+one in each direction, and together they are the engine of MPM.
 
 Remember the situation. The particles hold all the real state, but the force calculation wants to happen
 on the regular grid. So every single step has to do a round trip. First, take what the particles are
@@ -199,7 +199,7 @@ With the ideas in place, here are the names in one spot for reference.
 
 Everything above describes the forward simulator, the thing that answers "what happens next." The reason
 this project cares about MPM is the inverse question from [[why-differentiable-physics]], "what input
-produces the outcome I want," and the answer is gradients flowing backward through the whole rollout.
+produces a desired outcome," and the answer is gradients flowing backward through the whole rollout.
 
 The smoothness baked into the transfers is what makes this possible at all. Because each particle splashes
 onto the grid through smooth weights rather than snapping to the nearest node, a small change in a

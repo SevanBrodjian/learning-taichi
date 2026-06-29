@@ -33,5 +33,31 @@ export const setTaskStatus = (direction, task, status, note) =>
     body: JSON.stringify({ direction, task, status, note }),
   }).then((r) => r.json());
 
+const post = (path, payload) =>
+  fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }).then((r) => r.json());
+
+// Edit any displayed markdown doc back to disk. A doc url is /api/data/<rid>/<path>.
+export function parseDataUrl(url) {
+  const m = (url || "").match(/^\/api\/data\/([^/]+)\/(.+)$/);
+  return m ? { rid: m[1], path: m[2] } : null;
+}
+export const saveFile = (url, content) => {
+  const p = parseDataUrl(url);
+  if (!p) return Promise.resolve({ ok: false, error: "not an editable doc url" });
+  return post("/api/file", { rid: p.rid, path: p.path, content });
+};
+
+// Overview authoring: add/edit tasks and create directions, all committed server-side.
+export const createTask = (direction, title, note, status) =>
+  post("/api/task-create", { direction, title, note, status });
+export const editTask = (direction, task, title, note) =>
+  post("/api/task-edit", { direction, task, title, note });
+export const createDirection = (name, summary) =>
+  post("/api/direction-create", { name, summary });
+
 // ntfy notification feed (the server holds the secret topic; it never reaches the browser).
 export const fetchNotifications = () => get("/api/notifications", "json");

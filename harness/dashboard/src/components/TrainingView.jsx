@@ -1,18 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchTraining, fetchText } from "../api.js";
 import MarkdownReport from "./MarkdownReport.jsx";
+import DocEditor from "./DocEditor.jsx";
+
+// Per-device read tracking for the "New" tag (#10). A section is New if never opened on this device,
+// or edited (mtime advanced) since it was last opened. Opening it clears the tag.
+const READ_KEY = "lt_training_read";
+const ACTIVE_KEY = "lt_training_active";
+const loadRead = () => {
+  try { return JSON.parse(localStorage.getItem(READ_KEY) || "{}"); } catch { return {}; }
+};
 
 // The standalone textbook: a left TOC (prerequisites split from core) and the selected section.
 // Cross-references (wiki-links) navigate within this view.
 export default function TrainingView() {
   const [toc, setToc] = useState(null);
   const [err, setErr] = useState(null);
-  const [activeId, setActiveId] = useState(null);
+  const [activeId, setActiveId] = useState(() => localStorage.getItem(ACTIVE_KEY) || null);
   const [body, setBody] = useState(null);
+  const [readMap, setReadMap] = useState(loadRead);
 
-  useEffect(() => {
-    fetchTraining().then(setToc).catch((e) => setErr(String(e)));
-  }, []);
+  const loadToc = () => fetchTraining().then(setToc).catch((e) => setErr(String(e)));
+  useEffect(() => { loadToc(); }, []);
 
   const sections = useMemo(() => (toc?.groups || []).flatMap((g) => g.sections), [toc]);
   useEffect(() => {
@@ -20,6 +29,21 @@ export default function TrainingView() {
   }, [sections]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const active = sections.find((s) => s.id === activeId);
+
+  // Persist place + clear the New tag when a section is opened.
+  useEffect(() => {
+    if (!active) return;
+    localStorage.setItem(ACTIVE_KEY, active.id);
+    if (active.mtime) {
+      setReadMap((prev) => {
+        if (prev[active.id] === active.mtime) return prev;
+        const next = { ...prev, [active.id]: active.mtime };
+        localStorage.setItem(READ_KEY, JSON.stringify(next));
+        return next;
+      });
+    }
+  }, [active?.id, active?.mtime]);
+
   useEffect(() => {
     if (!active) {
       setBody(null);
@@ -34,6 +58,8 @@ export default function TrainingView() {
       alive = false;
     };
   }, [active?.url]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const isNew = (s) => s.mtime && (!(s.id in readMap) || s.mtime > readMap[s.id]);
 
   if (err) return <div className="error">{err}</div>;
   if (!toc) return <div className="muted pad">Loading textbook…</div>;
@@ -52,14 +78,17 @@ export default function TrainingView() {
                 className={`toc-item ${s.id === activeId ? "active" : ""}`}
                 onClick={() => setActiveId(s.id)}
               >
-                {s.title}
+                <span className="toc-item-title">{s.title}</span>
+                {isNew(s) && s.id !== activeId && <span className="new-tag">New</span>}
               </button>
             ))}
           </div>
         ))}
       </nav>
       <article className="doc-body">
-        <MarkdownReport markdown={body} sections={sections} onNavigate={setActiveId} />
+        <DocEditor url={active?.url} body={body} onSaved={(t) => { setBody(t); loadToc(); }}>
+          <MarkdownReport markdown={body} sections={sections} onNavigate={setActiveId} />
+        </DocEditor>
       </article>
     </div>
   );

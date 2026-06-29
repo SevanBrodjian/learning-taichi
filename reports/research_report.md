@@ -1,36 +1,37 @@
 # Differentiable simulation toward structured generative worlds
 
-> **Barebones skeleton — the shippable deliverable.** Orchestrator-owned: only the orchestrator edits
-> this, and slowly. Workers feed the training textbook, never this. It captures durable, defensible
-> conclusions worth showing peers and putting on the site, not day-to-day progress. Written per
-> `spec/style_research_report.md` (academic but warm, ~4 to 8 pages, Markdown + KaTeX, Pandoc to PDF).
-> Each section below is a stub to grow as real results land.
+> **Scratchpad, not the paper yet.** Right now this file is a short, living note of the research
+> directions worth pulling on and the threads that are turning into real results. It is kept to one page,
+> added to conservatively as evidence lands, and pruned freely. The eventual end target is a conservative,
+> shippable technical report (see `spec/style_research_report.md`); it graduates toward that form only at
+> the user's direction, at deliberate moments, never gradually on its own. Depth lives in the training
+> textbook (`reports/training/`); this is the index of what is worth saying about the work as a whole.
 
-## Problem & framing
-*What question this work answers, situated loosely in the structured-generative-worlds vision. One or two
-paragraphs. Why controllable, differentiable physics is a stepping stone to authorable worlds.*
+## The throughline
+The question underneath everything here is whether explicit, differentiable physics is a usable substrate
+for *authorable* dynamics, the structure half of structured generative worlds. A controllable world model
+needs dynamics whose sensitivities can be trusted and steered, and MLS-MPM made differentiable is a small,
+honest testbed for finding out where that trust holds and where it breaks.
 
-> Stub. Fill once there is a result worth framing.
+## Threads with real evidence
+- **Control by backprop works on the clean case.** Throwing a blob to a target by optimizing an initial
+  velocity through a 500-step differentiable rollout converges cleanly. The gradient through the physics
+  is real and usable, which is the precondition for everything else.
+- **The optimizer story is landscape-dependent, not universal.** Across several control tasks, L-BFGS wins
+  only when the loss landscape is smooth; on contact-rich or higher-dimensional controls a first-order
+  method (Adam) wins, and the tidy "all optimizers reach the same basin" picture breaks. This is the kind
+  of scoped, falsifiable result the project is built to produce.
+- **Long-rollout gradients fail by overflow, not by singularity, and the fix is cheap.** Differentiating
+  through a long rollout produces NaN gradients from a near-zero grid-mass division amplified by the
+  product of per-step Jacobians. It is a float32 overflow (float64 removes it), and a mass floor on the
+  grid division removes it surgically. The gradient health of long rollouts is plausibly *the* central
+  difficulty of the whole approach.
 
-## Approach
-*The method at a level a peer can follow: forward MLS-MPM made differentiable, gradients through the
-rollout, optimization of a control parameter. Link to the training textbook for depth rather than
-re-deriving here.*
-
-> Stub.
-
-## Results
-*The concrete, honest evidence: the headline plots, the demo video, the key numbers. Every figure earns
-its place.*
-
-> Stub. Pull from the strongest task on the dashboard once one exists in finished form.
-
-## Significance
-*What this actually demonstrates and what is genuinely interesting about it. Avoid overclaiming.*
-
-> Stub.
-
-## Limitations & future work
-*Candid about what is fragile, unsolved, or deferred (e.g. the long-rollout gradient pathologies).*
-
-> Stub.
+## Directions worth pulling next
+- **Material variants** (elastic, fluid, snow) under one control task: the most visually striking axis and
+  a direct test of how constitutive choice changes gradient behavior and controllability.
+- **Learned dynamics**: a small learned residual on the grid update, trained through the differentiable
+  rollout. The first concrete step from a hand-written simulator toward a hybrid learned-and-structured
+  world, which is where the broader vision points.
+- **Open gradient questions**: whether smooth contact measurably improves gradient quality, and whether
+  per-step Jacobian norms localize where a long rollout becomes ill-conditioned.

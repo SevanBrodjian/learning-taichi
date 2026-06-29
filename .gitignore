@@ -225,3 +225,6 @@ node_modules/
 # Use .claude/* (not .claude/) so the settings.json exception below can take effect.
 .claude/*
 !.claude/settings.json
+# Skills are durable, portable harness artifacts (e.g. /execute) — version them.
+!.claude/skills/
+!.claude/skills/**

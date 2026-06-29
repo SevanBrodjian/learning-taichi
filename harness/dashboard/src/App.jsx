@@ -14,13 +14,29 @@ const SECTIONS = [
   { id: "inbox", label: "Inbox" },
 ];
 
+// The iPad PWA reloads from scratch when resumed after even a few seconds in the background, so we
+// persist the current place (section, filter, open task) and restore it on load (#12).
+const PLACE_KEY = "lt_place";
+const loadPlace = () => {
+  try { return JSON.parse(localStorage.getItem(PLACE_KEY) || "{}"); } catch { return {}; }
+};
+
 export default function App() {
-  const [section, setSection] = useState("overview");
+  const [place] = useState(loadPlace); // snapshot once at mount
+  const [section, setSection] = useState(place.section || "overview");
   const [overview, setOverview] = useState(null);
   const [error, setError] = useState(null);
   const [selected, setSelected] = useState(null);
-  const [taskFilter, setTaskFilter] = useState("all");
+  const [taskFilter, setTaskFilter] = useState(place.taskFilter || "all");
   const [reloadToken, setReloadToken] = useState(0); // bump to force task-detail refetch
+
+  // Persist place whenever it changes.
+  useEffect(() => {
+    localStorage.setItem(
+      PLACE_KEY,
+      JSON.stringify({ section, taskFilter, selectedKey: selected?.key })
+    );
+  }, [section, taskFilter, selected?.key]);
 
   // After any write-back (drag / Mark Done) re-pull the board and re-fetch the open task.
   const reloadOverview = () => fetchOverview().then(setOverview).catch((e) => setError(String(e)));
@@ -44,7 +60,9 @@ export default function App() {
   }, [overview]);
 
   useEffect(() => {
-    if (!selected && realTasks.length) setSelected(realTasks[0]);
+    if (selected || !realTasks.length) return;
+    const restored = place.selectedKey && realTasks.find((t) => t.key === place.selectedKey);
+    setSelected(restored || realTasks[0]);
   }, [realTasks]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openTask = (t) => {

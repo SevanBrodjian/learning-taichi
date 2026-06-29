@@ -8,6 +8,28 @@ Written for **me** (see `researcher_profile.md`): Background in ML, generative m
 reading, I should be able to **explain the topic at a whiteboard**, give a presentation, and reuse the
 concepts. Teach from first principles, but never condescend or pad. In general, it's preferred that you overexplain rather than underexplain. It's easier to skim past things I know than to have to go back and search to fill gaps.
 
+## Voice: objective and standalone (hard rules)
+The training report is a **textbook, not a logbook.** It records what is understood and why it works, in an
+impersonal, timeless voice, and every page must read as if it had always been part of the book. These are
+hard rules, not preferences, and reviewing them is part of the orchestrator's job before any page is
+committed:
+- **No first person, ever; avoid second person.** Never "I", "we", "me", "us", "our", "let's" — a textbook
+  does not say "we then divide by the mass", it says "the grid update divides by the mass". Strongly prefer
+  impersonal phrasing over addressing the reader as "you"; a little generic "you" is a tolerable teaching
+  device, but never personal ("your work", "the outcome you want here"). The target voice is fully
+  impersonal. (This spec itself writes "me/my" to mean *you, the reader being taught* — that is calibration
+  for the agent and must **never** leak into the report's own voice.)
+- **No transient or meta references.** Never mention the task brief, "this run", the session, the
+  experiment "we just did", a TODO, or "the question the brief left unexplained". The reader has none of
+  that context. Refer to a result by the property it teaches — "differentiating through a 500-step rollout
+  drives grid masses toward zero, so the $1/m_i$ term blows up" — not by the logistics of the run that
+  produced it.
+- **Standalone.** Each page stands on its own and links to prerequisites for anything it assumes. A reader
+  opening it cold must never hit a dangling reference to context that lived only in a chat or a task file.
+- **The vision connection stays, stated objectively.** Tie ideas to structured generative worlds and
+  controllable simulation often, but as a property of the subject ("this is exactly the sensitivity a
+  controllable world model has to expose"), never as "your work" or "what we want".
+
 ## Structure (default; adapt as needed)
 *This structure works well as a loose commitment. I like the idea of separating out background knowledge / pre-requisites from the core teaching material. That way we can accumulate both at the same time, and I can easily reference the pre-reqs (which should include a lot of the math) to skim what I know and dive into what I want to learn. That way I'm not doing this constantly while going through the core training document. We can lean into that idea even more with this report. Hyperlinking and organizing into sections is a much better idea than following a chronology specific to the order in which things were written. It should be much closer to something like a textbook, or smaller training document like that.*
 1. **Motivation** — what problem this solves and why it matters to the world-models vision.
@@ -47,6 +69,34 @@ genuine intellectual limit that teaches something, not a backlog of experiments 
 The length should be as long as needed. There's really no limit, and in some sense longer is better. The key is to grow it appropriately and slowly but steadily. If every task is adding 3 pages that may be overloading to try and keep up. But if many tasks accumulate steadily into a 20 page training document and I kept up along the way that's an excellent outcome in my eyes.
 
 Mathematical rigor is preferred but used precisely. In general I struggle to feel engaged with the math unless I understand why I'm learning it. Also, don't hesitate to explain the principles needed before showing equations. I don't just want to learn what an equation for this system looks like, I want to learn the underlying mathematics and physics that explains where it came from and how someone could have arrived at that idea.
+
+## Explain every symbol and every "why" (skim beats lost)
+When a formula appears, **define every symbol the moment it shows up**, and explain the intuition for
+**each term**, not just the equation as a whole. A reader should never have to stop and wonder what a
+letter means or why a factor is there. For every nontrivial expression, answer the obvious questions a
+careful reader asks: *what is this quantity, where did it come from, why is it multiplied/divided here,
+and why does this term make sense?* If a quantity is accumulated or defined elsewhere (for example a node
+mass built up in an earlier sum), say so explicitly rather than leaving it implied. This is in deliberate
+tension with conciseness, and the resolution is the reader's experience: **it is far cheaper to skim past
+a sentence you already know than to get lost and have to reconstruct a gap.** When in doubt, explain it.
+The forward-step core page is the bar to clear for this level of detail.
+
+## Granularity — prefer many short pages
+The textbook as a whole should grow large and rich over time. It does that as **many short, focused
+pages, not a few sprawling ones.** Each page covers **one idea** and stays skimmable; if a page is
+growing past a single clear topic, split it. **Default to adding a new small page** rather than appending
+to a long one, and lean on stable anchors and hyperlinks to connect them ([[like-this]]). Editing an
+existing page is correct when the new material genuinely belongs to that page's one idea; otherwise make a
+new page. A worker adding to the textbook should bias toward one or two new short pages over one long one.
+
+## Visuals — clear, simple, informative
+A good picture often teaches faster than a paragraph, and training pages **may and should embed images,
+diagrams, and short videos** (markdown image syntax; reference media a run exported under
+`runs/<direction-id>/<task-id>/`). Prefer **clear, simple, informative demos over dense technical ones**:
+an animation that shows the grid with a heatmap of mass or velocity as a step computes teaches the P2G/G2P
+transfer better than any prose. Diagrams of data flow, annotated frames, and small before/after pairs all
+count. Aim for the figure a good lecturer would draw, not an exhaustive technical plot, except where the
+technical detail is the point.
 
 ## Prerequisites (err on the side of more)
 Bias toward over-including prerequisites. When an implementation leans on a piece of mathematics, teach

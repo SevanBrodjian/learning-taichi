@@ -1,6 +1,6 @@
 ---
 name: execute
-description: Orchestrator loop — pick up every queued task on the directions board and run it to completion (expand into a brief, spawn a worker, review, commit, leave active for the user's Done). Use when the user sends "/execute" to burn down the queue. If nothing is queued, say so.
+description: Run the learning-taichi orchestrator loop over the directions board. Picks up every queued task, expands each into a full worker brief, spawns worker subagents (scheduling GPU-heavy runs intelligently rather than strictly serially), then reviews, commits, and leaves each result active for the user's Done. Use this whenever the user types /execute, or asks to run, execute, kick off, or burn down the queued tasks, the backlog, or the board, or to process or start everything that is queued. If nothing is queued, say so and list what is proposed.
 ---
 
 # /execute — burn down the queued backlog

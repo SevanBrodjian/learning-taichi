@@ -25,6 +25,14 @@ export default function MarkdownReport({ markdown, sections, onNavigate }) {
   const text = resolveWikiLinks(markdown, ids);
 
   const components = {
+    // Markdown image syntax pointing at a video renders a real looping <video> so training pages can
+    // embed grid/heatmap demos, not just static diagrams (#13).
+    img({ src, alt, ...props }) {
+      if (src && /\.(mp4|webm|mov)(\?|$)/i.test(src)) {
+        return <video className="md-video" src={src} muted loop autoPlay playsInline controls />;
+      }
+      return <img src={src} alt={alt} loading="lazy" {...props} />;
+    },
     a({ href, children, ...props }) {
       if (href && href.startsWith("#train:")) {
         const id = href.slice("#train:".length);

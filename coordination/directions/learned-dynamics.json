@@ -1,13 +1,13 @@
 {
   "id": "learned-dynamics",
   "name": "Learned dynamics",
-  "status": "proposed",
+  "status": "active",
   "summary": "Replace part of the explicit simulator with a learned component while keeping the rest differentiable. The first concrete step toward structured generative worlds.",
   "tasks": [
     {
       "id": "learned-residual",
       "title": "Learn a residual correction to the grid update",
-      "status": "queued",
+      "status": "active",
       "note": "Keep the MLS-MPM step but add a small learned residual on the grid velocity, trained through the differentiable rollout. A minimal hybrid that tests whether gradients can train a network embedded in physics."
     }
   ]

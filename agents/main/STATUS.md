@@ -1,14 +1,11 @@
 # Orchestrator status — main
 
-## Current: /execute over the queued backlog (2 tasks, GPU-heavy → serialized)
+## /execute over the queued backlog — COMPLETE (2/2 done, queue drained)
 
-Schedule: both queued tasks are GPU-heavy autodiff rollouts on the one shared GPU, so they run
-**serially** (hard-won lesson: concurrent GPU workers corrupt each other).
+1. **fluid-vs-snow** (material-variants) — done & committed (5f54c55), status `active` (awaiting Done).
+2. **learned-residual** (learned-dynamics) — done & committed, status `active` (awaiting Done).
+   Small grid-velocity MLP residual trained through a 320-step rollout against a drag mismatch;
+   weight gradient FD-verified; held-out v0 transfers 66.7%. Training page core/05.
 
-1. **fluid-vs-snow** (material-variants) — brief `coordination/tasks/fluid-vs-snow.md`.
-   Status: **active**, worker spawned and running. Elastic vs fluid vs snow under the throw task.
-2. **learned-residual** (learned-dynamics) — brief `coordination/tasks/learned-residual.md`.
-   Status: **queued, held** until #1 finishes (GPU serialization). Not yet flipped to active.
-
-Next on each finish: review against Evidence discipline, render-check math + manifest, review/extend
-the training page, commit (leave status `active` — Done is the user's call), then spawn the next.
+Queue is empty. Proposed (not queued): checkpointing-long-horizon, jacobian-norms
+(long-rollout-pathologies). Awaiting user's Done calls and any new queueing.

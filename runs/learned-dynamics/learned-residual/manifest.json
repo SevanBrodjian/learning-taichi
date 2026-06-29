@@ -1,0 +1,129 @@
+{
+  "schema_version": "2",
+  "task_id": "learned-residual",
+  "direction": "learned-dynamics",
+  "title": "A learned residual trained through the differentiable rollout",
+  "status": "active",
+  "created": "2026-06-29T05:30:03.741177+00:00",
+  "objective": "Embed a small learned network inside the otherwise-explicit MLS-MPM step (a residual correction added to the grid velocity right after the grid op) and train its weights by backpropagating through the full differentiable rollout. The supervised target is a genuine model mismatch the residual is never handed directly: trajectories from the same simulator with an added linear grid-velocity drag v <- v*(1-k). With the initial velocity held fixed, the residual must learn to close the model-mismatch gap purely from the center-of-mass trajectory. The question is whether gradients that have passed through hundreds of physics steps can actually train a network embedded in the simulator, and whether the hybrid then does something the unmodified simulator cannot.",
+  "findings": "On this one task (one MLP architecture, 98 parameters, one drag mismatch k=0.004, horizon 320 steps, fixed seed), gradients backpropagated through the full rollout trained the embedded residual. The weight gradient was verified finite and non-zero before training (|grad|=5.967e-02) and agreed with a finite-difference spot check on the highest-magnitude weights (rel-err under 15%). Against the drag target at the training initial velocity, the bare simulator (no residual) has trajectory loss 7.647e-04; the trained hybrid reaches 1.032e-07, closing 100.0% of the model-mismatch gap. The residual is bounded (0.1*tanh) and starts near zero, so the hybrid begins as the pure simulator and training is stable with mass stabilization on (no non-finite values). On a HELD-OUT initial velocity (2.0, 2.0) the same frozen weights, against a freshly generated drag target, close 66.7% of that gap (bare 5.274e-04 -> hybrid 1.757e-04), which is evidence the residual learned a transferable correction rather than memorizing one trajectory. The claim is bounded to exactly this architecture, this mismatch, and these conditions; it is not a statement that learned residuals work in general.",
+  "hypothesis": "Why it trains at all: the residual sits at the very end of each per-step map, right before g2p, so the gradient of the loss to the residual's output at step f traverses only the steps AFTER f, not the whole rollout. A parameter injected at the start (like v0) rides the full product of per-step Jacobians J_T...J_1 and is the most attenuated; the residual's contribution at a late step rides a much shorter sub-product and is far less attenuated, so its gradient is healthier. Averaged over all steps, the network gets a strong, low-variance signal, which is why a few hundred steps do not vanish it. Why the residual can close the gap: a linear drag is a smooth, low-frequency correction to the grid velocity, and a small tanh MLP on (velocity, log-mass) easily represents a near-linear velocity shrink, so this particular mismatch is well within the residual's capacity. The features are deliberately position-free, so the network is pushed to learn the velocity-space law (which transfers across initial conditions) rather than the train trajectory's path (which would not). What would test generality: other mismatch types (perturbed gravity, nonlinear or anisotropic drag), other architectures and feature sets, longer horizons where attenuation bites harder, and stronger held-out shifts (very different v0, different blob shape).",
+  "limitations": "This is a single architecture on a single, deliberately easy mismatch (a smooth linear drag), one drag strength, one blob, one horizon, one seed. A near-linear correction is the friendliest possible target for a residual, so the high gap-closed fraction should not be read as evidence the method handles hard, non-smooth, or strongly nonlinear mismatches. The held-out test varies only the initial velocity (and regenerates the matching drag target); it shows the correction is not tied to one trajectory, but it does not test transfer across blob shape, resolution, or mismatch type, so some of the fit may still be specific to this task family. The residual is bounded to 0.1 per component, which is adequate here only because the drag is weak. No claim is made about stability or accuracy of the learned grid operator outside the trained regime.",
+  "results": [
+    {
+      "type": "video",
+      "src": "runs/learned-dynamics/learned-residual/comparison.mp4",
+      "caption": "Three rollouts at the training initial velocity, each overlaying its running center of mass (yellow). Left: drag target (truth). Middle: bare simulator, which drifts past the target (red +). Right: trained hybrid, whose learned residual pulls the center of mass back onto the target."
+    },
+    {
+      "type": "image",
+      "src": "runs/learned-dynamics/learned-residual/loss.png",
+      "caption": "Training loss (mean squared center-of-mass distance to the drag target, log-y) as Adam optimizes the residual weights through the full 320-step rollout."
+    },
+    {
+      "type": "image",
+      "src": "runs/learned-dynamics/learned-residual/grad.png",
+      "caption": "Norm of the loss gradient w.r.t. the network weights over training. It is finite and non-zero throughout, the basic evidence that gradients survive the trip back through hundreds of physics steps into the embedded network."
+    },
+    {
+      "type": "table",
+      "caption": "Bare simulator vs trained hybrid against the drag target, at the training initial velocity and at a held-out one. Gap-closed is 1 - hybrid/bare.",
+      "columns": [
+        "condition",
+        "bare-sim loss",
+        "hybrid loss",
+        "gap closed",
+        "notes"
+      ],
+      "rows": [
+        [
+          "train v0 (3.0, 1.0)",
+          "7.647e-04",
+          "1.032e-07",
+          "100.0%",
+          "98 params, horizon 320"
+        ],
+        [
+          "held-out v0 (2.0, 2.0)",
+          "5.274e-04",
+          "1.757e-04",
+          "66.7%",
+          "frozen weights, fresh drag target"
+        ],
+        [
+          "mismatch",
+          "-",
+          "-",
+          "-",
+          "linear grid-velocity drag k=0.004"
+        ]
+      ]
+    }
+  ],
+  "training_refs": [
+    "hybrid-learned-residual",
+    "differentiating-the-rollout",
+    "failure-modes",
+    "mls-mpm-forward"
+  ],
+  "params": {
+    "n_grid": 64,
+    "n_particles": 4096,
+    "steps": 320,
+    "dt": 0.0002,
+    "E": 400.0,
+    "mass_eps": 0.0001,
+    "drag_k": 0.004,
+    "residual_scale": 0.1,
+    "net": {
+      "in": 3,
+      "hidden": 16,
+      "out": 2,
+      "activation": "tanh",
+      "params": 98
+    },
+    "optimizer": "adam",
+    "lr": 0.02,
+    "iters": 150,
+    "seed": 0,
+    "v0_train": [
+      3.0,
+      1.0
+    ],
+    "v0_holdout": [
+      2.0,
+      2.0
+    ],
+    "bare_loss_train": 0.000764746917411685,
+    "hybrid_loss_train": 1.0316330190107692e-07,
+    "gap_closed_train": 0.9998651013824936,
+    "bare_loss_holdout": 0.0005273766000755131,
+    "hybrid_loss_holdout": 0.00017572053184267133,
+    "gap_closed_holdout": 0.6668025623102911,
+    "probe": {
+      "grad_norm": 0.059674021240264094,
+      "fd_check": [
+        [
+          96,
+          0.020530447363853455,
+          0.02050251350738108,
+          0.0006807662883512646
+        ],
+        [
+          68,
+          -0.02023257315158844,
+          -0.020206585759297013,
+          0.0006426293966374099
+        ],
+        [
+          77,
+          0.019674580544233322,
+          0.019649567548185587,
+          0.0006360721658597694
+        ]
+      ],
+      "fd_agrees": true,
+      "weights_moved": 0.7402247289071887
+    }
+  }
+}

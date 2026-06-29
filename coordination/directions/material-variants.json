@@ -9,6 +9,12 @@
       "title": "Elastic vs fluid vs snow under the same control task",
       "status": "active",
       "note": "Run the throw task with three constitutive models and compare how controllable each is. Fluids and snow have very different gradient behavior, and the visuals are the most demo-friendly thing in the project."
+    },
+    {
+      "id": "shape-match-materials",
+      "title": "Shape-matching across materials (where the constitutive differences bite)",
+      "status": "proposed",
+      "note": "fluid-vs-snow found the constitutive model barely moves COM ballistics on the throw task — the differences were an optimization-landscape effect on a near-ballistic loss. The honest next step (flagged in that task's limitations and training page): swap the COM-to-target loss for a task that forces large internal deformation — match a target outline / pack into a mold / sustained contact — where recoverable elastic energy and the active snow plastic clamp shape the optimized quantity directly. Tests whether the smooth->kinked ordering of optimization difficulty (fluid<elastic<snow) sharpens, and whether a softened plastic clamp recovers a usable gradient for snow. Also map each material's stability lr ceiling instead of hand-picked lr."
     }
   ]
 }

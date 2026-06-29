@@ -1,0 +1,89 @@
+{
+  "schema_version": "2",
+  "task_id": "fluid-vs-snow",
+  "direction": "material-variants",
+  "title": "Elastic vs fluid vs snow under one differentiable throw task",
+  "status": "active",
+  "created": "2026-06-29T05:12:24.428698+00:00",
+  "objective": "Hold the control task fixed (throw a blob's center of mass to a target by backprop on a shared initial velocity v0) and swap ONLY the constitutive model -- weakly compressible fluid, corotated elastic, and Stomakhin-style snow (elastoplastic with hardening) -- to see how controllable each material is and how its gradient behaves through the rollout. The task, seed, target, horizon, and optimiser family (Adam) are held fixed; the learning rate is a per-material STABILITY knob (a shared lr does not work -- fluid's breaks elastic), recorded in the table. Three conditions on one task, not a claim about materials in general. A mandatory gradient-flow probe per material guards against flat-loss (no-gradient) runs; mass stabilisation is ON throughout.",
+  "findings": "On a SINGLE control task -- throw a 4096-particle blob's center of mass (COM) to target (0.7, 0.35) by Adam (120 iters) on a shared initial velocity v0, over a 512-step MLS-MPM rollout with mass stabilisation ON -- the only physics varied was the constitutive model. The first hard result is about the OPTIMISER, not the material: a single shared learning rate does not work. At lr 0.1 (fine for fluid) the ELASTIC probe FAILS -- its loss climbs rather than falls in the first handful of steps, because the stiff corotated stress makes the v0 gradient large and Adam overshoots. The gradient-flow probe correctly REFUSED that run instead of reporting a non-decreasing curve. Restoring monotone descent needed a per-material lr (fluid lr 0.1, elastic lr 0.02, snow lr 0.05), recorded in the table; with it, all three materials PASS the probe (loss strictly down, v0 off the origin, no NaN). After 120 iters: fluid -> final loss 2.448e-06, dist-to-target 0.0016, v0*=(+5.88,-2.87), lr 0.1; elastic -> final loss 2.060e-01, dist-to-target 0.4539, v0*=(+0.21,-0.19), lr 0.02; snow -> final loss 1.648e-01, dist-to-target 0.4060, v0*=(+1.36,-0.96), lr 0.05. Fluid converges tightly to the target; elastic and snow descend monotonically but far more slowly and do not reach it in this budget. That gap is NOT a physics wall: a shared-v0 ballistic check (every material's forward at one fixed reference v0=[5.6, -2.85]) lands the COM at dist fluid 0.016, elastic 0.016, snow 0.216. Fluid and elastic land in essentially the SAME spot (~0.016) at that shared v0, proving the target is equally reachable for both and that elastic's poor optimised distance is purely a slow/stiff-landscape effect. Snow lands shorter (~0.22) at the shared v0 because of a confound that must not be read as a material property: snow runs at a softened dt=0.0001 (vs 0.0002) for SVD-clamp stability, so its 512-step rollout covers HALF the physical time and needs a larger v0 to reach the same target. The honest one-line read: on this throw task the constitutive model barely changes the COM ballistics, but the stiffer/non-smoother the stress law, the smaller the usable learning rate and the slower gradient descent finds the SAME target -- fluid easiest, then elastic, with snow additionally handicapped by its shorter stable horizon.",
+  "hypothesis": "The constitutive model sets the particle stress that p2g writes into grid momentum, so it shapes both the forward deformation and the Jacobian the gradient rides back through. Fluid stress is an isotropic pressure depending only on the current volume ratio J -- it forgets shear history, so its per-step map is smooth and the loss in v0 is close to the smooth ballistic bowl a point mass would give; gradient descent walks straight down it and tolerates a large step. Elastic stress is a corotated function of the full deformation gradient F, P = 2mu(F-R) + lambda(J-1)J F^{-T}, with R the rotation from the SVD of F. Storing recoverable shear energy couples the blob's internal deformation back into its COM motion and makes the stress (and thus the gradient) much larger in magnitude, which is why the same Adam step that suits fluid overshoots for elastic; the SVD rotation R is also a non-linear function of F, adding curvature and ripple to the v0 loss surface so the descent direction is less stable. Snow adds a genuinely non-smooth step: each timestep the singular values of F are CLAMPED into [1-theta_c, 1+theta_s] and the moduli are hardened by exp(xi(1-Jp)). Clamping is piecewise (an active/inactive switch per particle per step), so the per-step map is only C^0 wherever a particle sits at a clamp boundary, and accumulating many such kinks over the rollout roughens the landscape further. The prediction this makes: the per-material MAXIMUM stable learning rate should fall in the order fluid > elastic > snow, and the ordering in how quickly the target is found should hold or sharpen on tasks that excite more internal deformation. What would test it: a proper lr sweep mapping each material's stability ceiling, several targets, a shape-matching or contact-driven loss that actually drives plastic flow (where snow's clamp would be active and its landscape visibly rougher), and a direct count of how often the snow clamp fires per rollout.",
+  "limitations": "ONE control task (COM-to-target throw), ONE target (0.7, 0.35), ONE seed, ONE optimiser family (Adam, 120 iters), ONE horizon (512 steps), 2-D, f32, mass stabilisation ON. THREE constitutive models only (weakly-compressible fluid, corotated elastic, Stomakhin-style snow). The learning rate is NOT held equal across materials -- it could not be, since fluid's lr 0.1 breaks elastic -- so this is a comparison under each material's own monotone-descent lr (fluid lr 0.1, elastic lr 0.02, snow lr 0.05), not under identical optimiser settings; the lr values were picked from a short manual probe, not a systematic per-material lr sweep, so 'fluid tolerates a bigger step than elastic than snow' is a qualitative observation here, not a measured stability ceiling. A second confound: snow ran at a different dt/E (dt=0.0001, E=150) than fluid/elastic (dt=0.0002, E=400) for SVD-clamp stability, which both halves snow's physical horizon and changes its stress scale, so snow's worse distance is PARTLY a horizon artefact. The shared-v0 ballistic check shows all three CAN reach the target, so every claim is scoped to 'how easily Adam FINDS the throw', not to controllability in principle. No claim about materials in general, other tasks, other targets, 3-D, or other optimisers; the rougher-snow-landscape story is a hypothesis the non-smooth clamp motivates (and lightly supported by its needing the smallest dt and a careful lr), and would need a contact/shape task to exhibit cleanly. GPU atomic-add accumulation is not bitwise reproducible; rerun if a curve looks off.",
+  "results": [
+    {
+      "type": "video",
+      "src": "runs/material-variants/fluid-vs-snow/triptych.mp4",
+      "caption": "Side-by-side optimised throw, one panel per material. Yellow trail = running center-of-mass; red + = target. Same seed, target, horizon; only the stress law differs."
+    },
+    {
+      "type": "plot",
+      "kind": "loss",
+      "series": "runs/material-variants/fluid-vs-snow/metrics.json",
+      "log": true,
+      "caption": "Loss vs iteration (default series = first reported material)."
+    },
+    {
+      "type": "image",
+      "src": "runs/material-variants/fluid-vs-snow/loss_compare.png",
+      "caption": "Loss vs iteration for fluid / elastic / snow on the same throw task (log y)."
+    },
+    {
+      "type": "image",
+      "src": "runs/material-variants/fluid-vs-snow/gradnorm_compare.png",
+      "caption": "Gradient norm |grad v0| vs iteration for the three materials (log y)."
+    },
+    {
+      "type": "table",
+      "columns": [
+        "material",
+        "final loss",
+        "opt dist",
+        "ballistic dist",
+        "v0*",
+        "final spread",
+        "NaN",
+        "dt / E / lr"
+      ],
+      "rows": [
+        [
+          "fluid",
+          "2.448e-06",
+          "0.0016",
+          "0.0159",
+          "(+5.88, -2.87)",
+          "0.144",
+          "no NaN",
+          "0.0002 / 400 / 0.1"
+        ],
+        [
+          "elastic",
+          "2.060e-01",
+          "0.4539",
+          "0.0159",
+          "(+0.21, -0.19)",
+          "0.132",
+          "no NaN",
+          "0.0002 / 400 / 0.02"
+        ],
+        [
+          "snow",
+          "1.648e-01",
+          "0.4060",
+          "0.2163",
+          "(+1.36, -0.96)",
+          "0.123",
+          "no NaN",
+          "0.0001 / 150 / 0.05"
+        ]
+      ],
+      "caption": "Per-material summary on the fixed throw task. 'opt dist' = distance from the OPTIMISED final center-of-mass to the target (how close Adam got). 'ballistic dist' = distance the COM lands at one SHARED reference v0=(5.6,-2.85), identical for every material -- it shows the target is reachable in all three, so the gap in 'opt dist' is an optimisation-landscape effect, not a physics wall. 'final spread' = RMS particle distance from the blob center at the last frame (a deformability proxy). The dt/E/lr column records each material's stability settings: snow needs a softened dt/E for its SVD clamp (which also halves its physical horizon), and the lr could not be shared -- fluid's 0.1 makes elastic diverge -- so loss/distance magnitudes are not strictly comparable across rows."
+    }
+  ],
+  "custom_html": null,
+  "training_refs": [
+    "constitutive-models",
+    "mls-mpm-forward",
+    "differentiating-the-rollout",
+    "failure-modes"
+  ]
+}

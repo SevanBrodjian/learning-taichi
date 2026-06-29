@@ -1,13 +1,13 @@
 {
   "id": "material-variants",
   "name": "Material variants",
-  "status": "proposed",
+  "status": "active",
   "summary": "Swap the constitutive model (elastic, weakly-compressible fluid, snow plasticity) and study how each behaves and optimizes under the same control task. The most visually striking axis for the demo.",
   "tasks": [
     {
       "id": "fluid-vs-snow",
       "title": "Elastic vs fluid vs snow under the same control task",
-      "status": "queued",
+      "status": "active",
       "note": "Run the throw task with three constitutive models and compare how controllable each is. Fluids and snow have very different gradient behavior, and the visuals are the most demo-friendly thing in the project."
     }
   ]

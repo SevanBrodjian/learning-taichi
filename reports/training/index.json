@@ -24,7 +24,8 @@
       "sections": [
         { "id": "mls-mpm-forward", "title": "The MLS-MPM forward step", "file": "core/01-mls-mpm-forward.md" },
         { "id": "differentiating-the-rollout", "title": "Differentiating the rollout", "file": "core/02-differentiating-the-rollout.md" },
-        { "id": "failure-modes", "title": "Failure modes", "file": "core/03-failure-modes.md" }
+        { "id": "failure-modes", "title": "Failure modes", "file": "core/03-failure-modes.md" },
+        { "id": "constitutive-models", "title": "Constitutive models: the stress slot and the gradient", "file": "core/04-constitutive-models.md" }
       ]
     }
   ]

@@ -13,7 +13,7 @@
     {
       "id": "implement-nondifferentiable-material-variants",
       "title": "Implement Nondifferentiable Material Variants",
-      "status": "active",
+      "status": "done",
       "note": "Let\u2019s start simple. Implement a nondifferentiable forward simulatiodemonstrating the difference between solids, liquids, and snow. Show these materials under a few different settings. Verify they are behaving as expected. This is primarily a learning task, meant to get a grounding with these new materials, and demonstrate what they look like. Make sure to update the training report, so that I actually learn from this task."
     }
   ]

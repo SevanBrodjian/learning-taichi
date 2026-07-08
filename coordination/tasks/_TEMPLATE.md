@@ -45,6 +45,12 @@ Results are how the work becomes understandable, so make the visuals *informativ
   heatmap of mass or velocity teaches more than a raw particle splat. Annotate axes, targets, and key
   quantities.
 - Every `plot` result needs labeled axes and readable fonts (the dashboard renders small on iPad).
+- **View what you exported before you write a single finding.** Open every image you saved and watch every
+  video (read the file back with your own tools, do not trust that it came out right). Ask of each one: does
+  it actually show the quantity the objective is about? Are the axes and labels correct? Is anything
+  degenerate — a control that never moved, an empty or clipped frame, a flat line, a blown-up curve, the
+  wrong overlay? A number reported without looking at its picture is not evidence, and a misleading or
+  broken figure is **regenerated, not shipped**. This step is mandatory, not a courtesy.
 - Good visuals here are reusable: the best of them belong in the training textbook too (see below).
 
 ## Training textbook contribution (required)
@@ -54,6 +60,13 @@ reference to this brief or "this run", and readable cold by someone who never sa
 or two short new pages over one long one**, link prerequisites with `[[anchors]]`, and embed an
 informative figure or short video where a picture beats prose. Teach the *understanding* the task
 produced, not a log of what was done.
+- **Over-include math prerequisites** the page leans on (linear algebra especially — matrices, determinant
+  and trace, SVD/polar decomposition). Write or extend the prerequisite page **before** linking to it.
+- **Every `[[link]]` you write must resolve** to a section that already exists and covers what the sentence
+  promises. Do not point a reference at a not-yet-written prerequisite.
+- **When you introduce a material or model parameter** (E, timestep, resolution, a learning rate), show its
+  **effect** (a worked example or small figure), not just its definition — see `spec/style_training_report.md`.
+- **Render-check the page** (KaTeX) and **view any figure/video you embedded** in it, same as above.
 
 ## Output contract
 Write `runs/<direction-id>/<task-id>/manifest.json` (schema v2 — see `runs/README.md`) plus its media,
@@ -67,7 +80,13 @@ commit.
 - Key params: <horizon, resolution, seeds, optimizer, etc.>
 
 ## Definition of done
-<The bar. What the artifact must contain for the orchestrator to accept it. Render-check the math.>
+<The bar. What the artifact must contain for the orchestrator to accept it — the task-specific result.>
+Always includes, regardless of task:
+- Manifest carries scoped `findings`, an honest `hypothesis`, and a `limitations` note (Evidence discipline).
+- **Every exported figure/video has been opened and viewed**, shows the claimed quantity, and is not
+  degenerate. Nothing misleading or broken ships.
+- The training page(s) render cleanly (KaTeX checked), read standalone in the textbook voice, **every
+  `[[link]]` resolves**, and the **math prerequisites the page leans on exist**.
 
 ## Known failures to avoid
 <Anything learned from prior attempts, e.g. verify gradients actually move the control before launching a

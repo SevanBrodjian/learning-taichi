@@ -81,6 +81,19 @@ tension with conciseness, and the resolution is the reader's experience: **it is
 a sentence you already know than to get lost and have to reconstruct a gap.** When in doubt, explain it.
 The forward-step core page is the bar to clear for this level of detail.
 
+## Show what a parameter does, not just what it is
+When a page introduces a **material or model parameter** (Young's modulus $E$, the Poisson ratio, the
+timestep $\Delta t$, the grid resolution, a residual scale, a learning rate), define the symbol **and** show
+its **effect** — how changing it changes the behavior. A definition without an effect ("$E$ is the
+stiffness") has not really taught the parameter; the reader should come away able to complete "turn $E$ up
+and ___" for the physics, the numerics, and, wherever it applies, the gradient/optimization landscape that
+is the spine of this project. Prefer a **worked example or a small figure**: a plot of the response at two
+or three parameter values, a before/after pair, or a short derivation of the scaling. A figure derived
+directly from the model equations is legitimate and clearly honest so long as it is labeled as such rather
+than dressed up as a measured sweep; a figure backed by a real run is better still. The bar to clear is the
+`material-stiffness` core page, which follows one scalar into stress, wave speed, timestep stability, and
+usable learning rate.
+
 ## Granularity — prefer many short pages
 The textbook as a whole should grow large and rich over time. It does that as **many short, focused
 pages, not a few sprawling ones.** Each page covers **one idea** and stays skimmable; if a page is
@@ -107,6 +120,19 @@ of this project is to strengthen my mathematical foundations across linear algeb
 numerical methods, so depth in the prerequisites is a feature rather than padding. The prerequisites are
 skim-friendly by design, so over-coverage costs me nothing and fills gaps I might not know I have.
 
+**Linear algebra is the running foundation and deserves the most generous coverage** — matrices as linear
+maps, the determinant and trace and what they mean geometrically, the transpose and inverse-transpose,
+symmetric and orthogonal matrices, eigen-decomposition, and especially the SVD and polar decomposition that
+the solid constitutive models depend on. Give these their own standalone prerequisite pages rather than a
+cramped aside.
+
+**Never point a cross-reference at content that does not exist.** A `[[link]]` to a prerequisite is a
+promise that the prerequisite is there and covers what the referring text says it does. If the core needs a
+piece of math, write or extend that prerequisite page *first*, then link to it. A link to a not-yet-written
+(or wrong) section is a review-stage defect, not a placeholder — it is exactly the kind of dangling
+reference that must be caught before a page is committed. Before any page is done, confirm every `[[link]]`
+in it resolves to a real section that genuinely covers the promised material.
+
 ## Notation conventions
 > TODO(you): any standing preferences (e.g. matrices bold capital, particle index $p$, grid node $i$)?
 > Default: state notation locally per report.
@@ -131,3 +157,17 @@ plaintext (the "red paragraph" failure), so these are not optional:
   Single-line `$$f(x)$$` (open and close on the same line) is fine. This bit `01-mls-mpm-forward.md`.
 - Render-check every new math-bearing report in the dashboard before calling it done — KaTeX errors
   are silent in the source and only visible when rendered.
+
+## Before a page is done (self-review checklist)
+Run this pass on every new or edited page before handing it off. Each item here has bitten a real page.
+- **Render-check the math** in the dashboard (or headlessly through KaTeX). One bad token turns a whole
+  expression into a red paragraph, and it is invisible in the source.
+- **Look at every figure and video you embedded.** Open the actual file. Confirm it shows the quantity the
+  text claims, has readable axes and labels, and has no degenerate or clipped output. A caption is written
+  as plain prose (it renders as visible caption text, so no `$math$` inside it).
+- **Every `[[link]]` resolves** to a real section that covers what the referring sentence promises. No
+  dangling or wrong cross-references.
+- **The prerequisites it leans on exist.** If the page uses a piece of math, the prerequisite page for it
+  is written and linked, not merely promised.
+- **Voice is impersonal and standalone** — no "I/we/this run/the brief", readable cold, per the hard rules
+  above.

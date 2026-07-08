@@ -38,9 +38,14 @@ State the plan briefly before you start.
 When a worker finishes, **review before committing** (`CLAUDE.md`):
 - Scope-check every claim against **Evidence discipline**; verify `hypothesis` + `limitations` are present
   and honest.
-- Render-check the math and the manifest results in the dashboard.
-- Review the **training page** it added: objective voice, standalone, short, informative visuals — fix or
-  extend it per `spec/style_training_report.md`.
+- **Open and look at every figure, plot, and video the worker produced** (read the image files back, watch
+  the clips), not just the numbers. Confirm each visual shows the quantity its claim rests on and is not
+  degenerate (a control that never moved, an empty/clipped frame, a flat or exploded curve). Reject and
+  re-run rather than commit a misleading or broken figure.
+- Render-check the math (KaTeX) and the manifest results in the dashboard.
+- Review the **training page** it added: objective voice, standalone, short, informative visuals — and
+  **verify every `[[link]]` resolves** to a real section and that the **math prerequisites** it leans on
+  exist (add them if not). Fix or extend it per `spec/style_training_report.md`.
 - Then commit the worker's files. **Leave status `active`** — *Done is the user's call*, never set
   automatically.
 

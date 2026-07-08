@@ -73,8 +73,14 @@ inbox** (`coordination/decisions/` + a `gate` ping) rather than spraying specula
 is for obvious next steps; asking is for forks only the user can resolve.
 
 Reviewing a finished worker means more than committing its run: check its claims against **Evidence
-discipline**, render-check its math, and **review the training page it added** (voice, standalone-ness,
-length) per `spec/style_training_report.md`, fixing or extending it before committing.
+discipline**; **open and look at every figure, plot, and video it produced** (not just the numbers) and
+confirm each visual actually shows the quantity its claim rests on, with no degenerate, empty, or
+artefacted output; render-check its math **in the dashboard** for KaTeX errors; and **review the training
+page it added** (voice, standalone-ness, length) per `spec/style_training_report.md`. As part of that
+review **verify every cross-reference resolves** — each `[[link]]` must point at a page/section that
+actually exists and actually covers what the referring text promises (a link to a not-yet-written prereq
+is a defect to catch here) — and check that the **math prerequisites** the new page leans on are present in
+the prerequisites layer, adding them if not. Fix or extend before committing.
 
 ## Persistence — the filesystem is the backbone
 Durable state lives in the repo, on disk, as files (mostly Markdown + JSON). **Do not rely on auto-memory
@@ -114,9 +120,16 @@ orchestrator to pick up the whole `queued` backlog and run it to completion (see
    `runs/<direction-id>/<task-id>/` — an **objective**, **scoped findings** (what was tested, no
    overclaiming), a **hypothesis** for *why* the result holds and what would test its generality, an honest
    **limitations** note, and typed results with **informative visuals** (see the visualization standard in
-   `coordination/tasks/_TEMPLATE.md`). It **adds at least one short, standalone training page** in the
-   objective textbook voice (`spec/style_training_report.md`), **fires a `finished` ping**, and exits,
-   leaving everything **on disk** (it does not commit).
+   `coordination/tasks/_TEMPLATE.md`). **Before writing a single finding, the worker opens and actually
+   looks at every figure, plot, and video it just produced** (read the image file back, watch the clip) and
+   critically checks it: does it show the quantity the objective is about, are the axes/labels right, is
+   anything degenerate (a control that never moved, an empty or clipped frame, a flat or exploded curve)?
+   A number reported without looking at its picture is not evidence, and a misleading or broken figure is
+   regenerated, not shipped. It then **adds at least one short, standalone training page** in the objective
+   textbook voice (`spec/style_training_report.md`) — over-including math **prerequisites** (linear algebra,
+   calculus, numerics) it leans on and making sure every `[[link]]` it writes points at content that
+   actually exists — **fires a `finished` ping**, and exits, leaving everything **on disk** (it does not
+   commit).
 4. The orchestrator **reviews, commits, and surfaces** it on the dashboard. **Done is the user's call**,
    made after discussion — never set automatically.
 

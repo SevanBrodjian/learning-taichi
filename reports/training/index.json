@@ -30,7 +30,8 @@
         { "id": "constitutive-models", "title": "Constitutive models: the stress slot and the gradient", "file": "core/04-constitutive-models.md" },
         { "id": "hybrid-learned-residual", "title": "Hybrid simulation: a learned residual inside the step", "file": "core/05-hybrid-learned-residual.md" },
         { "id": "material-stiffness", "title": "Stiffness: what Young's modulus E does", "file": "core/06-material-stiffness.md" },
-        { "id": "material-showcase", "title": "Three materials, one solver: fluid, elastic, snow", "file": "core/07-material-showcase.md" }
+        { "id": "material-showcase", "title": "Three materials, one solver: fluid, elastic, snow", "file": "core/07-material-showcase.md" },
+        { "id": "differentiable-materials", "title": "Differentiable materials: finite vs meaningful gradients", "file": "core/08-differentiable-materials.md" }
       ]
     }
   ]

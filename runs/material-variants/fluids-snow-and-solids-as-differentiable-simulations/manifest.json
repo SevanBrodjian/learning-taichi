@@ -1,0 +1,137 @@
+{
+  "schema_version": "2",
+  "task_id": "fluids-snow-and-solids-as-differentiable-simulations",
+  "direction": "material-variants",
+  "title": "Differentiable fluid, elastic, and snow: finite-difference-verified gradients",
+  "status": "active",
+  "created": "2026-07-08T04:27:42.966290+00:00",
+  "objective": "Build a simple, correct differentiable MLS-MPM for each of three materials -- weakly-compressible fluid, corotated elastic, and Stomakhin snow -- and determine what it takes to get MEANINGFUL gradients through each, where meaningful is a specific bar: the autodiff gradient of a scalar loss with respect to a control must MATCH a central finite-difference estimate (finite is not enough), and the forward rollout must behave physically. The forward laws are reused from the verified material showcase; the autodiff scaffolding (time-indexed needs_grad state, a two-field grid velocity, a mass floor, ti.ad.Tape) follows the known-good diffmpm baseline. The core deliverable is a per-material finite-difference gradient-check table for the initial velocity and for Young's modulus E, the latter flowing entirely through the constitutive stress so it tests the SVD and clamp backward directly.",
+  "findings": "On a short differentiable MLS-MPM rollout (H=200 steps for the gradient check, n_grid=64, n_particles=2048, f32, per-material stable dt) all THREE constitutive models -- weakly-compressible fluid, corotated elastic, and Stomakhin snow -- produce gradients that are both FINITE and finite-difference-VERIFIED. For every material the autodiff gradient of a center-of-mass-to-target loss with respect to the initial velocity (both components) and with respect to Young's modulus E matches a central finite-difference estimate to a relative error below 5% (the threshold), and in most cases below 0.5%. Fluid: v0x rel 1.7e-03, v0y rel 2.9e-03, E rel 5.9e-04. Elastic: v0x rel 3.7e-04, v0y rel 1.4e-03, E rel 4.6e-04. Snow: v0x rel 3.8e-04, v0y rel 6.3e-05, E rel 1.1e-02. The E check is the decisive one for the solid path because dL/dE flows ENTIRELY through the stress law -- through ti.svd for the corotated elastic stress and through the SVD plus the plastic clamp for snow -- so its passing shows the differentiable constitutive backward (SVD included) is correct, not merely the ballistic v0 path. This holds even though the snow clamp is genuinely active: at the tested throw 38% of all (particle, step) singular values are pinned at the plastic band, so the C0 clamp kink is firing throughout and the gradient still matches FD. Two further robustness facts: the elastic gradient stays FD-clean (rel < 0.5%) across horizons from 100 to 319 steps with no NaN (mass floor on), and Taichi's ti.svd backward stays finite even when evaluated from rest where the deformation gradient is near the isotropic point F=I and the singular values coincide (it emits internal warnings but returns finite, FD-accurate gradients). With verified gradients, a plain Adam descent on the COM-to-target throw improves the loss and MOVES the control off the origin for every material: fluid 9.64e-02 -> 2.54e-05 (v0* moved to [6.7, -4.9], reaching the target to dist 0.005); elastic 1.01e-01 -> 2.93e-02 (v0* [7.6, -7.1], dist 0.170); snow 1.01e-01 -> 3.89e-02 (v0* [7.1, -6.9], dist 0.196). This is the specific contrast with the earlier attempt, whose elastic optimum 'barely left the origin' and was read as a bad gradient: here the elastic and snow controls move strongly (|v0*| ~ 10), the loss falls several-fold, and the gradient is independently FD-verified correct. Elastic and snow land short of the target only because their smaller stable dt (1e-4 and 5e-5 vs fluid's 2e-4) covers less physical time in the same 320-step budget, a horizon/CFL limit on reach, not a defect in the gradient.",
+  "hypothesis": "The prior 'bad gradients / erroneous particles' were almost certainly not a wrong constitutive backward but a conflation of three separable things, and separating them is what this check does. First, gradient CORRECTNESS versus gradient USABILITY: a finite gradient that descends slowly on a material-insensitive loss looks broken but is not, and the only way to tell is a finite-difference check, which the prior attempt never ran. The mechanism for correctness is that every operation in the rollout -- the affine transfer, the corotated stress via ti.svd, even the plastic clamp -- is differentiable almost everywhere, and Taichi's reverse mode composes their adjoints exactly, so away from measure-zero degeneracies the autodiff gradient equals the true gradient, which is what FD confirms. Second, the SVD degeneracy at sigma1=sigma2 (an undeformed isotropic blob, F=I) is a real singularity of the U,V derivatives, but Taichi's svd backward regularizes it internally, so in practice it produces a finite (if warned-about) gradient rather than a NaN; evaluating at a genuinely deformed state moves off the degeneracy entirely. Third, the actual way gradients go bad here is a FORWARD instability: if dt violates the CFL limit (dt_max ~ dx/sqrt(E) at fixed density) the rollout blows up, particle positions run off the grid, and the gradient becomes NaN or the kernel indexes out of bounds -- exactly the 'erroneous particle behavior' symptom. The fix is not a gradient trick but a stable dt per material (smaller for stiffer E and for snow's clamp), which is why the working settings use dt ~ 1/sqrt(E). The prediction: on a loss that actually depends on internal deformation (a shape-matching or contact task), the elastic and snow gradients would stay FD-correct but the snow landscape would be visibly rougher because the clamp kink couples into the loss, so gradient descent would need a smaller step or a smoothed clamp -- correctness would hold while usability degrades, which is the distinction the whole exercise is built around.",
+  "limitations": "This verifies gradient CORRECTNESS on a narrow setup, not a general claim about controllability. One loss family (center-of-mass to a target point), one seed, one 2048-particle disk, n_grid=64, f32, one optimizer (Adam), short horizons (200-step gradient check, 320-step optimization), and each material at its own stable dt/E (fluid dt 2e-4 E 400, elastic dt 1e-4 E 400, snow dt 5e-5 E 150). The COM loss depends only weakly on the constitutive model (COM ballistics are nearly material-independent), which is why the dL/dE signal is small for the fluid and needs a large FD step to clear the loss-evaluation noise floor (~1e-7 relative from GPU atomic non-determinism); the E check still passes, but a loss that strongly excites internal deformation would exercise the solid stress gradient harder and is the honest next test. The clamp-active finding is scoped to the hard (C0) clamp used here; a softened clamp was not needed because the hard clamp already FD-verified on this task, but on a rougher loss the hard clamp is the first thing to smooth. 'FD-verified' is a check at finitely many step sizes, so it certifies the gradient at the evaluated points, not global smoothness. No 3D, no longer horizons than 320 steps (where the mass floor keeps the fluid path finite; snow/elastic were not pushed past their stable dt), no other targets or optimizers. GPU atomic-add accumulation is not bitwise reproducible; the FD noise floor is reported and the step sizes were chosen above it. The forward laws are the verified ones from the material showcase; the grid boundary here is the simple separating wall plus mass floor (the known-good gradient path), not the showcase's Coulomb floor, to keep extra kinks out of the check.",
+  "results": [
+    {
+      "type": "table",
+      "columns": [
+        "material",
+        "control",
+        "autodiff",
+        "finite-diff",
+        "rel error",
+        "verdict"
+      ],
+      "rows": [
+        [
+          "fluid",
+          "v0x",
+          "-1.050e-02",
+          "-1.052e-02",
+          "1.65e-03",
+          "PASS"
+        ],
+        [
+          "fluid",
+          "v0y",
+          "+1.090e-02",
+          "+1.093e-02",
+          "2.92e-03",
+          "PASS"
+        ],
+        [
+          "fluid",
+          "E",
+          "+3.534e-06",
+          "+3.532e-06",
+          "5.88e-04",
+          "PASS"
+        ],
+        [
+          "elastic",
+          "v0x",
+          "-5.591e-03",
+          "-5.589e-03",
+          "3.68e-04",
+          "PASS"
+        ],
+        [
+          "elastic",
+          "v0y",
+          "+5.037e-03",
+          "+5.030e-03",
+          "1.42e-03",
+          "PASS"
+        ],
+        [
+          "elastic",
+          "E",
+          "+4.266e-06",
+          "+4.268e-06",
+          "4.55e-04",
+          "PASS"
+        ],
+        [
+          "snow",
+          "v0x",
+          "-4.089e-03",
+          "-4.087e-03",
+          "3.82e-04",
+          "PASS"
+        ],
+        [
+          "snow",
+          "v0y",
+          "+3.482e-03",
+          "+3.482e-03",
+          "6.33e-05",
+          "PASS"
+        ],
+        [
+          "snow",
+          "E",
+          "+1.940e-06",
+          "+1.919e-06",
+          "1.09e-02",
+          "PASS"
+        ]
+      ],
+      "caption": "Finite-difference gradient check, the core deliverable. For each material and each control (initial velocity components v0x, v0y and Young's modulus E), the autodiff gradient of the center-of-mass-to-target loss is compared to a central finite-difference estimate at the best of a small step-size sweep. 'rel error' is the relative difference; a gradient is called meaningful only if it is finite AND the relative error is below 5 percent. Every entry passes. The E column is the strict test of the solid stress backward because dL/dE flows entirely through the constitutive law, ti.svd and the snow clamp included."
+    },
+    {
+      "type": "image",
+      "src": "runs/material-variants/fluids-snow-and-solids-as-differentiable-simulations/gradcheck_table.png",
+      "caption": "The gradient-check table rendered as a figure. Green verdicts mark controls whose autodiff gradient matches the finite-difference estimate to within the 5 percent threshold. All three materials pass on all three controls."
+    },
+    {
+      "type": "video",
+      "src": "runs/material-variants/fluids-snow-and-solids-as-differentiable-simulations/optim_triptych.mp4",
+      "caption": "Optimized throw under each stress law after Adam descent on the verified gradient, one panel per material. Yellow trail is the running center of mass, red plus is the target. Same seed, same target, same 320-step budget; only the stress law and the stable timestep differ. Fluid reaches the target; elastic and snow are thrown toward it and land shorter because their smaller stable timestep covers less physical time in the same number of steps, a reach limit rather than a gradient defect. The control moves strongly off the origin in every case, unlike the earlier stalled attempt."
+    },
+    {
+      "type": "plot",
+      "kind": "loss",
+      "series": "runs/material-variants/fluids-snow-and-solids-as-differentiable-simulations/metrics.json",
+      "log": true,
+      "caption": "Loss vs iteration for the fluid optimization (default metrics series)."
+    },
+    {
+      "type": "image",
+      "src": "runs/material-variants/fluids-snow-and-solids-as-differentiable-simulations/convergence.png",
+      "caption": "Descent curves for all three materials on the COM-to-target throw (log loss). Fluid falls thousands-fold and lands on target; elastic and snow fall several-fold with the control moving off the origin, plateauing where the short stable-dt horizon caps how far the blob can be thrown. Descent is real for all three because the gradient is FD-verified, not merely finite."
+    },
+    {
+      "type": "image",
+      "src": "runs/material-variants/fluids-snow-and-solids-as-differentiable-simulations/forward_states.png",
+      "caption": "Forward-behaviour check at the gradient-check settings. Top row is the initial disk, bottom row the same blob after the short rollout, one column per material. Every material stays finite and coherent -- no NaN, no disintegration, nothing off-screen or through a wall -- which is the precondition for trusting its gradient. Motion is subtle because the horizon is deliberately short to keep the gradient check clean."
+    }
+  ],
+  "custom_html": null,
+  "training_refs": [
+    "differentiable-materials",
+    "material-showcase",
+    "differentiating-the-rollout",
+    "svd-polar",
+    "failure-modes",
+    "constitutive-models",
+    "material-stiffness"
+  ]
+}

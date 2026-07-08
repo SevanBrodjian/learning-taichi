@@ -1,0 +1,107 @@
+{
+  "schema_version": "2",
+  "task_id": "implement-nondifferentiable-material-variants",
+  "direction": "material-variants",
+  "title": "Fluid vs elastic vs snow: a forward-only material showcase",
+  "status": "active",
+  "created": "2026-07-08T03:38:16.070289+00:00",
+  "objective": "Run one MLS-MPM scene forward (no gradients, no optimiser, no loss) under three constitutive models -- weakly compressible fluid, corotated elastic, and Stomakhin-style snow -- from the SAME initial condition, and show side by side how each moves. Two scenes (a disk dropped onto the floor and a tall column collapsing) plus a bonus stiffness dial on the elastic drop. The constitutive physics is reused from sim/material_variants.py with the autodiff machinery stripped; the point is to see and teach the qualitative differences, backed by a simple final-shape diagnostic, not to make any claim about optimisation or generality.",
+  "findings": "On two fixed 2D scenes at n_grid=128 with hand-tuned stable parameters, the three constitutive models produce distinct, expected qualitative signatures, and a simple final-frame diagnostic backs the eye. In the drop-and-splat scene an identical disk released above the floor ends with fluid spread widest and sitting lowest (width 0.886, height 0.074), elastic springing back to the most compact and tallest blob (width 0.175, height 0.278), and snow landing between the two as a crumpled heap that neither flows flat nor rebounds (width 0.350, height 0.138). In the column-collapse scene an identical tall block is released from rest: fluid runs out into a flat wide sheet (width 0.906, height 0.096), elastic springs back and stands nearly its full height (width 0.144, height 0.507), and snow slumps to a stable angle-of-repose pile (width 0.415, height 0.214). In both scenes and in both the width and the height diagnostic the order is the same: fluid is widest and lowest, elastic is narrowest and tallest because it recovers its shape, and snow sits squarely between them, holding whatever crumpled or slumped shape its plastic clamp locked in. A bonus third scene dials Young's modulus E on the elastic drop (E=50, 400, 1600) and shows the soft blob pancaking flat on impact and jiggling slowly while the stiff blob barely dents and rebounds fast, the visible face of the stiffness scaling. Every frame and video was viewed; nothing went non-finite, flew off-screen, or clipped through a wall or the floor at the recorded settings.",
+  "hypothesis": "Each material's motion follows directly from the stress its constitutive law develops. Fluid stress is an isotropic pressure that depends only on the current volume ratio J, so it resists compression but offers zero resistance to shear (mu = 0). With nothing to store shape memory, a fluid blob has no restoring force back to a shape and simply flows until it is a flat, level puddle. Elastic stress is the corotated function of the full deformation gradient F, 2 mu (F - R) + lambda (J-1) J F^-T, where R is the rotation from the SVD of F. The shear term 2 mu (F - R) stores recoverable energy in any non-rotational deformation, so an elastic blob that squashes on impact pushes back and springs toward its original rounded shape, overshooting into a damped jiggle. Snow adds a plastic clamp: each step the singular values of F are limited to [1 - theta_c, 1 + theta_s] and the excess is moved into a permanent plastic record, with the moduli hardening as the material compacts. Because deformation past the clamp is not recoverable, snow crumples and keeps its dented shape instead of springing back, and its finite yield strength lets a slumped block stand at an angle of repose rather than running out flat. The stiffness dial follows the same stress law scaled by E: larger E means a larger restoring stress at the same strain, hence less equilibrium sag (~1/E) and a faster elastic wobble (~sqrt(E)), which is exactly what the three-panel E sweep shows. What would test the generality of these signatures beyond this demonstration: more initial conditions and geometries, a friction model at the floor, a 3D run, and a sweep of the snow clamp parameters theta_c / theta_s to map brittle-to-ductile behavior.",
+  "limitations": "A forward demonstration on TWO scenes (plus one stiffness-dial bonus), in 2D, at a single grid resolution (n_grid=128), f32, with hand-tuned per-material parameters chosen for stability, not a measurement or a claim about materials in general. Parameters are NOT held equal across materials (fluid E=180, dt=0.00012; elastic E=400, dt=0.0001; snow E=150, dt=5e-05): the fluid is softened to calm its splash and snow runs a smaller dt and softer E so its SVD clamp stays finite, so absolute widths and heights are not strictly comparable number-for-number across rows, only the qualitative ordering is. Every material is integrated to the same PHYSICAL time so the panels are time-synchronised, but the settling state depends on how long the scene is run. Boundaries are shared by all materials: Coulomb friction (coefficient 0.5) at the floor, which snow needs to build its angle-of-repose pile, and sticky side walls so an impact splash cannot ride up a frictionless wall; the exact repose angle and the fluid's wall run-up therefore depend on these boundary choices, not only on the constitutive model. No gradients, optimisation, or loss are involved anywhere; this task makes no claim about controllability, gradient smoothness, or quantitative accuracy. GPU atomic-add accumulation is not bitwise reproducible; rerun if a frame looks off.",
+  "results": [
+    {
+      "type": "video",
+      "src": "runs/material-variants/implement-nondifferentiable-material-variants/drop_triptych.mp4",
+      "caption": "Drop and splat: the same disk released above the floor, one panel per material. Fluid spreads into a flat puddle, elastic squashes on impact then springs back to a rounded jiggling blob, snow crumples and packs into a static dented heap. Same initial condition in all three panels."
+    },
+    {
+      "type": "image",
+      "src": "runs/material-variants/implement-nondifferentiable-material-variants/drop_still.png",
+      "caption": "Final settled frame of the drop-and-splat scene. Fluid has spread into a wide flat puddle, elastic has sprung back to a compact rounded blob, and snow sits between them as a crumpled heap that neither flowed flat nor rebounded."
+    },
+    {
+      "type": "video",
+      "src": "runs/material-variants/implement-nondifferentiable-material-variants/column_triptych.mp4",
+      "caption": "Column collapse: an identical tall block released from rest, one panel per material. Fluid runs out into a flat sheet, elastic wobbles and springs back toward its original height, snow slumps into a stable angle-of-repose pile that holds its shape. Same initial block in all three panels."
+    },
+    {
+      "type": "image",
+      "src": "runs/material-variants/implement-nondifferentiable-material-variants/column_still.png",
+      "caption": "Final settled frame of the column-collapse scene. Fluid has run out flattest and widest, snow holds a slumped angle-of-repose pile, and elastic has sprung back to stand nearly its full original height."
+    },
+    {
+      "type": "video",
+      "src": "runs/material-variants/implement-nondifferentiable-material-variants/stiffness_triptych.mp4",
+      "caption": "The stiffness dial on one material: the same elastic disk dropped at three values of Young's modulus E. Soft E flattens and jiggles slowly like a gel, stiff E barely deforms and rings fast like hard rubber. Only E changes across the three panels."
+    },
+    {
+      "type": "image",
+      "src": "runs/material-variants/implement-nondifferentiable-material-variants/stiffness_still.png",
+      "caption": "Peak-impact frame of the elastic stiffness dial, at the instant the soft blob is most squashed. The soft blob (left) pancakes flat on impact, the stiff blob (right) barely dents, showing that a stiffer material answers the same impact with far less deformation. All three spring back toward a disk afterward, which is why the difference is clearest at peak impact rather than at rest."
+    },
+    {
+      "type": "table",
+      "columns": [
+        "scene",
+        "material",
+        "final width",
+        "pile height",
+        "COM height"
+      ],
+      "rows": [
+        [
+          "drop",
+          "fluid",
+          "0.886",
+          "0.074",
+          "0.017"
+        ],
+        [
+          "drop",
+          "elastic",
+          "0.175",
+          "0.278",
+          "0.190"
+        ],
+        [
+          "drop",
+          "snow",
+          "0.350",
+          "0.138",
+          "0.051"
+        ],
+        [
+          "column",
+          "fluid",
+          "0.906",
+          "0.096",
+          "0.036"
+        ],
+        [
+          "column",
+          "elastic",
+          "0.144",
+          "0.507",
+          "0.267"
+        ],
+        [
+          "column",
+          "snow",
+          "0.415",
+          "0.214",
+          "0.095"
+        ]
+      ],
+      "caption": "Final-frame shape diagnostics (domain units, floor subtracted). 'final width' = 5-to-95 percentile horizontal extent, 'pile height' = 95th-percentile height above the floor, 'COM height' = mean particle height above the floor. Fluid spreads widest and sits lowest, elastic recovers the narrowest and tallest shape, and snow lands between the two in both width and height. Percentiles are used so a few stray particles do not dominate the number."
+    }
+  ],
+  "custom_html": null,
+  "training_refs": [
+    "material-showcase",
+    "constitutive-models",
+    "svd-polar",
+    "material-stiffness",
+    "mpm-in-context"
+  ]
+}

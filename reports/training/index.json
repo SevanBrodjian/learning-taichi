@@ -29,7 +29,8 @@
         { "id": "failure-modes", "title": "Failure modes", "file": "core/03-failure-modes.md" },
         { "id": "constitutive-models", "title": "Constitutive models: the stress slot and the gradient", "file": "core/04-constitutive-models.md" },
         { "id": "hybrid-learned-residual", "title": "Hybrid simulation: a learned residual inside the step", "file": "core/05-hybrid-learned-residual.md" },
-        { "id": "material-stiffness", "title": "Stiffness: what Young's modulus E does", "file": "core/06-material-stiffness.md" }
+        { "id": "material-stiffness", "title": "Stiffness: what Young's modulus E does", "file": "core/06-material-stiffness.md" },
+        { "id": "material-showcase", "title": "Three materials, one solver: fluid, elastic, snow", "file": "core/07-material-showcase.md" }
       ]
     }
   ]

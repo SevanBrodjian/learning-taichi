@@ -84,7 +84,7 @@ perfectly smooth. Real materials hit walls, stick, separate, and snap, and those
 jumps in the step function. The chain rule does not care that a kink is physically reasonable. It
 happily multiplies a meaningless slope at a kink into a meaningless gradient, or amplifies a tiny
 quantity in a denominator into an overflow. Learning exactly where the gradient is trustworthy and
-where it lies to you is the real prize here, and it is the spine of the [[core]] sections, especially
+where it lies to you is the real prize here, and it is the spine of the core sections, especially
 [[failure-modes]].
 
 ## The through-line to structured generative worlds

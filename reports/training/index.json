@@ -15,7 +15,9 @@
       "title": "Prerequisites (skim as needed)",
       "sections": [
         { "id": "mpm-in-context", "title": "MPM in context", "file": "prerequisites/01-mpm-in-context.md" },
-        { "id": "math-toolkit", "title": "Math toolkit", "file": "prerequisites/02-math-toolkit.md" }
+        { "id": "linear-algebra", "title": "Linear algebra for MPM", "file": "prerequisites/02-linear-algebra.md" },
+        { "id": "svd-polar", "title": "SVD and polar decomposition", "file": "prerequisites/03-svd-polar.md" },
+        { "id": "math-toolkit", "title": "Math toolkit", "file": "prerequisites/04-math-toolkit.md" }
       ]
     },
     {
@@ -26,7 +28,8 @@
         { "id": "differentiating-the-rollout", "title": "Differentiating the rollout", "file": "core/02-differentiating-the-rollout.md" },
         { "id": "failure-modes", "title": "Failure modes", "file": "core/03-failure-modes.md" },
         { "id": "constitutive-models", "title": "Constitutive models: the stress slot and the gradient", "file": "core/04-constitutive-models.md" },
-        { "id": "hybrid-learned-residual", "title": "Hybrid simulation: a learned residual inside the step", "file": "core/05-hybrid-learned-residual.md" }
+        { "id": "hybrid-learned-residual", "title": "Hybrid simulation: a learned residual inside the step", "file": "core/05-hybrid-learned-residual.md" },
+        { "id": "material-stiffness", "title": "Stiffness: what Young's modulus E does", "file": "core/06-material-stiffness.md" }
       ]
     }
   ]

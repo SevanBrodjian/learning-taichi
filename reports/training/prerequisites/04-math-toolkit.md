@@ -2,7 +2,9 @@
 
 > Prerequisite, skim-friendly once you have it. Each recurring math object behind the core sections,
 > built from intuition first and only then written as a formula. If you have read [[mpm-in-context]] you
-> already know the *roles* these objects play. This section gives them their precise form. Notation is
+> already know the *roles* these objects play. This section gives them their precise form. The general
+> linear algebra these objects rest on (outer products, trace, determinant, transpose) is in
+> [[linear-algebra]], and the decompositions the solid models need are in [[svd-polar]]. Notation is
 > stated locally. Particle index $p$, grid node $i$, timestep $\Delta t$, cell size $\Delta x$.
 
 ## Interpolation weights, the smooth splash

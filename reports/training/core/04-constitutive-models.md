@@ -22,7 +22,8 @@ exposes the controls whose loss landscape is smooth enough to descend. The const
 smooth that landscape is, so it decides which materials are easy to control and which fight back.
 
 Notation follows the [[math-toolkit]]: particle index $p$, deformation gradient $F_p$, its determinant
-$J = \det F_p$ (the volume ratio), Young's modulus $E$ (overall stiffness), Poisson ratio $\nu$, and the
+$J = \det F_p$ (the volume ratio), Young's modulus $E$ (overall stiffness, whose single-parameter effects on
+the physics, the timestep, and the gradient are traced in [[material-stiffness]]), Poisson ratio $\nu$, and the
 Lamé parameters $\mu$ (shear stiffness) and $\lambda$ (volumetric stiffness), built from $E$ and $\nu$ by
 
 $$
@@ -90,7 +91,8 @@ penalizing $\det F \ne 1$.
 The rotation $R$ comes from the **polar decomposition** $F = R S$, most stably obtained from the singular
 value decomposition $F = U \Sigma V^{\top}$ as $R = U V^{\top}$. (In 2D both have closed forms, and
 Taichi's `ti.svd` is differentiable, which is what lets the gradient flow through this stress at all. The
-SVD itself is worth a prerequisite of its own, see [[math-toolkit]].) The cost of all this richness:
+SVD and polar decomposition get a prerequisite of their own in [[svd-polar]], including why $R = U V^{\top}$
+is the stable way to extract the rotation and where the derivative misbehaves.) The cost of all this richness:
 $P(F)$ is a more sharply curved, larger-magnitude function of the state than the fluid pressure, so the
 gradient of a loss back to a control parameter is **larger and more variable**. It is still smooth (the SVD
 is differentiable away from coincident singular values), so the loss is still descendable, but with a

@@ -211,5 +211,5 @@ That inversion is the bridge to the broader goal. A world model that is both gen
 needs dynamics you can author against, and gradients are the most direct handle for authoring. The places
 where the smooth story breaks, the division by a barely-touched grid node and the hard wall branches, are
 where gradients through physics stop being trustworthy, and learning exactly where that happens is the
-real prize. That investigation is the spine of the [[core]] sections, and it begins in earnest in
+real prize. That investigation is the spine of the core sections, and it begins in earnest in
 [[failure-modes]].

@@ -22,7 +22,7 @@
     {
       "id": "fluids-snow-and-solids-as-differentiable-simulations",
       "title": "Fluids, snow, and solids as differentiable simulations",
-      "status": "queued",
+      "status": "active",
       "note": "These look really cool. Now let\u2019s build a simple differentiable implementation of each and see what it takes to get meaningful gradients. When you tried this before the gradients were bad and the particles exhibited erroneous behavior. Be sure to test iteratively to check that it\u2019s functional, examining images as needed. If we can\u2019t get meaningful gradients just report so honestly and explain or theorize why. Make sure to give some nice visuals and update training materials.",
       "follow_up_of": "implement-nondifferentiable-material-variants"
     }

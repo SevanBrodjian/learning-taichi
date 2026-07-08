@@ -301,10 +301,14 @@ def task_detail(direction: str, task: str) -> dict | None:
 # ---- write-back (Overview drag / Mark Done) + ntfy notification feed ----
 
 def _git_commit(path: Path, msg: str, cwd: Path = MAIN_ROOT) -> None:
-    """Persist a dashboard edit. Non-fatal: the file write already took effect for the live server."""
+    """Persist a dashboard edit. Non-fatal: the file write already took effect for the live server.
+    The commit is scoped to `path` (`git commit -- <path>`) so that a concurrent editor's unrelated
+    staged changes are never swept into a dashboard commit — an unscoped `git commit` commits the whole
+    index, which once clobbered an in-progress hand edit."""
     try:
         subprocess.run(["git", "add", str(path)], cwd=cwd, check=True, capture_output=True)
-        subprocess.run(["git", "commit", "-q", "-m", msg], cwd=cwd, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-q", "-m", msg, "--", str(path)],
+                       cwd=cwd, check=True, capture_output=True)
     except Exception:
         pass
 

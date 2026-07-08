@@ -59,5 +59,13 @@ export const editTask = (direction, task, title, note) =>
 export const createDirection = (name, summary) =>
   post("/api/direction-create", { name, summary });
 
+// Remove a task/proposal from its direction file entirely (dashboard Delete).
+export const deleteTask = (direction, task) =>
+  post("/api/task-delete", { direction, task });
+
+// Spin a completed task into a linked, proposed follow-up (both sides record the link).
+export const proposeFollowUp = (direction, parent, title, note) =>
+  post("/api/task-follow-up", { direction, parent, title, note });
+
 // ntfy notification feed (the server holds the secret topic; it never reaches the browser).
 export const fetchNotifications = () => get("/api/notifications", "json");

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { setTaskStatus, createTask, editTask, createDirection } from "../api.js";
+import { useEffect, useState } from "react";
+import { setTaskStatus, createTask, editTask, createDirection, deleteTask } from "../api.js";
 
 // The live pipeline. Done is a collapsed section below (not a crowding column). Cards are tasks,
 // filterable by direction. Proposed and queued cards can be dragged between those two columns
@@ -12,19 +12,171 @@ const COLUMNS = [
 ];
 const DRAGGABLE = new Set(["proposed", "queued"]);
 
-export default function OverviewView({ overview, onOpenTask, onChange }) {
+// The task-detail / edit modal. Holds its OWN draft state so typing never re-renders the board behind
+// it (that, plus pausing the board poll while a field is focused, is what fixes the input lag).
+function TaskModal({ task, onClose, onChanged }) {
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({ title: task.title, note: task.note || "" });
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const move = (status) => { setTaskStatus(task.direction, task.id, status).then(onChanged); onClose(); };
+  const saveEdit = async () => {
+    setBusy(true);
+    try {
+      await editTask(task.direction, task.id, form.title.trim(), form.note);
+      setEditing(false);
+      onChanged();
+    } finally { setBusy(false); }
+  };
+  const doDelete = async () => {
+    setBusy(true);
+    try {
+      const r = await deleteTask(task.direction, task.id);
+      if (r && r.ok) { onChanged(); onClose(); }
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose} aria-label="close">×</button>
+        <div className="modal-dir">{task.directionName}</div>
+        {editing ? (
+          <div className="author-form">
+            <label>Title</label>
+            <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+            <label>Note (the seed for the worker brief)</label>
+            <textarea rows={5} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+            <div className="modal-actions">
+              <button className="act-btn" onClick={() => setEditing(false)}>Cancel</button>
+              <button className="act-btn primary" onClick={saveEdit} disabled={busy || !form.title.trim()}>Save</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <h3>{form.title}</h3>
+            <p className="modal-note">{form.note || "No description yet."}</p>
+            <div className="modal-status">Status: {task.status}</div>
+            {task.rework_history?.length > 0 && (
+              <div className="modal-rework">
+                <span className="modal-rework-flag">⚑ Sent back with notes</span>
+                <ul>{task.rework_history.map((h, i) => <li key={i}>{h.note}</li>)}</ul>
+              </div>
+            )}
+            {confirmDelete ? (
+              <div className="confirm-box">
+                <p><strong>Delete this task?</strong> It is removed from the dashboard entirely. This cannot be undone here.</p>
+                <div className="modal-actions">
+                  <button className="act-btn" onClick={() => setConfirmDelete(false)}>Cancel</button>
+                  <button className="act-btn danger" disabled={busy} onClick={doDelete}>Delete</button>
+                </div>
+              </div>
+            ) : (
+              <div className="modal-actions">
+                {task.status === "proposed" && (
+                  <button className="act-btn primary" onClick={() => move("queued")}>Queue</button>
+                )}
+                {task.status === "queued" && (
+                  <button className="act-btn" onClick={() => move("proposed")}>Move to Proposed</button>
+                )}
+                <button className="act-btn" onClick={() => setEditing(true)}>Edit</button>
+                <button className="act-btn danger" onClick={() => setConfirmDelete(true)}>Delete</button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// New-task / new-direction authoring. Local draft state, same reasoning as TaskModal.
+function AuthorModal({ mode, dirs, defaultDirection, onClose, onChanged }) {
+  const [form, setForm] = useState({ direction: defaultDirection, title: "", note: "", name: "", summary: "" });
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      if (mode === "task") {
+        if (!form.direction || !form.title.trim()) return;
+        await createTask(form.direction, form.title.trim(), form.note.trim(), "queued");
+      } else {
+        if (!form.name.trim()) return;
+        await createDirection(form.name.trim(), form.summary.trim());
+      }
+      onChanged();
+      onClose();
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose} aria-label="close">×</button>
+        {mode === "task" ? (
+          <>
+            <h3>New task</h3>
+            <div className="author-form">
+              <label>Direction</label>
+              <select value={form.direction} onChange={(e) => setForm({ ...form, direction: e.target.value })}>
+                {dirs.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+              <label>Title</label>
+              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="What the task should accomplish" />
+              <label>Note (seed for the worker brief)</label>
+              <textarea rows={5} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="A sentence or two; the orchestrator expands this into a full brief." />
+              <div className="modal-actions">
+                <button className="act-btn" onClick={onClose}>Cancel</button>
+                <button className="act-btn primary" onClick={submit} disabled={busy || !form.direction || !form.title.trim()}>Add to Queued</button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <h3>New direction</h3>
+            <div className="author-form">
+              <label>Name</label>
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Material variants" />
+              <label>Summary</label>
+              <textarea rows={4} value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} placeholder="The organizing question for this research axis." />
+              <div className="modal-actions">
+                <button className="act-btn" onClick={onClose}>Cancel</button>
+                <button className="act-btn primary" onClick={submit} disabled={busy || !form.name.trim()}>Create</button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function OverviewView({ overview, onOpenTask, onChange, focus, onFocusHandled }) {
   const [filter, setFilter] = useState("all");
   const [showDone, setShowDone] = useState(false);
   const [modal, setModal] = useState(null);
   const [drag, setDrag] = useState(null);
   const [over, setOver] = useState(null);
   const [author, setAuthor] = useState(null); // { mode: "task" | "direction" }
-  const [editing, setEditing] = useState(false); // editing the open task modal
-  const [form, setForm] = useState({});
-  const [busy, setBusy] = useState(false);
+
+  const dirs = overview?.directions || [];
+
+  // Follow-up navigation from a task view: focus a proposal on the board (set its direction filter and
+  // open its modal). Runs land in the task view instead (handled up in App), so here focus is a proposal.
+  useEffect(() => {
+    if (!focus || !dirs.length) return;
+    const d = dirs.find((x) => x.id === focus.direction);
+    const t = d?.tasks.find((x) => x.id === focus.id);
+    if (t) {
+      setFilter(focus.direction);
+      setModal({ ...t, direction: d.id, directionName: d.name });
+    }
+    onFocusHandled && onFocusHandled();
+  }, [focus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!overview) return <div className="muted pad">Loading…</div>;
-  const dirs = overview.directions || [];
 
   const tasks = dirs
     .filter((d) => filter === "all" || d.id === filter)
@@ -44,50 +196,7 @@ export default function OverviewView({ overview, onOpenTask, onChange }) {
     setOver(null);
   };
 
-  // Tap-friendly path (drag-and-drop does not work on touch / iPad): move via the modal.
-  const move = (t, status) => {
-    setTaskStatus(t.direction, t.id, status).then(refresh);
-    setModal(null);
-  };
-
-  const openAuthor = (mode) => {
-    const dir = filter !== "all" ? filter : dirs[0]?.id || "";
-    setForm({ direction: dir, title: "", note: "", name: "", summary: "" });
-    setAuthor({ mode });
-  };
-
-  const submitAuthor = async () => {
-    setBusy(true);
-    try {
-      if (author.mode === "task") {
-        if (!form.direction || !form.title.trim()) return;
-        await createTask(form.direction, form.title.trim(), form.note.trim(), "queued");
-      } else {
-        if (!form.name.trim()) return;
-        await createDirection(form.name.trim(), form.summary.trim());
-      }
-      setAuthor(null);
-      refresh();
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const startEdit = (t) => {
-    setForm({ title: t.title, note: t.note || "" });
-    setEditing(true);
-  };
-  const saveEdit = async () => {
-    setBusy(true);
-    try {
-      await editTask(modal.direction, modal.id, form.title.trim(), form.note);
-      setEditing(false);
-      setModal({ ...modal, title: form.title.trim(), note: form.note });
-      refresh();
-    } finally {
-      setBusy(false);
-    }
-  };
+  const openAuthor = (mode) => setAuthor({ mode, defaultDirection: filter !== "all" ? filter : dirs[0]?.id || "" });
 
   return (
     <div className="overview">
@@ -123,7 +232,10 @@ export default function OverviewView({ overview, onOpenTask, onChange }) {
                 onClick={() => openCard(t)}
               >
                 <div className="task-card-title">{t.title}</div>
-                <div className="task-card-dir">{t.directionName}</div>
+                <div className="task-card-dir">
+                  {t.directionName}
+                  {t.rework_history?.length > 0 && <span className="card-flag" title="sent back with notes">⚑</span>}
+                </div>
                 <div className="task-card-open">{t.has_artifact ? "view result →" : "details →"}</div>
               </button>
             ))}
@@ -150,80 +262,21 @@ export default function OverviewView({ overview, onOpenTask, onChange }) {
       </div>
 
       {modal && (
-        <div className="modal-backdrop" onClick={() => { setModal(null); setEditing(false); }}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => { setModal(null); setEditing(false); }} aria-label="close">×</button>
-            <div className="modal-dir">{modal.directionName}</div>
-            {editing ? (
-              <div className="author-form">
-                <label>Title</label>
-                <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-                <label>Note (the seed for the worker brief)</label>
-                <textarea rows={5} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
-                <div className="modal-actions">
-                  <button className="act-btn" onClick={() => setEditing(false)}>Cancel</button>
-                  <button className="act-btn primary" onClick={saveEdit} disabled={busy || !form.title.trim()}>Save</button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <h3>{modal.title}</h3>
-                <p className="modal-note">{modal.note || "No description yet."}</p>
-                <div className="modal-status">Status: {modal.status}</div>
-                <div className="modal-actions">
-                  {modal.status === "proposed" && (
-                    <button className="act-btn primary" onClick={() => move(modal, "queued")}>Queue</button>
-                  )}
-                  {modal.status === "queued" && (
-                    <button className="act-btn" onClick={() => move(modal, "proposed")}>Move to Proposed</button>
-                  )}
-                  <button className="act-btn" onClick={() => startEdit(modal)}>Edit</button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+        <TaskModal
+          task={modal}
+          onClose={() => setModal(null)}
+          onChanged={refresh}
+        />
       )}
 
       {author && (
-        <div className="modal-backdrop" onClick={() => setAuthor(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setAuthor(null)} aria-label="close">×</button>
-            {author.mode === "task" ? (
-              <>
-                <h3>New task</h3>
-                <div className="author-form">
-                  <label>Direction</label>
-                  <select value={form.direction} onChange={(e) => setForm({ ...form, direction: e.target.value })}>
-                    {dirs.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                  </select>
-                  <label>Title</label>
-                  <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="What the task should accomplish" />
-                  <label>Note (seed for the worker brief)</label>
-                  <textarea rows={5} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="A sentence or two; the orchestrator expands this into a full brief." />
-                  <div className="modal-actions">
-                    <button className="act-btn" onClick={() => setAuthor(null)}>Cancel</button>
-                    <button className="act-btn primary" onClick={submitAuthor} disabled={busy || !form.direction || !form.title.trim()}>Add to Queued</button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <h3>New direction</h3>
-                <div className="author-form">
-                  <label>Name</label>
-                  <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Material variants" />
-                  <label>Summary</label>
-                  <textarea rows={4} value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} placeholder="The organizing question for this research axis." />
-                  <div className="modal-actions">
-                    <button className="act-btn" onClick={() => setAuthor(null)}>Cancel</button>
-                    <button className="act-btn primary" onClick={submitAuthor} disabled={busy || !form.name.trim()}>Create</button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+        <AuthorModal
+          mode={author.mode}
+          dirs={dirs}
+          defaultDirection={author.defaultDirection}
+          onClose={() => setAuthor(null)}
+          onChanged={refresh}
+        />
       )}
     </div>
   );

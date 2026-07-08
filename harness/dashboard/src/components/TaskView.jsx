@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { fetchTask, fetchJSON, fetchText, fetchTraining, setTaskStatus } from "../api.js";
+import { useEffect, useState } from "react";
+import { fetchTask, fetchJSON, fetchText, fetchTraining, setTaskStatus, deleteTask, proposeFollowUp } from "../api.js";
 import LossChart from "./LossChart.jsx";
 import MarkdownReport from "./MarkdownReport.jsx";
+import VideoPlayer from "./VideoPlayer.jsx";
 
 // A loss plot whose series is fetched from a referenced metrics.json.
 function LossResult({ series, log }) {
@@ -16,54 +17,11 @@ function LossResult({ series, log }) {
   return <LossChart series={data} log={log !== false} />;
 }
 
-// Clean autoplay loop with on-demand controls. Native `controls` on iOS keeps a big overlay up over an
-// autoplaying video until tapped, which is obstructive when flicking through tasks. Instead the video
-// plays clean and a minimal control bar (play/pause + scrub) appears on hover (desktop) or tap (touch).
-function VideoResult({ src }) {
-  const ref = useRef(null);
-  const [playing, setPlaying] = useState(true);
-  const [cur, setCur] = useState(0);
-  const [dur, setDur] = useState(0);
-  const [show, setShow] = useState(false);
-  const toggle = () => {
-    const v = ref.current;
-    if (v) (v.paused ? v.play() : v.pause());
-  };
-  const fullscreen = () => {
-    const v = ref.current;
-    if (!v) return;
-    if (v.requestFullscreen) v.requestFullscreen();
-    else if (v.webkitEnterFullscreen) v.webkitEnterFullscreen(); // iOS Safari (native fullscreen player)
-  };
-  return (
-    <div className="vid" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)} onClick={() => setShow((s) => !s)}>
-      <video
-        ref={ref}
-        className="task-video"
-        src={src}
-        autoPlay loop muted playsInline preload="auto"
-        onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
-        onTimeUpdate={(e) => setCur(e.currentTarget.currentTime)}
-        onLoadedMetadata={(e) => setDur(e.currentTarget.duration || 0)}
-      />
-      <div className={`vid-controls ${show ? "show" : ""}`} onClick={(e) => e.stopPropagation()}>
-        <button className="vid-btn" onClick={toggle} aria-label={playing ? "pause" : "play"}>{playing ? "❚❚" : "▶"}</button>
-        <input
-          className="vid-seek" type="range" min="0" max={dur || 0} step="0.01" value={cur}
-          onChange={(e) => { if (ref.current) ref.current.currentTime = parseFloat(e.target.value); }}
-        />
-        <button className="vid-btn" onClick={fullscreen} aria-label="fullscreen">⛶</button>
-      </div>
-    </div>
-  );
-}
-
 // One typed result. Anything absent or unknown renders nothing (no placeholders cluttering the view).
 function Result({ r }) {
   let body = null;
   if (r.type === "video" && r.src) {
-    body = <VideoResult src={r.src} />;
+    body = <VideoPlayer src={r.src} />;
   } else if (r.type === "image" && r.src) {
     body = <img className="task-image" src={r.src} alt={r.caption || ""} />;
   } else if (r.type === "plot" && r.series) {
@@ -89,17 +47,33 @@ function Result({ r }) {
   );
 }
 
-export default function TaskView({ detail, reloadToken, onChange }) {
+// A clickable reference to another task (a follow-up parent/child). Navigates to the run if it has
+// one, otherwise jumps to the board where the proposal lives.
+function TaskRef({ r, onOpenRef }) {
+  return (
+    <button className="task-ref" onClick={() => onOpenRef && onOpenRef(r.direction, r.id, r.has_artifact)}>
+      <span className="task-ref-title">{r.title}</span>
+      <span className={`status status-${r.status === "done" ? "done" : "active"} task-ref-status`}>{r.status}</span>
+    </button>
+  );
+}
+
+export default function TaskView({ detail, reloadToken, onChange, onDeleted, onOpenRef }) {
   const [task, setTask] = useState(null);
   const [refs, setRefs] = useState([]);
-  const [reopening, setReopening] = useState(false);
-  const [reopenNote, setReopenNote] = useState("");
+  const [sendBack, setSendBack] = useState(false);   // reject / reopen -> back to queue with a note
+  const [sendNote, setSendNote] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [proposing, setProposing] = useState(false);
+  const [followForm, setFollowForm] = useState({ title: "", note: "" });
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!detail) { setTask(null); setRefs([]); return; }
     let alive = true;
     setTask(null);
     setRefs([]);
+    setSendBack(false); setSendNote(""); setConfirmDelete(false); setProposing(false);
     fetchTask(detail)
       .then((t) => {
         if (!alive) return;
@@ -128,53 +102,145 @@ export default function TaskView({ detail, reloadToken, onChange }) {
   const results = (task.results || []).filter(Boolean);
   const media = results.filter((r) => r.type !== "table"); // video/image/plot -> masonry
   const tableResults = results.filter((r) => r.type === "table"); // full-width, below
+  const isDone = task.status === "done";
   const act = (status, note) => setTaskStatus(task.direction, task.task_id, status, note).then(() => onChange && onChange());
+
+  const doDelete = async () => {
+    setBusy(true);
+    try {
+      const r = await deleteTask(task.direction, task.task_id);
+      if (r && r.ok) { onDeleted && onDeleted(); onChange && onChange(); }
+    } finally {
+      setBusy(false);
+      setConfirmDelete(false);
+    }
+  };
+
+  const submitFollowUp = async () => {
+    if (!followForm.title.trim()) return;
+    setBusy(true);
+    try {
+      const r = await proposeFollowUp(task.direction, task.task_id, followForm.title.trim(), followForm.note.trim());
+      if (r && r.ok) {
+        setProposing(false);
+        setFollowForm({ title: "", note: "" });
+        onChange && onChange(); // refresh so the new follow-up shows up under "Follow-ups"
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="taskview">
       <div className="task-head">
         <h1>{task.title}</h1>
-        <span className={`status status-${task.status === "done" ? "done" : "active"}`}>
-          {task.status === "done" ? "Done" : "Active"}
-        </span>
+        <span className={`status status-${isDone ? "done" : "active"}`}>{isDone ? "Done" : "Active"}</span>
         <div className="task-actions">
-          {task.status === "done" ? (
-            <button className="act-btn" onClick={() => setReopening(true)}>Reopen</button>
+          {isDone ? (
+            <button className="act-btn" onClick={() => setSendBack(true)}>Reopen</button>
           ) : (
-            <button className="act-btn primary" onClick={() => act("done")}>Mark Done</button>
+            <>
+              <button className="act-btn primary" onClick={() => act("done")}>Mark Done</button>
+              <button className="act-btn" onClick={() => setSendBack(true)}>Send back to queue</button>
+            </>
           )}
+          <button className="act-btn" onClick={() => setProposing((p) => !p)}>Propose follow-up</button>
+          <button className="act-btn danger" onClick={() => setConfirmDelete(true)}>Delete</button>
         </div>
       </div>
 
-      {reopening && (
+      {confirmDelete && (
+        <div className="confirm-box">
+          <p><strong>Delete this task?</strong> It is removed from the board and the Tasks list entirely.
+          The run files stay on disk (recoverable from git), but nothing links to them anymore.</p>
+          <div className="reopen-actions">
+            <button className="act-btn" onClick={() => setConfirmDelete(false)}>Cancel</button>
+            <button className="act-btn danger" disabled={busy} onClick={doDelete}>Delete</button>
+          </div>
+        </div>
+      )}
+
+      {sendBack && (
         <div className="reopen-box">
           <p>
-            Reopening re-queues a task that has <em>already run</em>. Say what should change or be
-            extended, otherwise a worker has no way to know what to do differently.
+            This sends the task back to the <strong>Queue</strong> with a flagged note so a worker knows
+            what to change or extend on the next run. {isDone ? "It has already run" : "It is currently active"};
+            say what should be different, otherwise there is nothing to act on.
           </p>
           <textarea
             className="reopen-input"
-            value={reopenNote}
-            onChange={(e) => setReopenNote(e.target.value)}
+            value={sendNote}
+            onChange={(e) => setSendNote(e.target.value)}
             placeholder="What needs changing or extending?"
             rows={3}
           />
           <div className="reopen-actions">
-            <button className="act-btn" onClick={() => { setReopening(false); setReopenNote(""); }}>Cancel</button>
+            <button className="act-btn" onClick={() => { setSendBack(false); setSendNote(""); }}>Cancel</button>
             <button
               className="act-btn primary"
-              disabled={!reopenNote.trim()}
-              onClick={() => { act("queued", reopenNote.trim()); setReopening(false); setReopenNote(""); }}
+              disabled={!sendNote.trim()}
+              onClick={() => { act("queued", sendNote.trim()); setSendBack(false); setSendNote(""); }}
             >
-              Reopen with this note
+              Send back with this note
             </button>
           </div>
         </div>
       )}
 
+      {proposing && (
+        <div className="reopen-box">
+          <p>
+            Spin this result into a <strong>proposed follow-up</strong> in the same direction — an
+            extension or the next question it raises. The new proposal links back here, and this task
+            links out to it.
+          </p>
+          <div className="author-form">
+            <label>Follow-up title</label>
+            <input
+              value={followForm.title}
+              onChange={(e) => setFollowForm({ ...followForm, title: e.target.value })}
+              placeholder="What the follow-up should accomplish"
+            />
+            <label>Note (seed for the worker brief)</label>
+            <textarea
+              rows={4}
+              value={followForm.note}
+              onChange={(e) => setFollowForm({ ...followForm, note: e.target.value })}
+              placeholder="What to build on, and what this task left open."
+            />
+            <div className="reopen-actions">
+              <button className="act-btn" onClick={() => setProposing(false)}>Cancel</button>
+              <button className="act-btn primary" disabled={busy || !followForm.title.trim()} onClick={submitFollowUp}>
+                Create proposal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(task.follow_up_of || (task.follow_ups && task.follow_ups.length > 0)) && (
+        <div className="followups">
+          {task.follow_up_of && (
+            <div className="followups-row">
+              <span className="followups-label">Follows up on</span>
+              <TaskRef r={task.follow_up_of} onOpenRef={onOpenRef} />
+            </div>
+          )}
+          {task.follow_ups && task.follow_ups.length > 0 && (
+            <div className="followups-row">
+              <span className="followups-label">Follow-ups</span>
+              <div className="followups-list">
+                {task.follow_ups.map((r) => <TaskRef key={r.id} r={r} onOpenRef={onOpenRef} />)}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {task.rework_history?.length > 0 && (
         <div className="rework-banner">
-          <strong>This task already ran and was reopened.</strong> The result below reflects the last run.
+          <strong>This task was sent back to the queue.</strong> The result below reflects the last run.
           Requested changes:
           <ul>
             {task.rework_history.map((h, i) => <li key={i}>{h.note}</li>)}

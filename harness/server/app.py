@@ -253,6 +253,9 @@ def overview() -> dict:
                 "id": tid, "title": t.get("title", tid), "status": t.get("status", "proposed"),
                 "note": t.get("note", ""),
                 "has_artifact": has, "detail": f"/api/task/{did}/{tid}" if has else None,
+                "rework_history": t.get("rework_history", []),
+                "follow_up_of": t.get("follow_up_of"),
+                "follow_ups": t.get("follow_ups", []),
             })
         directions.append({
             "id": did, "name": d.get("name", did), "status": d.get("status", "proposed"),
@@ -264,19 +267,32 @@ def overview() -> dict:
 
 
 def task_detail(direction: str, task: str) -> dict | None:
-    info = _v2_tasks().get((direction, task))
+    arts = _v2_tasks()
+    info = arts.get((direction, task))
     if not info:
         return None
     m = rewrite_task(json.loads(resolve(info["root"], info["rel"]).read_text("utf-8")), info["root"])
-    # The direction file is authoritative for board status (proposed/queued/active/done).
+    # The direction file is authoritative for board status and the task graph (rework, follow-ups).
     f = MAIN_ROOT / "coordination" / "directions" / f"{direction}.json"
     if f.is_file():
         try:
-            for t in json.loads(f.read_text("utf-8")).get("tasks", []):
-                if t.get("id") == task:
-                    m["status"] = t.get("status", m.get("status"))
-                    m["rework_history"] = t.get("rework_history", [])
-                    break
+            dtasks = json.loads(f.read_text("utf-8")).get("tasks", [])
+            by_id = {t.get("id"): t for t in dtasks}
+
+            def ref(tid):
+                tt = by_id.get(tid)
+                if not tt:
+                    return None
+                return {"direction": direction, "id": tid, "title": tt.get("title", tid),
+                        "status": tt.get("status", "proposed"),
+                        "has_artifact": (direction, tid) in arts}
+
+            this = by_id.get(task, {})
+            m["status"] = this.get("status", m.get("status"))
+            m["rework_history"] = this.get("rework_history", [])
+            parent = this.get("follow_up_of")
+            m["follow_up_of"] = ref(parent) if parent else None
+            m["follow_ups"] = [r for r in (ref(x) for x in this.get("follow_ups", [])) if r]
         except Exception:
             pass
     return m
@@ -395,6 +411,58 @@ def create_direction(name: str, summary: str = "",
     f.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     _git_commit(f, f"dashboard: add direction {did}")
     return {"ok": True, "id": did}
+
+
+def delete_task(direction: str, task: str) -> dict:
+    """Remove a task from its direction file entirely (the dashboard Delete). Any run artifacts on
+    disk are left in place — git history keeps them recoverable and they no longer surface, since the
+    board is driven by the direction file, not by orphaned runs."""
+    f = MAIN_ROOT / "coordination" / "directions" / f"{direction}.json"
+    if not f.is_file():
+        return {"ok": False, "error": "no such direction"}
+    data = json.loads(f.read_text("utf-8"))
+    tasks = data.get("tasks", [])
+    kept = [t for t in tasks if t.get("id") != task]
+    if len(kept) == len(tasks):
+        return {"ok": False, "error": "no such task"}
+    # Sever any follow-up links that referenced the deleted task, so no dangling refs remain.
+    for t in kept:
+        if t.get("follow_up_of") == task:
+            t.pop("follow_up_of", None)
+        if task in (t.get("follow_ups") or []):
+            t["follow_ups"] = [x for x in t["follow_ups"] if x != task]
+    data["tasks"] = kept
+    f.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    _git_commit(f, f"dashboard: delete task {direction}/{task}")
+    return {"ok": True}
+
+
+def propose_follow_up(direction: str, parent: str, title: str, note: str = "") -> dict:
+    """Create a proposed follow-up to an existing task, linked both ways: the parent gains the new id
+    in `follow_ups`, the child records `follow_up_of` = parent. Lives in the parent's direction."""
+    f = MAIN_ROOT / "coordination" / "directions" / f"{direction}.json"
+    if not f.is_file():
+        return {"ok": False, "error": "no such direction"}
+    data = json.loads(f.read_text("utf-8"))
+    tasks = data.get("tasks", [])
+    if not any(t.get("id") == parent for t in tasks):
+        return {"ok": False, "error": "no such parent task"}
+    existing = {t.get("id") for t in tasks}
+    base = _slug(title)
+    tid, i = base, 2
+    while tid in existing:
+        tid, i = f"{base}-{i}", i + 1
+    tasks.append({"id": tid, "title": title, "status": "proposed",
+                  "note": note, "follow_up_of": parent})
+    for t in tasks:
+        if t.get("id") == parent:
+            fu = t.get("follow_ups") or []
+            fu.append(tid)
+            t["follow_ups"] = fu
+    data["tasks"] = tasks
+    f.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    _git_commit(f, f"dashboard: follow-up {direction}/{tid} of {parent}")
+    return {"ok": True, "id": tid}
 
 
 def _topic() -> str | None:
@@ -534,6 +602,20 @@ def _build_app():
             raise HTTPException(400, "name required")
         return create_direction(name, payload.get("summary", ""),
                                payload.get("id"), payload.get("status", "proposed"))
+
+    @app.post("/api/task-delete")
+    def api_task_delete(payload: dict):
+        d, t = payload.get("direction"), payload.get("task")
+        if not (d and t):
+            raise HTTPException(400, "direction, task required")
+        return delete_task(d, t)
+
+    @app.post("/api/task-follow-up")
+    def api_task_follow_up(payload: dict):
+        d, p, title = payload.get("direction"), payload.get("parent"), payload.get("title")
+        if not (d and p and title):
+            raise HTTPException(400, "direction, parent, title required")
+        return propose_follow_up(d, p, title, payload.get("note", ""))
 
     @app.get("/api/notifications")
     def api_notifications():

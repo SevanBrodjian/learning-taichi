@@ -285,6 +285,59 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
 .btn.ghost { color: var(--muted); }
 .btn[disabled] { opacity: .5; cursor: not-allowed; }
 
-/* Media embedded in training pages (diagrams + video demos) */
-.markdown img, .markdown .md-video { max-width: 100%; height: auto; border-radius: 8px; display: block; margin: 14px 0; border: 1px solid var(--border); }
-.markdown .md-video { background: #000; }
+/* Media embedded in training pages (diagrams + video demos). Videos now use the shared VideoPlayer,
+   so the .vid wrapper carries the frame and .md-video fills it. */
+.markdown img { max-width: 100%; height: auto; border-radius: 8px; display: block; margin: 14px 0; border: 1px solid var(--border); }
+.markdown .vid { margin: 14px 0; border: 1px solid var(--border); border-radius: 8px; max-width: 100%; }
+.md-video { width: 100%; display: block; background: #000; }
+/* Visible caption for embedded figures/videos (alt text). The figure owns the vertical margin. */
+.markdown .md-figure { display: block; margin: 18px 0; }
+.markdown .md-figure img, .markdown .md-figure .vid { margin: 0; }
+.markdown .md-figcaption { display: block; font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 8px; max-width: 80ch; }
+
+/* Destructive action button + confirmation box (delete / send-back) */
+.act-btn.danger { color: var(--danger); border-color: #4a2320; }
+.act-btn.danger:hover { background: var(--danger); border-color: var(--danger); color: var(--bg); }
+.confirm-box { background: #2a1414; border: 1px solid #4a2320; border-radius: 5px; padding: 14px 16px; margin: 0 0 22px; max-width: 80ch; }
+.confirm-box p { margin: 0 0 10px; font-size: 13px; line-height: 1.5; color: var(--text); }
+
+/* Nav badges: New training sections / unread notifications */
+.tab-badge { margin-left: 8px; font-size: 10px; font-weight: 700; font-family: var(--mono);
+  color: var(--bg); background: var(--accent-2); border-radius: 999px; padding: 1px 6px; vertical-align: middle; }
+.section-tab.active .tab-badge { background: var(--bg); color: var(--accent); }
+
+/* Sent-back flag on board cards + in the task modal */
+.card-flag { margin-left: 6px; color: var(--danger); }
+.modal-rework { margin: 12px 0 4px; background: #2a2114; border: 1px solid #4a3a1a; border-radius: 5px; padding: 10px 12px; }
+.modal-rework-flag { font-size: 12px; font-weight: 600; color: #e0b866; font-family: var(--mono); }
+.modal-rework ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+.modal-rework li { margin: 3px 0; }
+
+/* Follow-up links between a task and its extensions */
+.followups { display: flex; flex-direction: column; gap: 8px; margin: 0 0 22px; max-width: 92ch; }
+.followups-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.followups-label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted);
+  font-family: var(--mono); flex: none; min-width: 96px; }
+.followups-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.task-ref { display: inline-flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--border);
+  border-radius: 4px; padding: 6px 10px; color: var(--text); cursor: pointer; text-align: left; font-size: 13px; }
+.task-ref:hover { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.task-ref-status { text-transform: capitalize; }
+
+/* ── Phone layout: dropdown menu instead of a sidebar (below 600px; iPad/laptop untouched) ── */
+.app.phone { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+.mobile-bar { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+  background: var(--panel-2); border-bottom: 1px solid var(--border); }
+.mobile-bar .brand { margin: 0; }
+.mobile-select { width: 100%; background: var(--panel); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 10px 12px; font-size: 15px; font-family: var(--sans); }
+.app.phone .content { padding: 16px 16px 64px; padding-bottom: calc(48px + env(safe-area-inset-bottom)); }
+.app.phone .board3 { grid-template-columns: 1fr; }
+.app.phone .doc-layout { grid-template-columns: 1fr; }
+.app.phone .toc { position: static; }
+
+/* ── Large monitors: scale everything up a touch (external displays, not laptops) ── */
+@media (min-width: 1920px) {
+  .app:not(.phone) { grid-template-columns: 336px 1fr; }
+  .app:not(.phone) .sidebar, .app:not(.phone) .content { zoom: 1.15; }
+}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchDecisions, fetchNotifications } from "../api.js";
+import { fetchDecisions } from "../api.js";
 import DocView from "./DocView.jsx";
 
 // The I/O channel. Two clean parts: Decisions (things that need you, from coordination/decisions/) and
@@ -18,17 +18,17 @@ function timeAgo(sec) {
   return `${Math.floor(d / 86400)}d ago`;
 }
 
-export default function InboxView() {
+// `notifData` is the ntfy feed lifted into App (so the nav badge and this view share one fetch).
+export default function InboxView({ notifData }) {
   const [decisions, setDecisions] = useState([]);
   const [activeUrl, setActiveUrl] = useState(undefined);
-  const [notifs, setNotifs] = useState(null);
   const [dismissed, setDismissed] = useState(loadDismissed);
+  const notifs = notifData;
 
   useEffect(() => {
     fetchDecisions()
       .then((d) => { const it = d.decisions || []; setDecisions(it); setActiveUrl(it[0]?.url ?? null); })
       .catch(() => { setDecisions([]); setActiveUrl(null); });
-    fetchNotifications().then(setNotifs).catch(() => setNotifs({ notifications: [] }));
   }, []);
 
   const dismiss = (id) => {

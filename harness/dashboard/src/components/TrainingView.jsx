@@ -12,8 +12,9 @@ const loadRead = () => {
 };
 
 // The standalone textbook: a left TOC (prerequisites split from core) and the selected section.
-// Cross-references (wiki-links) navigate within this view.
-export default function TrainingView() {
+// Cross-references (wiki-links) navigate within this view. `onRead` lets the parent recompute the
+// nav's "New" badge the moment a section is opened (its read state changes here).
+export default function TrainingView({ onRead }) {
   const [toc, setToc] = useState(null);
   const [err, setErr] = useState(null);
   const [activeId, setActiveId] = useState(() => localStorage.getItem(ACTIVE_KEY) || null);
@@ -43,6 +44,9 @@ export default function TrainingView() {
       });
     }
   }, [active?.id, active?.mtime]);
+
+  // Tell the parent whenever read state changes, so the nav's "New" badge recomputes immediately.
+  useEffect(() => { onRead && onRead(); }, [readMap]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!active) {

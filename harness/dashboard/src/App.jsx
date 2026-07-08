@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchOverview } from "./api.js";
+import { fetchOverview, fetchTraining, fetchNotifications } from "./api.js";
 import OverviewView from "./components/OverviewView.jsx";
 import TaskView from "./components/TaskView.jsx";
 import TrainingView from "./components/TrainingView.jsx";
@@ -17,9 +17,37 @@ const SECTIONS = [
 // The iPad PWA reloads from scratch when resumed after even a few seconds in the background, so we
 // persist the current place (section, filter, open task) and restore it on load (#12).
 const PLACE_KEY = "lt_place";
+const READ_KEY = "lt_training_read";     // written by TrainingView; read here for the "New" badge
+const SEEN_KEY = "lt_notifs_seen";       // notification ids whose badge has been cleared (Inbox opened)
 const loadPlace = () => {
   try { return JSON.parse(localStorage.getItem(PLACE_KEY) || "{}"); } catch { return {}; }
 };
+const loadReadMap = () => {
+  try { return JSON.parse(localStorage.getItem(READ_KEY) || "{}"); } catch { return {}; }
+};
+const loadSeen = () => {
+  try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || "[]")); } catch { return new Set(); }
+};
+
+// A field is focused when the user is typing/selecting; we pause background refetches then so a
+// mid-keystroke re-render can't stutter the input (the reported typing lag).
+const isTyping = () => {
+  const el = document.activeElement;
+  return !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable);
+};
+
+// Phone layout kicks in only below 600px — iPad (>=768) and laptops are untouched.
+function useMediaQuery(query) {
+  const [match, setMatch] = useState(() => (typeof window !== "undefined" ? window.matchMedia(query).matches : false));
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const on = () => setMatch(mq.matches);
+    on();
+    mq.addEventListener?.("change", on);
+    return () => mq.removeEventListener?.("change", on);
+  }, [query]);
+  return match;
+}
 
 export default function App() {
   const [place] = useState(loadPlace); // snapshot once at mount
@@ -29,6 +57,16 @@ export default function App() {
   const [selected, setSelected] = useState(null);
   const [taskFilter, setTaskFilter] = useState(place.taskFilter || "all");
   const [reloadToken, setReloadToken] = useState(0); // bump to force task-detail refetch
+  const [overviewFocus, setOverviewFocus] = useState(null); // follow-up nav target on the board
+
+  // Badge data: the training TOC (for New sections) and the ntfy feed (for unread), lifted here so the
+  // counts can sit on the nav. InboxView reuses the same feed instead of re-fetching.
+  const [trainingToc, setTrainingToc] = useState(null);
+  const [notifData, setNotifData] = useState(null);
+  const [seenNotifs, setSeenNotifs] = useState(loadSeen);
+  const [badgeToken, setBadgeToken] = useState(0); // bumped when a training section is read
+
+  const isPhone = useMediaQuery("(max-width: 600px)");
 
   // Persist place whenever it changes.
   useEffect(() => {
@@ -46,9 +84,20 @@ export default function App() {
   const reloadAll = () => { reloadOverview(); setReloadToken((k) => k + 1); };
   useEffect(() => {
     reloadOverview();
-    const id = setInterval(() => { if (!document.hidden) reloadOverview(); }, 4000);
+    const id = setInterval(() => { if (!document.hidden && !isTyping()) reloadOverview(); }, 4000);
     return () => clearInterval(id);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Badge feeds, refreshed on a slower cadence than the board.
+  useEffect(() => {
+    const loadBadges = () => {
+      fetchTraining().then(setTrainingToc).catch(() => {});
+      fetchNotifications().then(setNotifData).catch(() => {});
+    };
+    loadBadges();
+    const id = setInterval(() => { if (!document.hidden) loadBadges(); }, 20000);
+    return () => clearInterval(id);
+  }, []);
 
   const realTasks = useMemo(() => {
     const dirs = overview?.directions || [];
@@ -70,6 +119,18 @@ export default function App() {
     setSection("tasks");
   };
 
+  // Navigate a follow-up link: to the run if it has one, otherwise to its proposal on the board.
+  const openRef = (direction, id, hasArtifact) => {
+    if (hasArtifact) {
+      const t = realTasks.find((x) => x.direction === direction && x.id === id);
+      if (t) { setSelected(t); setSection("tasks"); return; }
+    }
+    setOverviewFocus({ direction, id });
+    setSection("overview");
+  };
+
+  const onTaskDeleted = () => { setSelected(null); setSection("overview"); };
+
   const groups = useMemo(() => {
     const m = new Map();
     for (const t of realTasks) {
@@ -81,6 +142,88 @@ export default function App() {
 
   const visibleGroups = taskFilter === "all" ? groups : groups.filter((g) => g.id === taskFilter);
 
+  // Badge counts. New training = sections never opened or edited since last open (per this device).
+  const trainingSections = useMemo(() => (trainingToc?.groups || []).flatMap((g) => g.sections), [trainingToc]);
+  const newTrainingCount = useMemo(() => {
+    const rm = loadReadMap();
+    return trainingSections.filter((s) => s.mtime && (!(s.id in rm) || s.mtime > rm[s.id])).length;
+  }, [trainingSections, badgeToken, section]);
+  const notifList = notifData?.notifications || [];
+  const unreadNotifCount = useMemo(
+    () => notifList.filter((n) => !seenNotifs.has(n.id)).length,
+    [notifList, seenNotifs]
+  );
+  const sectionBadge = (id) => (id === "training" ? newTrainingCount : id === "inbox" ? unreadNotifCount : 0);
+
+  // Opening the Inbox clears the unread badge (all current notifications become "seen").
+  useEffect(() => {
+    if (section !== "inbox" || !notifList.length) return;
+    setSeenNotifs((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const n of notifList) if (!next.has(n.id)) { next.add(n.id); changed = true; }
+      if (changed) localStorage.setItem(SEEN_KEY, JSON.stringify([...next]));
+      return changed ? next : prev;
+    });
+  }, [section, notifData]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const mainContent = (
+    <main className="content">
+      {section === "overview" && (
+        <OverviewView
+          overview={overview}
+          onOpenTask={openTask}
+          onChange={reloadAll}
+          focus={overviewFocus}
+          onFocusHandled={() => setOverviewFocus(null)}
+        />
+      )}
+      {section === "tasks" && (
+        <TaskView
+          detail={selected?.detail}
+          reloadToken={reloadToken}
+          onChange={reloadAll}
+          onDeleted={onTaskDeleted}
+          onOpenRef={openRef}
+        />
+      )}
+      {section === "training" && <TrainingView onRead={() => setBadgeToken((t) => t + 1)} />}
+      {section === "reports" && <ReportsView />}
+      {section === "inbox" && <InboxView notifData={notifData} />}
+    </main>
+  );
+
+  if (isPhone) {
+    return (
+      <div className="app phone">
+        <header className="mobile-bar">
+          <div className="brand"><span className="dot" /> learning-taichi</div>
+          <select className="mobile-select" value={section} onChange={(e) => setSection(e.target.value)}>
+            {SECTIONS.map((s) => {
+              const b = sectionBadge(s.id);
+              return <option key={s.id} value={s.id}>{s.label}{b > 0 ? ` (${b})` : ""}</option>;
+            })}
+          </select>
+          {section === "tasks" && groups.length > 0 && (
+            <select
+              className="mobile-select"
+              value={selected?.key || ""}
+              onChange={(e) => { const t = realTasks.find((x) => x.key === e.target.value); if (t) setSelected(t); }}
+            >
+              {groups.map((g) => (
+                <optgroup key={g.id} label={g.name}>
+                  {g.tasks.map((t) => <option key={t.key} value={t.key}>{t.title}</option>)}
+                </optgroup>
+              ))}
+            </select>
+          )}
+          {error && <div className="error">{error}</div>}
+        </header>
+        {mainContent}
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <aside className="sidebar">
@@ -89,15 +232,19 @@ export default function App() {
         </div>
 
         <nav className="sections">
-          {SECTIONS.map((s) => (
-            <button
-              key={s.id}
-              className={`section-tab ${s.id === section ? "active" : ""}`}
-              onClick={() => setSection(s.id)}
-            >
-              {s.label}
-            </button>
-          ))}
+          {SECTIONS.map((s) => {
+            const b = sectionBadge(s.id);
+            return (
+              <button
+                key={s.id}
+                className={`section-tab ${s.id === section ? "active" : ""}`}
+                onClick={() => setSection(s.id)}
+              >
+                {s.label}
+                {b > 0 && <span className="tab-badge">{b}</span>}
+              </button>
+            );
+          })}
         </nav>
 
         {error && <div className="error">{error}</div>}
@@ -134,13 +281,7 @@ export default function App() {
         )}
       </aside>
 
-      <main className="content">
-        {section === "overview" && <OverviewView overview={overview} onOpenTask={openTask} onChange={reloadAll} />}
-        {section === "tasks" && <TaskView detail={selected?.detail} reloadToken={reloadToken} onChange={reloadAll} />}
-        {section === "training" && <TrainingView />}
-        {section === "reports" && <ReportsView />}
-        {section === "inbox" && <InboxView />}
-      </main>
+      {mainContent}
     </div>
   );
 }

@@ -40,7 +40,17 @@
       "title": "Train and Interpolate NNs to Mimic Viscous Liquids",
       "status": "done",
       "note": "Pick two or three viscosity levels. Run the forward simulations to get example runs. Then instantiate a neural network (of the same size) for each viscosity and replace the implementation of just the particle update step, or a portion of it, with this neural network. Evaluate if the NNs generalize to new starting configurations. Then, finally, see what happens when we interpolate the weights of these neural networks. Will we get liquids that have intermediate viscosity levels? Smoothly?",
-      "follow_up_of": "varying-liquid-viscosity"
+      "follow_up_of": "varying-liquid-viscosity",
+      "follow_ups": [
+        "train-material-replicating-nns-and-interpolate"
+      ]
+    },
+    {
+      "id": "train-material-replicating-nns-and-interpolate",
+      "title": "Train Material Replicating NNs and Interpolate",
+      "status": "proposed",
+      "note": "Good results with the viscous liquids. Now I\u2019d like to see the same thing again but this time train a NN to approximate each of the three materials between fluid, elastic solid, and snow, like we implemented in the \u201cMaterial Variants\u201d direction\u2019s tasks. After the NNs are able to replicate each of the three material types, once again see if they generalize to new conditions. Then, test the linear interpolating again and see what happens! This is a long and detailed task, so the agent should work carefully to ensure it is implemented well.",
+      "follow_up_of": "train-and-interpolate-nns-to-mimic-viscous-liquids"
     }
   ]
 }

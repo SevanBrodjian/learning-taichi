@@ -48,7 +48,7 @@
     {
       "id": "train-material-replicating-nns-and-interpolate",
       "title": "Train Material Replicating NNs and Interpolate",
-      "status": "queued",
+      "status": "done",
       "note": "Good results with the viscous liquids. Now I\u2019d like to see the same thing again but this time train a NN to approximate each of the three materials between fluid, elastic solid, and snow, like we implemented in the \u201cMaterial Variants\u201d direction\u2019s tasks. After the NNs are able to replicate each of the three material types, once again see if they generalize to new conditions. Then, test the linear interpolating again and see what happens! This is a long and detailed task, so the agent should work carefully to ensure it is implemented well.",
       "follow_up_of": "train-and-interpolate-nns-to-mimic-viscous-liquids",
       "rework_history": [

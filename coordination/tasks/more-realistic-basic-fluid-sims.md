@@ -7,6 +7,21 @@
 > starting conditions, different viscosities, even things like mixing liquids of different colors. Also,
 > make the animations much longer, these ones are WAY too short." Deliver breadth, duration, and color mixing.
 
+## UPDATE — build on the new GPU renderer; speed is no longer a constraint
+The first attempt used the CPU renderer `sim/fluid_render2.py` and took ~25 min for a partial set before it
+was interrupted. A **GPU renderer now exists — `sim/fluid_render_gpu.py`** (Taichi, 130-265x faster, visual
+parity with `fluid_render2.py`, same no-holes property; a scene renders in ~1-2 s). **Build on
+`sim/fluid_render_gpu.py`, not the CPU one.** Because rendering is now cheap, there is no excuse for short or
+few clips — deliver the **long, many, diverse** set requested, at good resolution and full length.
+- **Color mixing on the GPU renderer.** `fluid_render_gpu.py` composites a single water color. To show two
+  dyed liquids blending, add **per-particle color** to the GPU pipeline: give each particle an RGB dye
+  (advected with the particle, untouched by physics), atomic-scatter the per-channel color into GPU fields,
+  normalize by the (equally blurred) density into a smooth local hue, and drive the Beer-Lambert body tint by
+  that local color instead of the fixed water color. Put this in a fresh driver/module that **imports**
+  `fluid_render_gpu.py`; do not mutate it in place.
+- Everything else below still applies (long clips, varied starts, thin/thick viscosity, the color-mixing
+  scene, honest scope). Reuse the viscous term from `sim/fluid_viscosity.py`.
+
 ## Your role (paste verbatim into the spawn prompt)
 You are a **worker agent** for task `more-realistic-basic-fluid-sims`. You are **NOT the orchestrator**. Do
 not spawn further agents. Read this brief, do the task, write **all** results to disk under

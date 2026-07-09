@@ -3,5 +3,12 @@
   "name": "Realistic Rendering",
   "status": "proposed",
   "summary": "The purpose of this direction is to improve the visual quality of our outputs using high-quality renderers, and eventually differentiable rendering.",
-  "tasks": []
+  "tasks": [
+    {
+      "id": "non-differentiable-fluid-renderer",
+      "title": "Non-Differentiable Fluid Renderer",
+      "status": "queued",
+      "note": "Implement a non-differentiable renderer which will make our 2D simulation of a fluid look highly realistic. It doesn't need to be fast, it doesn't need to be particularly simple, the purpose of this is just to see how good of something you can make (visually). Under the hood use MPM fluid simulation, and show a few things happening like dropping a fluid ball, or a fluid tower collapse. It should look very realistic, like an actual real-life liquid. Enough to make someone double glance if it was real."
+    }
+  ]
 }

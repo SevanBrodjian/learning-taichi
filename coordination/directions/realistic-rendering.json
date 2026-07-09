@@ -26,7 +26,7 @@
     {
       "id": "gpu-accelerate-fluid-renderer",
       "title": "GPU-accelerate the fluid renderer",
-      "status": "active",
+      "status": "done",
       "note": "The screen-space fluid renderer (sim/fluid_render2.py) is pure numpy/scipy on the CPU and takes ~0.5-2 s per 1080^2 frame, so a multi-scene showcase took ~25 min while the 4090 sat idle. Port the renderer to the GPU with Taichi so it renders orders of magnitude faster (target: a few ms per frame, whole scenes in seconds) while preserving the visual quality (metaball surface, FILLED interior / no holes, depth color, refraction/Fresnel/specular, foam). Benchmark CPU vs GPU on a clean GPU. Becomes the renderer the showcase re-run uses.",
       "follow_up_of": "improve-basic-fluid-sim-realism"
     },

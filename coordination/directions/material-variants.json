@@ -60,7 +60,17 @@
           "time": 1783611564,
           "note": "These results are much better -- the a=0.00 and a=1.00 are actually correct now. Only change I'd like to see is that the snow behaves more like snow. Right now it's acting almost like an elastic solid with a little bit more give. Snow shouldn't be able to hold itself in a vertical column while jiggling around, for example. It should crumble."
         }
+      ],
+      "follow_ups": [
+        "one-nn-for-three-materials"
       ]
+    },
+    {
+      "id": "one-nn-for-three-materials",
+      "title": "One NN for Three Materials",
+      "status": "proposed",
+      "note": "Train one neural network to mimic all three materials. The control for which material gets simulated should be a small set of swappable parameters specific to each material. Then attempt the same linear interpolation but just interpolating the swapped parameters. The swappable parameters should be just two of them, no more. Visualize them as a square grid where you show each of those two variables on each axis and the resulting effects. It can be an interactive visualization. Make sure to work hard, this is a tough task. Make sure that at all the edges (parameters set equal to the trained set) the results follow the expected simulation exactly.",
+      "follow_up_of": "train-material-replicating-nns-and-interpolate"
     }
   ]
 }

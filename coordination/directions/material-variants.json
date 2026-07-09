@@ -48,13 +48,17 @@
     {
       "id": "train-material-replicating-nns-and-interpolate",
       "title": "Train Material Replicating NNs and Interpolate",
-      "status": "active",
+      "status": "queued",
       "note": "Good results with the viscous liquids. Now I\u2019d like to see the same thing again but this time train a NN to approximate each of the three materials between fluid, elastic solid, and snow, like we implemented in the \u201cMaterial Variants\u201d direction\u2019s tasks. After the NNs are able to replicate each of the three material types, once again see if they generalize to new conditions. Then, test the linear interpolating again and see what happens! This is a long and detailed task, so the agent should work carefully to ensure it is implemented well.",
       "follow_up_of": "train-and-interpolate-nns-to-mimic-viscous-liquids",
       "rework_history": [
         {
           "time": 1783566462,
           "note": "The training on a single drop is too limiting, especially for snow since it hardly even acts like snow in that one drop example. We should show it more examples, and test it on more generalization. And then for the interpolation I think there's a bug, because even in the a=0.00 demonstration the simulation explodes or fails to mimic the GT even though it's shown that the net does actually learn the drop example."
+        },
+        {
+          "time": 1783611564,
+          "note": "These results are much better -- the a=0.00 and a=1.00 are actually correct now. Only change I'd like to see is that the snow behaves more like snow. Right now it's acting almost like an elastic solid with a little bit more give. Snow shouldn't be able to hold itself in a vertical column while jiggling around, for example. It should crumble."
         }
       ]
     }

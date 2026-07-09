@@ -16,7 +16,7 @@
     {
       "id": "improve-basic-fluid-sim-realism",
       "title": "Improve basic fluid sim realism",
-      "status": "active",
+      "status": "done",
       "note": "This simulation rendering looks decent. But the liquid doesn\u2019t really behave like water, it moves a bit too slowly and also the behavior is off, hard to explain exactly. The rendering looks good but there are like holes inside the continuous portions of the liquid, which doesn\u2019t seem right. See if you can push the realism even further. Goal is photorealistic.",
       "follow_up_of": "non-differentiable-fluid-renderer",
       "follow_ups": [

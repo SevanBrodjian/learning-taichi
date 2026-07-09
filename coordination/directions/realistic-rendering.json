@@ -8,7 +8,17 @@
       "id": "non-differentiable-fluid-renderer",
       "title": "Non-Differentiable Fluid Renderer",
       "status": "active",
-      "note": "Implement a non-differentiable renderer which will make our 2D simulation of a fluid look highly realistic. It doesn't need to be fast, it doesn't need to be particularly simple, the purpose of this is just to see how good of something you can make (visually). Under the hood use MPM fluid simulation, and show a few things happening like dropping a fluid ball, or a fluid tower collapse. It should look very realistic, like an actual real-life liquid. Enough to make someone double glance if it was real."
+      "note": "Implement a non-differentiable renderer which will make our 2D simulation of a fluid look highly realistic. It doesn't need to be fast, it doesn't need to be particularly simple, the purpose of this is just to see how good of something you can make (visually). Under the hood use MPM fluid simulation, and show a few things happening like dropping a fluid ball, or a fluid tower collapse. It should look very realistic, like an actual real-life liquid. Enough to make someone double glance if it was real.",
+      "follow_ups": [
+        "improve-basic-fluid-sim-realism"
+      ]
+    },
+    {
+      "id": "improve-basic-fluid-sim-realism",
+      "title": "Improve basic fluid sim realism",
+      "status": "proposed",
+      "note": "This simulation rendering looks decent. But the liquid doesn\u2019t really behave like water, it moves a bit too slowly and also the behavior is off, hard to explain exactly. The rendering looks good but there are like holes inside the continuous portions of the liquid, which doesn\u2019t seem right. See if you can push the realism even further. Goal is photorealistic.",
+      "follow_up_of": "non-differentiable-fluid-renderer"
     }
   ]
 }

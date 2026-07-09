@@ -1,0 +1,57 @@
+{
+  "schema_version": "2",
+  "task_id": "gpu-accelerate-fluid-renderer",
+  "direction": "realistic-rendering",
+  "title": "GPU-accelerating the fluid renderer: same picture, ~130x faster with Taichi",
+  "status": "active",
+  "created": "2026-07-08T00:00:00+00:00",
+  "objective": "Port the screen-space fluid renderer sim/fluid_render2.py, which is pure numpy/scipy on the CPU (~1.7 s per 1080^2 frame, so a multi-scene showcase took tens of minutes while the 4090 sat idle), to a GPU (Taichi) renderer sim/fluid_render_gpu.py that produces visually equivalent frames far faster, and benchmark the two on the SAME particle data. The physics is trivial on the GPU; the renderer is the whole bottleneck. The look must not change: metaball surface, the filled-interior / no-holes property (the fix the prior task shipped), Beer-Lambert depth color, background refraction, Fresnel, rim, specular, foam, caustics, contact shadow, floor reflection, bloom, and tone map are all preserved, ported stage-for-stage into Taichi kernels with everything kept on device and only the final RGB frame read back. The CPU renderer and the MLS-MPM sim are imported unchanged from sim/fluid_render2.py (not mutated); this task adds only the GPU renderer plus a benchmark / visual-parity driver.",
+  "findings": "The port reaches interactive rates with visual parity. Measured on one 4090 running the job alone (clean, uncontended), at 1080^2 on the 30000-particle dam-break hero frame, with the GPU kernels compiled and warmed once before timing (the one-time JIT compile of ~5.1 s is excluded from the per-frame number): the CPU renderer takes 1686.3 ms/frame (0.59 fps); the GPU render compute with the particle data already resident takes 6.35 ms/frame (157 fps), a 265x speedup; and the full per-frame GPU path, counting the per-frame particle upload and the final image read-back, takes 13.0 ms/frame (77 fps), a 130x speedup. A 130-frame scene therefore renders in ~1.3 s of wall time on the GPU versus ~219 s (~3.7 min) on the CPU; mp4 encoding is separate and codec/IO-bound at ~0.44 s per scene, so it no longer dominates. The pipeline maps onto the GPU as: an atomic-scatter splat of particle counts (and a speed-weighted copy for foam) into a Taichi grid field; a separable two-pass Gaussian blur (O(r) per pixel instead of O(r^2)), with the per-sigma weight rows built once during warm-up so no kernel-weight upload happens per frame; surface normals from the smoothed-field gradient; a jump-flooding (JFA) Euclidean distance transform for the smooth optical thickness (O(log n) parallel passes standing in for scipy's sequential distance_transform_edt), ping-ponged between two seed buffers to avoid a per-pass copy; and per-pixel shading kernels for Beer-Lambert absorption, chromatic refraction (normal + thickness-gradient lensing), Fresnel, rim, Blinn-Phong specular, surface-gated foam, floor caustics (via on-device column reductions), contact shadow, floor reflection, bloom, vignette, and tone map. The filled-interior / no-holes property is preserved on the GPU with a bounded morphological closing (grey close plus binary close via disk max/min kernels) as a connectivity-free stand-in for the CPU's distance-transform-plus-connected-component small-hole fill: a disk of radius R seals gaps narrower than ~2R, so the sub-particle-spacing Poisson pinholes vanish and a calm body renders as a solid speckle-free volume, while genuinely wide cavities survive. Visual parity was verified by viewing CPU-vs-GPU side-by-side stills for both scenes and a full GPU clip: the images are indistinguishable, the interior is filled with no holes in both, and the genuine cavities (the dam-break breaking-wave barrel and the ball-drop splash crater) are preserved rather than filled.",
+  "hypothesis": "The 100x-plus speedup follows from the shape of the work rather than any single trick. The renderer is a fixed sequence of full-image passes that are embarrassingly parallel per pixel, and the CPU ran them single-threaded in numpy/scipy, so moving them to thousands of GPU lanes is close to the ideal case for a GPU. Two structural choices matter beyond raw parallelism. First, the one inherently sequential CPU stage, the exact Euclidean distance transform, is replaced by jump flooding, which computes the same distance in a logarithmic number of parallel sweeps rather than a sequential scan; without that substitution the distance transform would have been a serialization bottleneck. Second, keeping every intermediate on the device and crossing the host boundary only twice per frame (particles up, final image down) is what protects the speedup: the measured device-only time of 6.35 ms versus the full 13.0 ms shows the two transfers account for roughly half of the full per-frame time, so a naive port that copied each stage back to numpy would have paid that tax a dozen times and kept little of the gain. What would test the generality of the speedup and the parity: other resolutions and particle counts (the memory-bound stages scale differently from the CPU's per-pixel cost), scenes that produce a narrow-but-large fully-enclosed cavity (where the width-based closing would fill what the CPU's area-cap fill would keep), and a 3D pipeline where the distance transform and splat are volumetric.",
+  "limitations": "The benchmark is a timing on ONE frame of ONE scene at ONE resolution (1080^2), ONE particle count (30000), and ONE GPU (a 4090), run uncontended with warm kernels; it is a measurement of this setup, not a universal constant, and the speedup would differ at other resolutions or particle counts. The 'full' per-frame number includes a wasteful upload of the entire padded MAX_P particle buffer each frame, which is why it is about twice the device-only compute; a tighter upload would narrow that gap. The GPU output is not bit-identical to the CPU: the atomic-scatter splat is order-dependent and non-reproducible, arithmetic is f32, the percentile normalization is computed from an on-device histogram rather than an exact percentile, and the blurs use clamp-to-edge boundaries rather than scipy's reflect; these differences are imperceptible in the viewed side-by-sides (and the borders are vignetted), but the renderers are visually equivalent, not numerically equal. The no-holes fill is a morphological closing that seals by feature WIDTH, not by enclosed AREA as the CPU's connected-component fill does, so a genuine narrow-but-large fully-enclosed pocket would be sealed where the CPU would keep it; the two scenes here never produce such a pocket (their real cavities are wide and are preserved), but a different scene could. Finally, this only makes the renderer fast; it is still the stylized, non-differentiable, 2D screen-space renderer of the fluid-realism task, with painted caustics, a screen-space distance as the thickness proxy, and hand-tuned coefficients, and it carries no gradients.",
+  "results": [
+    {
+      "type": "image",
+      "src": "runs/realistic-rendering/gpu-accelerate-fluid-renderer/cpu_vs_gpu_dambreak.png",
+      "caption": "Visual parity on the dam-break breaking-wave frame: the CPU renderer (left) and the GPU renderer (right) from the same particles with the same formulas. The two are indistinguishable. The liquid body is a single continuous depth-graded volume with no interior holes in both, and the large dark air pocket under the curling wave, the barrel, is preserved in both rather than filled in. Depth color, the refracted studio background, the bright foam fringe on the crest, and the specular edges all match. The GPU frame is produced about 130 times faster."
+    },
+    {
+      "type": "image",
+      "src": "runs/realistic-rendering/gpu-accelerate-fluid-renderer/cpu_vs_gpu_balldrop.png",
+      "caption": "Visual parity on the ball-drop peak-splash frame: CPU (left) versus GPU (right) on the same particles. The impact crown with curling arms, the whitewater tips, the shed droplet at the top, and the depth-shaded pool all match. The pool interior is a solid filled body with no holes in both, and the open splash crater the ball punched through is preserved rather than filled."
+    },
+    {
+      "type": "image",
+      "src": "runs/realistic-rendering/gpu-accelerate-fluid-renderer/benchmark.png",
+      "caption": "Measured render time per 1080-squared frame on the same 30000-particle frame, log scale. The CPU renderer takes about 1686 ms (about one frame every 1.7 s). The full GPU renderer, counting the per-frame particle upload and the final image read-back, takes 13 ms (about 77 fps). The GPU render compute alone, with the particle data already resident, takes 6.4 ms (about 157 fps). The gap between the two GPU bars is the host-device transfer, not the rendering."
+    },
+    {
+      "type": "table",
+      "columns": ["renderer", "ms / frame", "frames / s", "speedup", "130-frame scene"],
+      "rows": [
+        ["CPU (numpy/scipy, fluid_render2.py)", "1686.3", "0.59", "1x", "219 s (~3.7 min)"],
+        ["GPU (Taichi, full incl. transfer)", "13.0", "77", "130x", "1.3 s wall"],
+        ["GPU (Taichi, device-only compute)", "6.4", "157", "265x", "0.83 s compute"]
+      ],
+      "caption": "CPU vs GPU render throughput at 1080^2 on the 30000-particle dam-break hero frame, one 4090 running alone, kernels warmed (one-time ~5.1 s JIT compile excluded from the per-frame figure). The device-only row is the GPU render compute with particles already resident; the full row adds the per-frame particle upload and final image read-back. mp4 encoding is separate and codec/IO-bound at ~0.44 s per scene."
+    },
+    {
+      "type": "video",
+      "src": "runs/realistic-rendering/gpu-accelerate-fluid-renderer/dambreak_gpu.mp4",
+      "caption": "Full dam-break clip rendered entirely on the GPU (130 frames in ~1.3 s of render time). The column collapses into a fast wedge, jets up the far wall throwing a droplet arc, and curls over into a breaking-wave barrel. The body stays a continuous depth-graded volume with no interior holes throughout, the surface refracts the structured studio background, and textured foam marks the fast crests and torn spray, matching the CPU renderer in motion."
+    },
+    {
+      "type": "video",
+      "src": "runs/realistic-rendering/gpu-accelerate-fluid-renderer/balldrop_gpu.mp4",
+      "caption": "Full ball-drop clip rendered entirely on the GPU. A blob falls into a shallow pool, punches a cavity, and throws up a crown whose arms sheet, break into whitewater tips, and shed droplets before the pool sloshes back. The falling and pooled water reads as a clean continuous translucent body with a bright grazing waterline, no interior speckle, and a bent background seen through it."
+    }
+  ],
+  "custom_html": null,
+  "training_refs": [
+    "gpu-rendering",
+    "fluid-rendering",
+    "fluid-realism",
+    "mpm-in-context",
+    "mls-mpm-forward"
+  ]
+}

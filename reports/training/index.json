@@ -35,7 +35,8 @@
         { "id": "viscosity", "title": "Viscosity: resistance to the rate of shear", "file": "core/09-viscosity.md" },
         { "id": "fluid-rendering", "title": "From particles to a believable liquid: rendering the MPM fluid", "file": "core/10-fluid-rendering.md" },
         { "id": "learned-viscosity-interpolation", "title": "Learning viscosity, and what interpolating the weights does to it", "file": "core/11-learned-viscosity-interpolation.md" },
-        { "id": "fluid-realism", "title": "Making it read as water: dynamics, interior fill, and the realism gap", "file": "core/12-fluid-realism.md" }
+        { "id": "fluid-realism", "title": "Making it read as water: dynamics, interior fill, and the realism gap", "file": "core/12-fluid-realism.md" },
+        { "id": "gpu-rendering", "title": "Rendering on the GPU: the render was the bottleneck, not the physics", "file": "core/15-gpu-rendering.md" }
       ]
     }
   ]

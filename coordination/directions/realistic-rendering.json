@@ -25,7 +25,7 @@
     },
     {
       "id": "more-realistic-basic-fluid-sims",
-      "title": "More Realistic Basic Fluid Sims",
+      "title": "Further Realistic Basic Fluid Sims",
       "status": "queued",
       "note": "These results look closer to the photorealistic target, but they are very short and limited. Generate a more diverse and extensive set of examples showcasing the capabilities, such as more starting conditions, different viscosities, even things like mixing liquids of different colors. Also, make the animations much longer, these ones are WAY too short.",
       "follow_up_of": "improve-basic-fluid-sim-realism"

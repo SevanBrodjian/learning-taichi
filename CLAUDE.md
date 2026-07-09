@@ -75,7 +75,9 @@ is for obvious next steps; asking is for forks only the user can resolve.
 Reviewing a finished worker means more than committing its run: check its claims against **Evidence
 discipline**; **open and look at every figure, plot, and video it produced** (not just the numbers) and
 confirm each visual actually shows the quantity its claim rests on, with no degenerate, empty, or
-artefacted output; render-check its math **in the dashboard** for KaTeX errors; and **review the training
+artefacted output; **verify every manifest media `src` resolves to a file that exists** (a dangling ref is a
+broken tile on the dashboard — reject a manifest that lists planned-but-unrendered media); render-check its
+math **in the dashboard** for KaTeX errors; and **review the training
 page it added** (voice, standalone-ness, length) per `spec/style_training_report.md`. As part of that
 review **verify every cross-reference resolves** — each `[[link]]` must point at a page/section that
 actually exists and actually covers what the referring text promises (a link to a not-yet-written prereq

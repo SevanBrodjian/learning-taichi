@@ -73,6 +73,10 @@ Write `runs/<direction-id>/<task-id>/manifest.json` (schema v2 — see `runs/REA
 with: `objective`, scoped `findings`, `hypothesis`, `limitations`, typed `results[]` (video / image /
 plot / table), and `training_refs[]` pointing at the page(s) you added. Leave everything on disk; do not
 commit.
+- **Write the manifest LAST, after every media file it references already exists on disk, and make
+  `results[]` reference ONLY files that actually exist.** Never list a planned-but-unrendered scene — a
+  dangling media `src` renders as a broken tile on the dashboard, and the orchestrator will reject it.
+  Verify every `src` resolves to a real file before you finish.
 
 ## Paths & params
 - Run dir: `runs/<direction-id>/<task-id>/`
@@ -82,9 +86,14 @@ commit.
 ## Definition of done
 <The bar. What the artifact must contain for the orchestrator to accept it — the task-specific result.>
 Always includes, regardless of task:
+- **The task is finished within your turn.** Do NOT spawn a long render/sim/training job in the background
+  and end your turn "waiting" on it — run it to completion (block or poll within your turn), view the
+  outputs, and finalize the manifest and training page before you stop. A worker's value is finished output
+  on disk, not a detached process someone else has to babysit.
 - Manifest carries scoped `findings`, an honest `hypothesis`, and a `limitations` note (Evidence discipline).
 - **Every exported figure/video has been opened and viewed**, shows the claimed quantity, and is not
   degenerate. Nothing misleading or broken ships.
+- **Every manifest media `src` resolves to a file that exists** (no dangling references — see Output contract).
 - The training page(s) render cleanly (KaTeX checked), read standalone in the textbook voice, **every
   `[[link]]` resolves**, and the **math prerequisites the page leans on exist**.
 

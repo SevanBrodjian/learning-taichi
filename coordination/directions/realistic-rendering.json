@@ -1,0 +1,7 @@
+{
+  "id": "realistic-rendering",
+  "name": "Realistic Rendering",
+  "status": "proposed",
+  "summary": "The purpose of this direction is to improve the visual quality of our outputs using high-quality renderers, and eventually differentiable rendering.",
+  "tasks": []
+}

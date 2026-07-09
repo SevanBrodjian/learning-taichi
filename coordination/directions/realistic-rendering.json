@@ -24,11 +24,21 @@
       ]
     },
     {
+      "id": "gpu-accelerate-fluid-renderer",
+      "title": "GPU-accelerate the fluid renderer",
+      "status": "active",
+      "note": "The screen-space fluid renderer (sim/fluid_render2.py) is pure numpy/scipy on the CPU and takes ~0.5-2 s per 1080^2 frame, so a multi-scene showcase took ~25 min while the 4090 sat idle. Port the renderer to the GPU with Taichi so it renders orders of magnitude faster (target: a few ms per frame, whole scenes in seconds) while preserving the visual quality (metaball surface, FILLED interior / no holes, depth color, refraction/Fresnel/specular, foam). Benchmark CPU vs GPU on a clean GPU. Becomes the renderer the showcase re-run uses.",
+      "follow_up_of": "improve-basic-fluid-sim-realism"
+    },
+    {
       "id": "more-realistic-basic-fluid-sims",
       "title": "Further Realistic Basic Fluid Sims",
-      "status": "active",
+      "status": "queued",
       "note": "These results look closer to the photorealistic target, but they are very short and limited. Generate a more diverse and extensive set of examples showcasing the capabilities, such as more starting conditions, different viscosities, even things like mixing liquids of different colors. Also, make the animations much longer, these ones are WAY too short.",
-      "follow_up_of": "improve-basic-fluid-sim-realism"
+      "follow_up_of": "improve-basic-fluid-sim-realism",
+      "rework_history": [
+        { "time": 1783912800, "note": "Deferred and to be re-run in FULL (all scenes incl. color mixing, long clips) on the new GPU renderer once gpu-accelerate-fluid-renderer is done. The first run was killed mid-render (only pour/fill/obstacle rendered) and the CPU renderer was far too slow (~25 min)." }
+      ]
     }
   ]
 }

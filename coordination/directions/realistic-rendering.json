@@ -18,7 +18,17 @@
       "title": "Improve basic fluid sim realism",
       "status": "active",
       "note": "This simulation rendering looks decent. But the liquid doesn\u2019t really behave like water, it moves a bit too slowly and also the behavior is off, hard to explain exactly. The rendering looks good but there are like holes inside the continuous portions of the liquid, which doesn\u2019t seem right. See if you can push the realism even further. Goal is photorealistic.",
-      "follow_up_of": "non-differentiable-fluid-renderer"
+      "follow_up_of": "non-differentiable-fluid-renderer",
+      "follow_ups": [
+        "more-realistic-basic-fluid-sims"
+      ]
+    },
+    {
+      "id": "more-realistic-basic-fluid-sims",
+      "title": "More Realistic Basic Fluid Sims",
+      "status": "proposed",
+      "note": "These results look closer to the photorealistic target, but they are very short and limited. Generate a more diverse and extensive set of examples showcasing the capabilities, such as more starting conditions, different viscosities, even things like mixing liquids of different colors. Also, make the animations much longer, these ones are WAY too short.",
+      "follow_up_of": "improve-basic-fluid-sim-realism"
     }
   ]
 }

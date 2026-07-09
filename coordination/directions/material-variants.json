@@ -68,7 +68,7 @@
     {
       "id": "one-nn-for-three-materials",
       "title": "One NN for Three Materials",
-      "status": "proposed",
+      "status": "queued",
       "note": "Train one neural network to mimic all three materials. The control for which material gets simulated should be a small set of swappable parameters specific to each material. Then attempt the same linear interpolation but just interpolating the swapped parameters. The swappable parameters should be just two of them, no more. Visualize them as a square grid where you show each of those two variables on each axis and the resulting effects. It can be an interactive visualization. Make sure to work hard, this is a tough task. Make sure that at all the edges (parameters set equal to the trained set) the results follow the expected simulation exactly.",
       "follow_up_of": "train-material-replicating-nns-and-interpolate"
     }

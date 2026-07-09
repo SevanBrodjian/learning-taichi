@@ -31,7 +31,9 @@
         { "id": "hybrid-learned-residual", "title": "Hybrid simulation: a learned residual inside the step", "file": "core/05-hybrid-learned-residual.md" },
         { "id": "material-stiffness", "title": "Stiffness: what Young's modulus E does", "file": "core/06-material-stiffness.md" },
         { "id": "material-showcase", "title": "Three materials, one solver: fluid, elastic, snow", "file": "core/07-material-showcase.md" },
-        { "id": "differentiable-materials", "title": "Differentiable materials: finite vs meaningful gradients", "file": "core/08-differentiable-materials.md" }
+        { "id": "differentiable-materials", "title": "Differentiable materials: finite vs meaningful gradients", "file": "core/08-differentiable-materials.md" },
+        { "id": "viscosity", "title": "Viscosity: resistance to the rate of shear", "file": "core/09-viscosity.md" },
+        { "id": "fluid-rendering", "title": "From particles to a believable liquid: rendering the MPM fluid", "file": "core/10-fluid-rendering.md" }
       ]
     }
   ]

@@ -8,6 +8,25 @@
 > function-space target** for interpolating a fluid-net with a snow-net: the interesting, open question is
 > what actually emerges. **The user flagged this as long and detailed; work carefully and iteratively.**
 
+## REWORK — the first run was sent back; fix these two things specifically
+The user reviewed the first attempt and returned it. Address both head-on before anything else:
+1. **Train on more than one gentle drop — especially exercise snow.** One drop barely engages snow's
+   plasticity, so the snow net "hardly even acts like snow". Build **varied training data per material**
+   (several initial configurations, and scenes that engage each material's characteristic behavior: for snow,
+   compression / piling / an angle-of-repose slump / shearing that actually *fires the plastic clamp*; for
+   elastic, squash-and-recover; for fluid, spreading). Train each net on that richer set so it captures the
+   material, not one trajectory. Then **test generalization on several held-out configs**, not just one.
+2. **Fix the interpolation endpoint bug.** In the first run, even at $\alpha=0.00$ — which is exactly the
+   endpoint network that Question 1 showed *does* learn its material — the interpolated rollout "explodes or
+   fails to mimic the GT". That is a **harness bug, not a property of interpolation**: at $\alpha=0$ and
+   $\alpha=1$ the interpolated net *is* a trained endpoint net, so the rollout **must reproduce the pure
+   material identically to the Question-1 replication rollout**. Make $\alpha=0$ and $\alpha=1$ reproduce the
+   endpoints exactly (same scene, `dt`, initialization, and net-application path as the Q1 rollout) and debug
+   why they currently diverge (most likely the interpolation rollout differs from the Q1 rollout in
+   scene/`dt`/state-init/how the net is applied, or runs an unstable setting). **Only once the endpoints are
+   correct does the interior sweep mean anything** — verify endpoint parity explicitly and report it.
+Everything else in the brief below still applies.
+
 ## Your role (paste verbatim into the spawn prompt)
 You are a **worker agent** for task `train-material-replicating-nns-and-interpolate`. You are **NOT the
 orchestrator**. Do not spawn further agents. Read this brief, do the task, write **all** results to disk

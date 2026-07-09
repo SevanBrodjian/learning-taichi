@@ -1,0 +1,57 @@
+{
+  "schema_version": "2",
+  "task_id": "improve-basic-fluid-sim-realism",
+  "direction": "realistic-rendering",
+  "title": "Improving fluid realism: water-like motion, no interior holes, a push toward photoreal",
+  "status": "active",
+  "created": "2026-07-08T00:00:00+00:00",
+  "objective": "Refine the non-differentiable fluid renderer (follow-up to non-differentiable-fluid-renderer) toward photorealism by fixing three concrete defects the prior pass left: the liquid did not move like water (sluggish, gloopy), the render showed air holes inside continuous portions of the body, and the overall realism could go further. The work is diagnosed by looking at rendered frames and iterating. Two scenes are shown, a fluid ball dropped into a shallow pool and a dam-break column collapse, each as an mp4 plus a hero still, with before/after comparisons against the prior renderer and an interior-fill breakdown. Visual quality is the graded axis; this makes no claim of physical light-transport accuracy, real-time performance, or differentiability. All code is in sim/fluid_render2.py; the shared physics file sim/material_showcase.py was left untouched.",
+  "findings": "Three fixes, each aimed at the layer the defect actually lives in. (1) WATER BEHAVIOR is a dynamics fix, not a rendering one. The fluid was stiffened from E=170 toward incompressibility at E=520, which needs a smaller timestep for CFL stability (dt cut from ~1.1e-4 to 7e-5, since the stable step scales like 1/sqrt(E)); a small FLIP admixture (0.03) was added to the otherwise-APIC transfer to counter numerical damping and keep splashes lively; the ball is dropped from higher (center y 0.76, radius 0.10) into a slightly deeper pool for a faster, crisper impact; and the sim-to-playback mapping was moved from the prior ~4x slow motion to a mild ~1.4-2x (130 frames at 60 fps over ~1.05-1.5 s of physical time). Both scenes remain numerically stable (33k particles for the ball drop, 30k for the dam break, no non-finite values; peak speeds ~7-9). (2) INTERIOR HOLES are a surface-reconstruction fix. The prior renderer used one density isocontour for both opacity and shading, so Poisson fluctuations in particle count dipped the interior below the isovalue and punched air holes. The reconstruction now separates the two roles: a filled interior mask (low threshold, then a morphological closing to seal pinholes, then filling only enclosed air pockets below an area cap so genuine cavities like a breaking-wave barrel survive) decides opacity, while the density gradient is kept solely for surface normals. Optical thickness now comes from a distance transform of the filled mask, so the body reads as a smooth speckle-free volume. (3) REALISM push: the clean distance-transform thickness feeds Beer-Lambert absorption; absorption was lowered so the water is glassier and the structured background shows through; refraction is driven by both the surface normal and the thickness gradient so the flat interior lenses the background instead of staying uniform, with a small chromatic split for spectral edges; the background carries soft studio glows plus low-contrast broken vertical detail and mottle to reward refraction; stylized floor caustics, a soft contact shadow, and textured surface-gated foam were added; render resolution raised to 1080. Every change was verified by rendering and viewing frames, including catching and fixing an over-strong light-shaft background and chalk-white over-foaming in intermediate passes.",
+  "hypothesis": "The two named defects were louder tells than any missing light-transport subtlety, and each traced to a specific layer. The sluggishness came from three compounding causes that all read as thickness to the eye: a soft compressible EOS that stores impacts as spongy rebound, dissipative transfers that bleed splash energy, and heavy slow-motion playback; stiffening the fluid, de-damping the transfer, and playing nearer real time each independently make it read faster and more water-like, and they add up. The interior holes were a pure sampling artifact of asking one threshold to both fill a randomly-sampled interior and resolve a crisp surface, needs that pull the isovalue in opposite directions; separating 'is there liquid' (a filled, hole-repaired mask) from 'where is the surface' (the density gradient) removes the artifact by construction while a bounded enclosed-pocket fill preserves real air cavities. A distance-transform thickness is the right thickness proxy for a filled body because it is zero at the boundary and grows smoothly inward with no dependence on particle count. What would test generality: more scene types and framings, a genuine screen-space thickness accumulated along a view ray rather than a 2D distance, a measured index of refraction and absorption spectrum, and physically computed caustics rather than painted bands. The claims here are scoped to these two 2D side-view scenes at one grid resolution and one parameter set.",
+  "limitations": "Still a stylized 2D side-view render, not a physical light-transport simulation, graded only on how convincing the image looks. The thickness that drives absorption and refraction is a screen-space distance transform of a 2D mask, not a real optical path length through a 3D volume; there is no true refraction with a measured index, the floor caustics are painted rather than computed, there is no inter-reflection and no measured absorption spectrum, and every color and coefficient (absorption, refraction and lens scales, chroma, foam thresholds, caustic and contact strengths) is chosen by eye. The surface normal is a 2D gradient lifted into a fabricated third component, so roundness is an artistic choice. The fluid is stiffer and less damped than the prior pass but is still a weakly compressible MPM fluid at E=520, n_grid=128, f32, with a small FLIP fraction and hand-tuned drop geometry, floor friction, and sticky side walls; different settings give different splash shapes, and the narrow domain lets an energetic splash climb the walls more than an open tank would. GPU atomic-add accumulation is not bitwise reproducible, so exact splash geometry drifts run to run, which is why hero frames are chosen from a saved montage rather than a fixed index. The result reaches a convincing-at-a-glance liquid with the two reported defects removed but stops short of true photoreal; the honest register is 'markedly closer, here is what still holds it back', not 'indistinguishable from real'. No gradients, loss, or optimization are involved; the renderer is deliberately non-differentiable and offline.",
+  "results": [
+    {
+      "type": "image",
+      "src": "runs/realistic-rendering/improve-basic-fluid-sim-realism/before_after_dambreak.png",
+      "caption": "Dam break, before and after. Left is the prior renderer: the liquid body is speckled with dark interior holes wherever the splatted particle density randomly dipped below a single isovalue, and the water is a flat pale blue. Right is this pass at a matched breaking-wave moment: a filled interior mask decides opacity while the density gradient drives only the surface normals, so the body is a continuous solid volume with air only where there is genuinely air, the water is glassier and depth-graded, and the motion behind it comes from a stiffer, less damped, nearer-to-real-time fluid."
+    },
+    {
+      "type": "image",
+      "src": "runs/realistic-rendering/improve-basic-fluid-sim-realism/interior_fill_breakdown.png",
+      "caption": "Why the holes appear and how the fill removes them, on one dam-break frame. From left: the naive single-isocontour reconstruction with interior holes; the metaball density field, whose interior is visibly grainy because the particles are a random sample; the smooth distance-transform thickness built from the filled mask, zero at the edge and growing into the core; and the final filled reconstruction, a continuous solid body. The mottling on the left is purely a reconstruction artifact, not anything in the physics."
+    },
+    {
+      "type": "video",
+      "src": "runs/realistic-rendering/improve-basic-fluid-sim-realism/dambreak.mp4",
+      "caption": "Dam-break collapse with the stiffer, livelier fluid: a tall column released sideways collapses into a fast wedge that races across the floor, jets up the far wall throwing a droplet arc, then returns and curls over into a breaking-wave barrel. The body stays a continuous depth-graded volume throughout with no interior holes, the surface refracts the structured studio background, and textured foam marks the fast crests and torn spray."
+    },
+    {
+      "type": "image",
+      "src": "runs/realistic-rendering/improve-basic-fluid-sim-realism/dambreak_hero.png",
+      "caption": "Hero still from the dam break at the breaking-wave barrel, the moment the returning wave curls over an enclosed pocket of air. Depth color from pale shallow edge to deep interior, a refracted background, bright specular and Fresnel edges on the curling sheet, and whitewater on the crest all appear in one hole-free frame."
+    },
+    {
+      "type": "video",
+      "src": "runs/realistic-rendering/improve-basic-fluid-sim-realism/balldrop.mp4",
+      "caption": "Fluid ball drop with the water-like fluid: a blob falls into a shallow pool, punches a cavity, and throws up a crown whose curling arms sheet, break into whitewater tips, and shed droplets before the pool sloshes back. The falling and pooled water is a clean continuous translucent body with a bright grazing waterline, no interior speckle, and a bent studio background seen through it."
+    },
+    {
+      "type": "image",
+      "src": "runs/realistic-rendering/improve-basic-fluid-sim-realism/balldrop_hero.png",
+      "caption": "Hero still from the ball drop at peak splash: the impact crown is open with curling arms and whitewater tips over a solid, continuous, depth-shaded pool, the interior filled rather than speckled with holes."
+    },
+    {
+      "type": "image",
+      "src": "runs/realistic-rendering/improve-basic-fluid-sim-realism/before_after_balldrop.png",
+      "caption": "Ball drop, before and after at the same peak-crown moment. Left is the prior renderer with a mottled, holey pool interior and pale flat body; right is this pass with a continuous filled body, cleaner depth color, and a livelier, stiffer splash."
+    }
+  ],
+  "custom_html": null,
+  "training_refs": [
+    "fluid-realism",
+    "fluid-rendering",
+    "material-stiffness",
+    "viscosity",
+    "material-showcase"
+  ]
+}

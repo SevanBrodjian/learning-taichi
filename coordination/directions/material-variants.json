@@ -29,7 +29,7 @@
     {
       "id": "varying-liquid-viscosity",
       "title": "Varying Liquid Viscosity",
-      "status": "active",
+      "status": "done",
       "note": "Implement a simulation of a fluid under varying viscosities and demonstrate the differences in their behavior in a few settings. The viscosity should vary dramatically, like from honey to oil."
     }
   ]

@@ -302,6 +302,14 @@ def overview() -> dict:
     return {"directions": directions, "orphans": orphans}
 
 
+def _as_parent_list(v) -> list:
+    """`follow_up_of` may be a single id (legacy, one parent) or a list of ids (a proposal that follows
+    up on several tasks at once). Always read it as a list so the rest of the code is uniform."""
+    if not v:
+        return []
+    return [x for x in v if x] if isinstance(v, list) else [v]
+
+
 def task_detail(direction: str, task: str) -> dict | None:
     arts = _v2_tasks()
     info = arts.get((direction, task))
@@ -328,8 +336,8 @@ def task_detail(direction: str, task: str) -> dict | None:
             m["effort"] = this.get("effort", "standard")
             m["live"] = live_statuses().get((direction, task))
             m["rework_history"] = this.get("rework_history", [])
-            parent = this.get("follow_up_of")
-            m["follow_up_of"] = ref(parent) if parent else None
+            # follow_up_of is now a LIST of resolved refs (a proposal may follow up on several parents).
+            m["follow_up_of"] = [r for r in (ref(p) for p in _as_parent_list(this.get("follow_up_of"))) if r]
             m["follow_ups"] = [r for r in (ref(x) for x in this.get("follow_ups", [])) if r]
         except Exception:
             pass
@@ -492,10 +500,16 @@ def delete_task(direction: str, task: str) -> dict:
     kept = [t for t in tasks if t.get("id") != task]
     if len(kept) == len(tasks):
         return {"ok": False, "error": "no such task"}
-    # Sever any follow-up links that referenced the deleted task, so no dangling refs remain.
+    # Sever any follow-up links that referenced the deleted task, so no dangling refs remain. A child's
+    # follow_up_of may be a single id or a list of parents, so prune it in either form.
     for t in kept:
-        if t.get("follow_up_of") == task:
-            t.pop("follow_up_of", None)
+        parents = _as_parent_list(t.get("follow_up_of"))
+        if task in parents:
+            parents = [p for p in parents if p != task]
+            if not parents:
+                t.pop("follow_up_of", None)
+            else:
+                t["follow_up_of"] = parents[0] if len(parents) == 1 else parents
         if task in (t.get("follow_ups") or []):
             t["follow_ups"] = [x for x in t["follow_ups"] if x != task]
     data["tasks"] = kept
@@ -504,31 +518,40 @@ def delete_task(direction: str, task: str) -> dict:
     return {"ok": True}
 
 
-def propose_follow_up(direction: str, parent: str, title: str, note: str = "") -> dict:
-    """Create a proposed follow-up to an existing task, linked both ways: the parent gains the new id
-    in `follow_ups`, the child records `follow_up_of` = parent. Lives in the parent's direction."""
+def propose_follow_up(direction: str, parents, title: str, note: str = "") -> dict:
+    """Create a proposed follow-up to one OR MORE existing tasks in the same direction, linked both ways:
+    every parent gains the new id in its `follow_ups`, and the child records `follow_up_of` = the parent
+    id (a single string) or the list of parent ids when there are several. `parents` accepts a single id
+    or a list of ids. Lives in the parents' direction (the graph is direction-local)."""
     f = MAIN_ROOT / "coordination" / "directions" / f"{direction}.json"
     if not f.is_file():
         return {"ok": False, "error": "no such direction"}
     data = json.loads(f.read_text("utf-8"))
     tasks = data.get("tasks", [])
-    if not any(t.get("id") == parent for t in tasks):
-        return {"ok": False, "error": "no such parent task"}
+    parents = [parents] if isinstance(parents, str) else list(parents or [])
+    parents = list(dict.fromkeys(p for p in parents if p))  # dedupe, drop empties, preserve order
+    if not parents:
+        return {"ok": False, "error": "at least one parent task required"}
     existing = {t.get("id") for t in tasks}
+    missing = [p for p in parents if p not in existing]
+    if missing:
+        return {"ok": False, "error": f"no such parent task(s): {', '.join(missing)}"}
     base = _slug(title)
     tid, i = base, 2
     while tid in existing:
         tid, i = f"{base}-{i}", i + 1
-    tasks.append({"id": tid, "title": title, "status": "proposed",
-                  "note": note, "follow_up_of": parent})
+    tasks.append({"id": tid, "title": title, "status": "proposed", "note": note,
+                  "follow_up_of": parents[0] if len(parents) == 1 else parents})
+    pset = set(parents)
     for t in tasks:
-        if t.get("id") == parent:
+        if t.get("id") in pset:
             fu = t.get("follow_ups") or []
-            fu.append(tid)
+            if tid not in fu:
+                fu.append(tid)
             t["follow_ups"] = fu
     data["tasks"] = tasks
     f.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-    _git_commit(f, f"dashboard: follow-up {direction}/{tid} of {parent}")
+    _git_commit(f, f"dashboard: follow-up {direction}/{tid} of {', '.join(parents)}")
     return {"ok": True, "id": tid}
 
 
@@ -687,10 +710,14 @@ def _build_app():
 
     @app.post("/api/task-follow-up")
     def api_task_follow_up(payload: dict):
-        d, p, title = payload.get("direction"), payload.get("parent"), payload.get("title")
-        if not (d and p and title):
-            raise HTTPException(400, "direction, parent, title required")
-        return propose_follow_up(d, p, title, payload.get("note", ""))
+        d, title = payload.get("direction"), payload.get("title")
+        # `parents` (list) is preferred; `parent` (single) stays accepted for older callers.
+        parents = payload.get("parents")
+        if parents is None and payload.get("parent"):
+            parents = [payload.get("parent")]
+        if not (d and parents and title):
+            raise HTTPException(400, "direction, parent(s), title required")
+        return propose_follow_up(d, parents, title, payload.get("note", ""))
 
     @app.get("/api/notifications")
     def api_notifications():

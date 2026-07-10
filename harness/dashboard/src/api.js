@@ -71,9 +71,10 @@ export const createDirection = (name, summary) =>
 export const deleteTask = (direction, task) =>
   post("/api/task-delete", { direction, task });
 
-// Spin a completed task into a linked, proposed follow-up (both sides record the link).
-export const proposeFollowUp = (direction, parent, title, note) =>
-  post("/api/task-follow-up", { direction, parent, title, note });
+// Spin a completed task into a linked, proposed follow-up (both sides record the link). `parents` is an
+// array of parent task ids in the same direction — a proposal can follow up on several tasks at once.
+export const proposeFollowUp = (direction, parents, title, note) =>
+  post("/api/task-follow-up", { direction, parents, title, note });
 
 // ntfy notification feed (the server holds the secret topic; it never reaches the browser).
 export const fetchNotifications = () => get("/api/notifications", "json");

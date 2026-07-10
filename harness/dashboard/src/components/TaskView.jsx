@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchTask, fetchJSON, fetchText, fetchTraining, setTaskStatus, deleteTask, proposeFollowUp } from "../api.js";
+import { fetchTask, fetchJSON, fetchText, fetchTraining, fetchOverview, setTaskStatus, deleteTask, proposeFollowUp } from "../api.js";
 import LossChart from "./LossChart.jsx";
 import MarkdownReport from "./MarkdownReport.jsx";
 import VideoPlayer from "./VideoPlayer.jsx";
@@ -67,6 +67,8 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [proposing, setProposing] = useState(false);
   const [followForm, setFollowForm] = useState({ title: "", note: "" });
+  const [siblings, setSiblings] = useState([]);        // other tasks in this direction (candidate extra parents)
+  const [extraParents, setExtraParents] = useState([]); // ids of the additional parents the user checked
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -75,6 +77,7 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
     setTask(null);
     setRefs([]);
     setSendBack(false); setSendNote(""); setConfirmDelete(false); setProposing(false);
+    setExtraParents([]); setSiblings([]);
     fetchTask(detail)
       .then((t) => {
         if (!alive) return;
@@ -96,6 +99,21 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
       .catch(() => {});
     return () => { alive = false; };
   }, [detail, reloadToken]);
+
+  // When the propose form opens, pull the other tasks in this direction as candidate extra parents so a
+  // proposal can follow up on several at once (the graph is direction-local).
+  useEffect(() => {
+    if (!proposing || !task) return;
+    let alive = true;
+    fetchOverview()
+      .then((ov) => {
+        const dir = (ov.directions || []).find((d) => d.id === task.direction);
+        const others = (dir?.tasks || []).filter((t) => t.id !== task.task_id);
+        if (alive) setSiblings(others);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [proposing, task?.direction, task?.task_id]);
 
   if (!detail) return <div className="muted pad">Select a task.</div>;
   if (!task) return <div className="muted pad">Loading task…</div>;
@@ -121,16 +139,21 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
     if (!followForm.title.trim()) return;
     setBusy(true);
     try {
-      const r = await proposeFollowUp(task.direction, task.task_id, followForm.title.trim(), followForm.note.trim());
+      // This task is always a parent; any checked siblings are additional parents.
+      const parents = [task.task_id, ...extraParents];
+      const r = await proposeFollowUp(task.direction, parents, followForm.title.trim(), followForm.note.trim());
       if (r && r.ok) {
         setProposing(false);
         setFollowForm({ title: "", note: "" });
+        setExtraParents([]);
         onChange && onChange(); // refresh so the new follow-up shows up under "Follow-ups"
       }
     } finally {
       setBusy(false);
     }
   };
+  const toggleParent = (id) =>
+    setExtraParents((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
 
   return (
     <div className="taskview">
@@ -197,7 +220,7 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
           <p>
             Spin this result into a <strong>proposed follow-up</strong> in the same direction — an
             extension or the next question it raises. The new proposal links back here, and this task
-            links out to it.
+            links out to it. Check any other tasks in this direction it also builds on to link them too.
           </p>
           <div className="author-form">
             <label>Follow-up title</label>
@@ -213,6 +236,24 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
               onChange={(e) => setFollowForm({ ...followForm, note: e.target.value })}
               placeholder="What to build on, and what this task left open."
             />
+            {siblings.length > 0 && (
+              <>
+                <label>Also follows up on {extraParents.length > 0 ? `(${extraParents.length + 1} tasks)` : "(optional)"}</label>
+                <div className="parent-picker">
+                  <label className="parent-opt fixed" title="the task you are proposing from is always a parent">
+                    <input type="checkbox" checked readOnly />
+                    <span>{task.title}</span>
+                  </label>
+                  {siblings.map((s) => (
+                    <label key={s.id} className="parent-opt">
+                      <input type="checkbox" checked={extraParents.includes(s.id)} onChange={() => toggleParent(s.id)} />
+                      <span>{s.title}</span>
+                      <span className={`status status-${s.status === "done" ? "done" : "active"} parent-opt-status`}>{s.status}</span>
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
             <div className="reopen-actions">
               <button className="act-btn" onClick={() => setProposing(false)}>Cancel</button>
               <button className="act-btn primary" disabled={busy || !followForm.title.trim()} onClick={submitFollowUp}>
@@ -223,12 +264,14 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
         </div>
       )}
 
-      {(task.follow_up_of || (task.follow_ups && task.follow_ups.length > 0)) && (
+      {((task.follow_up_of && task.follow_up_of.length > 0) || (task.follow_ups && task.follow_ups.length > 0)) && (
         <div className="followups">
-          {task.follow_up_of && (
+          {task.follow_up_of && task.follow_up_of.length > 0 && (
             <div className="followups-row">
               <span className="followups-label">Follows up on</span>
-              <TaskRef r={task.follow_up_of} onOpenRef={onOpenRef} />
+              <div className="followups-list">
+                {task.follow_up_of.map((r) => <TaskRef key={r.id} r={r} onOpenRef={onOpenRef} />)}
+              </div>
             </div>
           )}
           {task.follow_ups && task.follow_ups.length > 0 && (

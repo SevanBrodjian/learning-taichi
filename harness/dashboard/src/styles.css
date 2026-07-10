@@ -313,6 +313,18 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
 .modal-rework ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
 .modal-rework li { margin: 3px 0; }
 
+/* Multi-parent picker in the "Propose follow-up" form: check other tasks in this direction to link */
+.parent-picker { display: flex; flex-direction: column; gap: 4px; max-height: 220px; overflow-y: auto;
+  border: 1px solid var(--border); border-radius: 4px; padding: 6px; background: var(--panel-2); }
+.parent-opt { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 4px;
+  cursor: pointer; font-size: 13px; color: var(--text); }
+.parent-opt:hover { background: var(--panel); }
+.parent-opt input { flex: none; accent-color: var(--accent); cursor: pointer; }
+.parent-opt > span:nth-child(2) { flex: 1 1 auto; min-width: 0; }
+.parent-opt.fixed { opacity: .7; cursor: default; }
+.parent-opt.fixed input { cursor: default; }
+.parent-opt-status { flex: none; text-transform: capitalize; }
+
 /* Follow-up links between a task and its extensions */
 .followups { display: flex; flex-direction: column; gap: 8px; margin: 0 0 22px; max-width: 92ch; }
 .followups-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }

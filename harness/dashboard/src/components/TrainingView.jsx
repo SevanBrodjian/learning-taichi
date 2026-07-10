@@ -14,15 +14,22 @@ const loadRead = () => {
 // The standalone textbook: a left TOC (prerequisites split from core) and the selected section.
 // Cross-references (wiki-links) navigate within this view. `onRead` lets the parent recompute the
 // nav's "New" badge the moment a section is opened (its read state changes here).
-export default function TrainingView({ onRead }) {
+export default function TrainingView({ onRead, target, onTargetHandled }) {
   const [toc, setToc] = useState(null);
   const [err, setErr] = useState(null);
-  const [activeId, setActiveId] = useState(() => localStorage.getItem(ACTIVE_KEY) || null);
+  const [activeId, setActiveId] = useState(() => target || localStorage.getItem(ACTIVE_KEY) || null);
   const [body, setBody] = useState(null);
   const [readMap, setReadMap] = useState(loadRead);
 
   const loadToc = () => fetchTraining().then(setToc).catch((e) => setErr(String(e)));
   useEffect(() => { loadToc(); }, []);
+
+  // A deep-link from a task page ("Open in Training ↗") jumps straight to that section.
+  useEffect(() => {
+    if (!target) return;
+    setActiveId(target);
+    onTargetHandled && onTargetHandled();
+  }, [target]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sections = useMemo(() => (toc?.groups || []).flatMap((g) => g.sections), [toc]);
   useEffect(() => {

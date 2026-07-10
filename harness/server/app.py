@@ -222,6 +222,39 @@ def _v2_tasks() -> dict:
     return out
 
 
+def live_statuses() -> dict:
+    """(direction, task) -> live status a worker wrote at runs/<dir>/<task>/status.json.
+
+    This is ephemeral, gitignored, per-machine state (NOT a manifest field): a running worker calls
+    harness/tools/task_status.py a handful of times to say what step it is on, and this surfaces that
+    on the board so an Active task reads as *running* with a one-line note, not just "Active". A stale
+    file (old `updated`) means the worker is likely gone; the client dims it accordingly using `age`.
+    """
+    out: dict = {}
+    now = int(time.time())
+    for rid, root in list_roots().items():
+        # runs/<direction>/<task>/status.json — directions and task ids are flat slugs (no slashes).
+        for sf in sorted(root.glob("runs/*/*/status.json")):
+            parts = sf.relative_to(root).parts  # ("runs", <dir>, <task>, "status.json")
+            if len(parts) != 4:
+                continue
+            d, t = parts[1], parts[2]
+            if (d, t) in out:
+                continue
+            try:
+                s = json.loads(sf.read_text("utf-8"))
+            except Exception:
+                continue
+            updated = int(s.get("updated", 0)) or 0
+            out[(d, t)] = {
+                "state": s.get("state", "running"),
+                "step": s.get("step", ""),
+                "updated": updated,
+                "age": (now - updated) if updated else None,
+            }
+    return out
+
+
 def rewrite_task(m: dict, rid: str) -> dict:
     """Rewrite a schema-2 task manifest's result src/series into absolute /api/data URLs."""
     def url(p):
@@ -238,6 +271,7 @@ def overview() -> dict:
     """Directions (coordination/directions/*.json on main) joined with their executed tasks."""
     ddir = MAIN_ROOT / "coordination" / "directions"
     arts = _v2_tasks()
+    live = live_statuses()
     directions = []
     for f in (sorted(ddir.glob("*.json")) if ddir.is_dir() else []):
         try:
@@ -252,6 +286,8 @@ def overview() -> dict:
             tasks.append({
                 "id": tid, "title": t.get("title", tid), "status": t.get("status", "proposed"),
                 "note": t.get("note", ""),
+                "effort": t.get("effort", "standard"),
+                "live": live.get((did, tid)),
                 "has_artifact": has, "detail": f"/api/task/{did}/{tid}" if has else None,
                 "rework_history": t.get("rework_history", []),
                 "follow_up_of": t.get("follow_up_of"),
@@ -289,6 +325,8 @@ def task_detail(direction: str, task: str) -> dict | None:
 
             this = by_id.get(task, {})
             m["status"] = this.get("status", m.get("status"))
+            m["effort"] = this.get("effort", "standard")
+            m["live"] = live_statuses().get((direction, task))
             m["rework_history"] = this.get("rework_history", [])
             parent = this.get("follow_up_of")
             m["follow_up_of"] = ref(parent) if parent else None
@@ -336,6 +374,28 @@ def set_task_status(direction: str, task: str, status: str, note: str | None = N
     return {"ok": True}
 
 
+EFFORTS = ("quick", "standard", "deep")
+
+
+def set_task_effort(direction: str, task: str, effort: str) -> dict:
+    """Set a task's intensity tier (quick | standard | deep). The orchestrator reads this when it
+    spawns the worker: it picks the model and reasoning effort and how long the worker is expected to
+    persist (see the /execute skill and coordination/tasks/_TEMPLATE.md)."""
+    if effort not in EFFORTS:
+        return {"ok": False, "error": f"effort must be one of {EFFORTS}"}
+    f = MAIN_ROOT / "coordination" / "directions" / f"{direction}.json"
+    if not f.is_file():
+        return {"ok": False, "error": "no such direction"}
+    data = json.loads(f.read_text("utf-8"))
+    for t in data.get("tasks", []):
+        if t.get("id") == task:
+            t["effort"] = effort
+            f.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+            _git_commit(f, f"dashboard: {direction}/{task} effort -> {effort}")
+            return {"ok": True}
+    return {"ok": False, "error": "no such task"}
+
+
 def _slug(s: str) -> str:
     s = re.sub(r"[^a-z0-9]+", "-", (s or "").lower()).strip("-")
     return s or "untitled"
@@ -366,7 +426,8 @@ def write_file(rid: str, path: str, content: str) -> dict:
 
 
 def create_task(direction: str, title: str, note: str = "",
-                status: str = "proposed", task_id: str | None = None) -> dict:
+                status: str = "proposed", task_id: str | None = None,
+                effort: str = "standard") -> dict:
     """Add a task to an existing direction (Overview authoring)."""
     f = MAIN_ROOT / "coordination" / "directions" / f"{direction}.json"
     if not f.is_file():
@@ -375,7 +436,9 @@ def create_task(direction: str, title: str, note: str = "",
     tid = task_id or _slug(title)
     if any(t.get("id") == tid for t in data.get("tasks", [])):
         return {"ok": False, "error": "a task with that id already exists"}
-    data.setdefault("tasks", []).append({"id": tid, "title": title, "status": status, "note": note})
+    effort = effort if effort in EFFORTS else "standard"
+    data.setdefault("tasks", []).append(
+        {"id": tid, "title": title, "status": status, "note": note, "effort": effort})
     f.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     _git_commit(f, f"dashboard: add task {direction}/{tid}")
     return {"ok": True, "id": tid}
@@ -590,7 +653,15 @@ def _build_app():
         if not (d and title):
             raise HTTPException(400, "direction, title required")
         return create_task(d, title, payload.get("note", ""),
-                           payload.get("status", "proposed"), payload.get("id"))
+                           payload.get("status", "proposed"), payload.get("id"),
+                           payload.get("effort", "standard"))
+
+    @app.post("/api/task-effort")
+    def api_task_effort(payload: dict):
+        d, t, e = payload.get("direction"), payload.get("task"), payload.get("effort")
+        if not (d and t and e):
+            raise HTTPException(400, "direction, task, effort required")
+        return set_task_effort(d, t, e)
 
     @app.post("/api/task-edit")
     def api_task_edit(payload: dict):

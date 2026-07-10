@@ -1,5 +1,27 @@
 import { useEffect, useState } from "react";
-import { setTaskStatus, createTask, editTask, createDirection, deleteTask } from "../api.js";
+import { setTaskStatus, setTaskEffort, createTask, editTask, createDirection, deleteTask } from "../api.js";
+import { EFFORTS, effortMeta } from "../effort.js";
+import LiveLine from "./LiveLine.jsx";
+
+// Quick / Standard / Deep picker. Used in the task modal; writes back immediately.
+function EffortPicker({ value, onPick, disabled }) {
+  return (
+    <div className="effort-picker">
+      {EFFORTS.map((e) => (
+        <button
+          key={e.id}
+          type="button"
+          title={e.hint}
+          disabled={disabled}
+          className={`effort-opt ${value === e.id ? "active" : ""}`}
+          onClick={() => onPick(e.id)}
+        >
+          {e.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 // The live pipeline. Done is a collapsed section below (not a crowding column). Cards are tasks,
 // filterable by direction. Proposed and queued cards can be dragged between those two columns
@@ -57,7 +79,17 @@ function TaskModal({ task, onClose, onChanged }) {
           <>
             <h3>{form.title}</h3>
             <p className="modal-note">{form.note || "No description yet."}</p>
+            <LiveLine live={task.live} />
             <div className="modal-status">Status: {task.status}</div>
+            <div className="modal-effort">
+              <span className="modal-effort-label">Intensity</span>
+              <EffortPicker
+                value={task.effort || "standard"}
+                disabled={busy}
+                onPick={(e) => { setTaskEffort(task.direction, task.id, e).then(onChanged); }}
+              />
+              <span className="modal-effort-hint">{effortMeta(task.effort || "standard").hint}</span>
+            </div>
             {task.rework_history?.length > 0 && (
               <div className="modal-rework">
                 <span className="modal-rework-flag">⚑ Sent back with notes</span>
@@ -235,7 +267,13 @@ export default function OverviewView({ overview, onOpenTask, onChange, focus, on
                 <div className="task-card-dir">
                   {t.directionName}
                   {t.rework_history?.length > 0 && <span className="card-flag" title="sent back with notes">⚑</span>}
+                  {t.effort && t.effort !== "standard" && (
+                    <span className={`effort-tag effort-${t.effort}`} title={effortMeta(t.effort).hint}>
+                      {effortMeta(t.effort).label}
+                    </span>
+                  )}
                 </div>
+                {c.id === "active" && <LiveLine live={t.live} />}
                 <div className="task-card-open">{t.has_artifact ? "view result →" : "details →"}</div>
               </button>
             ))}

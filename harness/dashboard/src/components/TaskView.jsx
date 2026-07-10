@@ -3,6 +3,7 @@ import { fetchTask, fetchJSON, fetchText, fetchTraining, setTaskStatus, deleteTa
 import LossChart from "./LossChart.jsx";
 import MarkdownReport from "./MarkdownReport.jsx";
 import VideoPlayer from "./VideoPlayer.jsx";
+import LiveLine from "./LiveLine.jsx";
 
 // A loss plot whose series is fetched from a referenced metrics.json.
 function LossResult({ series, log }) {
@@ -58,7 +59,7 @@ function TaskRef({ r, onOpenRef }) {
   );
 }
 
-export default function TaskView({ detail, reloadToken, onChange, onDeleted, onOpenRef }) {
+export default function TaskView({ detail, reloadToken, onChange, onDeleted, onOpenRef, onOpenTraining }) {
   const [task, setTask] = useState(null);
   const [refs, setRefs] = useState([]);
   const [sendBack, setSendBack] = useState(false);   // reject / reopen -> back to queue with a note
@@ -134,8 +135,10 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
   return (
     <div className="taskview">
       <div className="task-head">
-        <h1>{task.title}</h1>
-        <span className={`status status-${isDone ? "done" : "active"}`}>{isDone ? "Done" : "Active"}</span>
+        <div className="task-head-title">
+          <h1>{task.title}</h1>
+          <span className={`status status-${isDone ? "done" : "active"}`}>{isDone ? "Done" : "Active"}</span>
+        </div>
         <div className="task-actions">
           {isDone ? (
             <button className="act-btn" onClick={() => setSendBack(true)}>Reopen</button>
@@ -149,6 +152,7 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
           <button className="act-btn danger" onClick={() => setConfirmDelete(true)}>Delete</button>
         </div>
       </div>
+      {!isDone && <LiveLine live={task.live} className="task-live" />}
 
       {confirmDelete && (
         <div className="confirm-box">
@@ -300,7 +304,16 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
           <h2>From the textbook</h2>
           {refs.map((s) => (
             <details key={s.id} className="xclude">
-              <summary>{s.title}</summary>
+              <summary>
+                <span className="xclude-title">{s.title}</span>
+                <button
+                  className="xclude-open"
+                  title="Open this section in the Training report"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenTraining && onOpenTraining(s.id); }}
+                >
+                  Open in Training ↗
+                </button>
+              </summary>
               <MarkdownReport markdown={s.body} />
             </details>
           ))}

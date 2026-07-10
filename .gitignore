@@ -221,6 +221,10 @@ __marimo__/
 node_modules/
 *.local
 
+# Live per-task status a running worker writes for the dashboard (ephemeral, per-machine — the
+# manifest is the durable record; status.json is just "what step is this running now").
+runs/**/status.json
+
 # Claude Code local tooling (launch.json carries worktree-specific absolute paths)
 # Use .claude/* (not .claude/) so the settings.json exception below can take effect.
 .claude/*

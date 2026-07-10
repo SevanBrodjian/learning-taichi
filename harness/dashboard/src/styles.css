@@ -341,3 +341,63 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
   .app:not(.phone) { grid-template-columns: 336px 1fr; }
   .app:not(.phone) .sidebar, .app:not(.phone) .content { zoom: 1.15; }
 }
+
+/* ── Effort tiers (Quick / Standard / Deep) ── */
+.effort-picker { display: inline-flex; gap: 0; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
+.effort-opt { background: var(--panel-2); border: none; border-right: 1px solid var(--border); color: var(--muted);
+  padding: 6px 12px; font-size: 12px; font-family: var(--mono); cursor: pointer; }
+.effort-opt:last-child { border-right: none; }
+.effort-opt:hover:not(.active) { color: var(--text); }
+.effort-opt.active { background: var(--accent); color: var(--bg); font-weight: 600; }
+.modal-effort { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
+.modal-effort-label { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); font-family: var(--mono); }
+.modal-effort-hint { flex: 1 1 100%; font-size: 12px; color: var(--muted); line-height: 1.4; }
+.effort-tag { margin-left: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px;
+  font-family: var(--mono); border-radius: 3px; padding: 1px 5px; border: 1px solid var(--border); }
+.effort-tag.effort-deep { color: var(--accent); border-color: #173243; background: #0f2230; }
+.effort-tag.effort-quick { color: var(--muted); }
+
+/* ── Live "running" status a worker writes (a pulsing dot + its current step) ── */
+.live-line { display: flex; align-items: center; gap: 7px; margin-top: 8px; font-size: 12px; color: var(--accent-2); line-height: 1.35; }
+.live-line.blocked { color: var(--danger); }
+.live-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-2); box-shadow: 0 0 0 0 var(--accent-2); animation: live-pulse 1.8s ease-out infinite; }
+.live-line.blocked .live-dot { background: var(--danger); animation: none; }
+.live-step { min-width: 0; }
+.task-live { margin: -8px 0 20px; font-size: 13px; }
+@keyframes live-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(126, 231, 135, .45); }
+  70%  { box-shadow: 0 0 0 6px rgba(126, 231, 135, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(126, 231, 135, 0); }
+}
+
+/* ── Independent scrolling for two-pane doc views (Training, Reports) ──
+   The section list (.toc) and the article (.doc-body) each scroll on their own instead of the whole
+   pane scrolling as one, so reaching the bottom of a long TOC no longer means scrolling the article
+   first. Only on wide layouts (>=821px, where the doc-layout is two columns); below that it stacks
+   and flows normally. */
+@media (min-width: 821px) {
+  .content.content-split { overflow: hidden; padding: 0; display: flex; }
+  .content-split .doc-layout { flex: 1 1 auto; height: 100%; gap: 0;
+    grid-template-columns: 260px 1fr; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+  .content-split .toc { position: static; min-height: 0; height: 100%; overflow-y: auto;
+    padding: 22px 16px 40px; border-right: 1px solid var(--border); }
+  .content-split .doc-body { min-height: 0; height: 100%; overflow-y: auto; padding: 26px 32px 64px; }
+  .content-split > .content-doc { flex: 1 1 auto; min-height: 0; height: 100%; overflow-y: auto; padding: 26px 32px 64px; }
+}
+
+/* ── "Open in Training ↗" on an embedded textbook section (task page) ── */
+.xclude > summary { display: flex; align-items: center; gap: 10px; }
+.xclude-title { flex: 1 1 auto; min-width: 0; }
+.xclude-open { flex: none; background: var(--panel); border: 1px solid var(--border); color: var(--accent);
+  border-radius: 4px; padding: 3px 9px; font-size: 11px; font-family: var(--mono); cursor: pointer; font-weight: 400; }
+.xclude-open:hover { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+
+/* ── Task head: title row above a wrapping action row (fixes buttons running off narrow screens) ── */
+.task-head-title { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-width: 0; }
+.task-actions { flex-wrap: wrap; }
+@media (max-width: 820px) {
+  .task-head { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .task-head-title { width: 100%; }
+  .task-actions { margin-left: 0; width: 100%; }
+  .task-head h1 { font-size: 26px; }
+}

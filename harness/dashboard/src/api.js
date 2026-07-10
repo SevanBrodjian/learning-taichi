@@ -33,6 +33,14 @@ export const setTaskStatus = (direction, task, status, note) =>
     body: JSON.stringify({ direction, task, status, note }),
   }).then((r) => r.json());
 
+// Set a task's intensity tier (quick | standard | deep). The orchestrator reads it at spawn time.
+export const setTaskEffort = (direction, task, effort) =>
+  fetch(`${API_BASE}/api/task-effort`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ direction, task, effort }),
+  }).then((r) => r.json());
+
 const post = (path, payload) =>
   fetch(`${API_BASE}${path}`, {
     method: "POST",

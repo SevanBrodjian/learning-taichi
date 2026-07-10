@@ -65,6 +65,7 @@ export default function App() {
   const [notifData, setNotifData] = useState(null);
   const [seenNotifs, setSeenNotifs] = useState(loadSeen);
   const [badgeToken, setBadgeToken] = useState(0); // bumped when a training section is read
+  const [trainingTarget, setTrainingTarget] = useState(null); // deep-link: open this section in Training
 
   const isPhone = useMediaQuery("(max-width: 600px)");
 
@@ -131,6 +132,9 @@ export default function App() {
 
   const onTaskDeleted = () => { setSelected(null); setSection("overview"); };
 
+  // A task page's embedded textbook section links out to the full Training view, opened on that section.
+  const openTraining = (sectionId) => { setTrainingTarget(sectionId); setSection("training"); };
+
   const groups = useMemo(() => {
     const m = new Map();
     for (const t of realTasks) {
@@ -167,8 +171,12 @@ export default function App() {
     });
   }, [section, notifData]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Training and Reports are two-pane doc views: the section list and the article get independent
+  // scrolling (via .content-split) so reaching the rest of the TOC doesn't require scrolling the
+  // article to the bottom first.
+  const isSplit = section === "training" || section === "reports";
   const mainContent = (
-    <main className="content">
+    <main className={`content${isSplit ? " content-split" : ""}`}>
       {section === "overview" && (
         <OverviewView
           overview={overview}
@@ -185,9 +193,16 @@ export default function App() {
           onChange={reloadAll}
           onDeleted={onTaskDeleted}
           onOpenRef={openRef}
+          onOpenTraining={openTraining}
         />
       )}
-      {section === "training" && <TrainingView onRead={() => setBadgeToken((t) => t + 1)} />}
+      {section === "training" && (
+        <TrainingView
+          onRead={() => setBadgeToken((t) => t + 1)}
+          target={trainingTarget}
+          onTargetHandled={() => setTrainingTarget(null)}
+        />
+      )}
       {section === "reports" && <ReportsView />}
       {section === "inbox" && <InboxView notifData={notifData} />}
     </main>

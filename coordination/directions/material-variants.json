@@ -32,7 +32,8 @@
       "status": "done",
       "note": "Implement a simulation of a fluid under varying viscosities and demonstrate the differences in their behavior in a few settings. The viscosity should vary dramatically, like from honey to oil.",
       "follow_ups": [
-        "train-and-interpolate-nns-to-mimic-viscous-liquids"
+        "train-and-interpolate-nns-to-mimic-viscous-liquids",
+        "implement-liquids-across-viscosity-and-surface-tension"
       ]
     },
     {
@@ -71,6 +72,13 @@
       "status": "done",
       "note": "Train one neural network to mimic all three materials. The control for which material gets simulated should be a small set of swappable parameters specific to each material. Then attempt the same linear interpolation but just interpolating the swapped parameters. The swappable parameters should be just two of them, no more. Visualize them as a square grid where you show each of those two variables on each axis and the resulting effects. It can be an interactive visualization. Make sure to work hard, this is a tough task. Make sure that at all the edges (parameters set equal to the trained set) the results follow the expected simulation exactly.",
       "follow_up_of": "train-material-replicating-nns-and-interpolate"
+    },
+    {
+      "id": "implement-liquids-across-viscosity-and-surface-tension",
+      "title": "Implement Liquids across Viscosity and Surface Tension",
+      "status": "proposed",
+      "note": "Building off the viscosity implementation, add a new parameter to our fluid simulations which introduces surface tension. Then, create some visualizations from different starting conditions of fluids which vary across these two axes -- and create a full 3x3 table showing a fluid for every combination across the two. It doesn't need to be differentiable.",
+      "follow_up_of": "varying-liquid-viscosity"
     }
   ]
 }

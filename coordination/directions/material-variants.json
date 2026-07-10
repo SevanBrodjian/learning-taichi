@@ -76,7 +76,7 @@
     {
       "id": "implement-liquids-across-viscosity-and-surface-tension",
       "title": "Implement Liquids across Viscosity and Surface Tension",
-      "status": "queued",
+      "status": "active",
       "note": "Building off the viscosity implementation, add a new parameter to our fluid simulations which introduces surface tension. Then, create some visualizations from different starting conditions of fluids which vary across these two axes -- and create a full 3x3 table showing a fluid for every combination across the two. It doesn't need to be differentiable.",
       "follow_up_of": "varying-liquid-viscosity"
     }

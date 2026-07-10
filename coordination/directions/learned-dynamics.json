@@ -14,7 +14,8 @@
       "id": "residual-hard-mismatch",
       "title": "Learned residual against a hard mismatch (non-smooth / nonlinear / stronger held-out)",
       "status": "proposed",
-      "note": "learned-residual closed ~100% (train) and 66.7% (held-out v0) of a LINEAR drag gap \u2014 the friendliest possible mismatch (smooth, near-linear, velocity-only). The bounded 0.1*tanh residual was adequate only because the missing physics was weak. Natural follow-up the task flagged as open: a genuinely hard mismatch \u2014 a non-smooth contact law, anisotropic / state-dependent drag, or perturbed gravity \u2014 and a stronger held-out shift (blob shape, resolution, mismatch type), not just a new v0. This separates 'a promising demonstration' from 'a method': does the late-residual trainability survive when the target is non-smooth and the residual must be larger (re-risking the blow-up the bound prevents)?"
+      "note": "learned-residual closed ~100% (train) and 66.7% (held-out v0) of a LINEAR drag gap \u2014 the friendliest possible mismatch (smooth, near-linear, velocity-only). The bounded 0.1*tanh residual was adequate only because the missing physics was weak. Natural follow-up the task flagged as open: a genuinely hard mismatch \u2014 a non-smooth contact law, anisotropic / state-dependent drag, or perturbed gravity \u2014 and a stronger held-out shift (blob shape, resolution, mismatch type), not just a new v0. This separates 'a promising demonstration' from 'a method': does the late-residual trainability survive when the target is non-smooth and the residual must be larger (re-risking the blow-up the bound prevents)?",
+      "effort": "quick"
     }
   ]
 }

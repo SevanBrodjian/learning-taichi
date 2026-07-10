@@ -1,6 +1,21 @@
 # Orchestrator status — main
 
-_Snapshot as of 2026-07-09. All work committed and pushed to origin/main. Working tree clean._
+_Snapshot as of 2026-07-09. All work committed to main (not pushed this session). Working tree clean._
+
+## Latest session — harness/dashboard upgrades (7-item backlog)
+Shipped: **per-task effort tiers** quick/standard/deep (dashboard picker + `/api/task-effort` + `effort` in
+overview/detail; consumed at spawn time by `/execute` and the task template); **live running status**
+(worker writes `runs/<dir>/<task>/status.json` via `harness/tools/task_status.py`, gitignored; server
+`live_statuses()` surfaces `{state,step,age}`; dashboard shows a pulsing dot + step on Active cards and the
+task head); **mobile task-head fix** (title above a wrapping action row); **independent scrolling** for the
+Training/Reports two-pane views (`.content-split`); **"Open in Training ↗"** deep-link from a task page's
+embedded textbook section; **brevity spec** (new `spec/style_training_report.md` "Brevity and prioritization"
+section, template + CLAUDE.md updated, periodic training-sweep added as an orchestrator duty). One-time
+**training sweep**: merged learned-viscosity-interpolation into learned-material-interpolation (349→126 lines;
+index/links/manifests cascaded) and trimmed perorations/task-numbers/code across the recent core series.
+Skipped by user request: the execute-trigger mechanism (#1) — deferred pending their testing.
+Deeper 30–40% cuts on the mid/foundational pages are an open follow-up (kept surgical this pass).
+
 
 ## Queue
 **Empty.** Nothing queued. Proposed (not queued): `residual-hard-mismatch` (learned-dynamics),

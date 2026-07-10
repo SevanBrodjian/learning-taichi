@@ -13,31 +13,22 @@ where the underlying material combination is physically well posed.
 
 ## Interpolating an input versus interpolating weights
 
-The whole reason weight-blending fails is worth restating in one line, because conditioning is defined by
-avoiding it. A one-hidden-layer network computes roughly $W_2\,\tanh(W_1 x)$, and its output runs through
-the **product** of the two weight matrices, so the map from a weight vector to the function it computes is
-strongly nonlinear. A straight line in weight space is a curved path in function space, and the midpoint
-of two distant weight vectors does not compute the midpoint function; when the two endpoints are
-structurally different stress laws it computes something that is neither, a tensor field with no guarantee
-of being dissipative, and a stress that injects energy every step blows the material apart.
-
-Conditioning sidesteps this completely. There is **one** weight set $\theta$, and it is used coherently at
-every descriptor value. The network is a single map
+[[learned-material-interpolation]] showed why weight-blending fails: a net's output runs through the
+**product** of its weight matrices, so a straight line in weight space is a curved path in function space,
+and between structurally different stress laws the midpoint weights compute a tensor field that is neither,
+non-dissipative, and blows the material apart. Conditioning sidesteps this. There is **one** weight set
+$\theta$, used coherently at every descriptor value, as a single map
 
 $$
 g_\theta(\text{features},\, m) \;\approx\; \text{material-frame stress},
 $$
 
-where $m$ is a small vector of descriptor scalars fed as extra inputs alongside the position-free physical
-features (the polar stretch $S$ of the deformation gradient, the APIC affine matrix, velocity, the plastic
-record; the same rotation-invariant features and the same reason for using them as in
-[[constitutive-models]] and [[svd-polar]]). The stress at an interior $m$ is therefore not an average of
-two far-apart weight vectors. It is the one network's own output as a smooth function of its inputs, on the
-same manifold the network actually learned. The descriptor enters the same nonlinearity as every other
-feature, so moving $m$ moves the stress the way moving the strain does: smoothly, and on-distribution. That
-single structural difference is why the conditioned cells stay finite where the weight-blend cells
-exploded. The same logic closed the viscosity study in [[learned-viscosity-interpolation]]: the honest way
-to build a continuous knob is to train across the continuum, not to average endpoint solutions.
+where $m$ is a small vector of descriptor scalars fed alongside the position-free physical features (the
+polar stretch $S$, the affine matrix, velocity, the plastic record; same rotation-invariant features as
+[[constitutive-models]] and [[svd-polar]]). The stress at an interior $m$ is the one network's own output as
+a smooth function of its inputs, on the manifold it actually learned, so moving $m$ moves the stress the way
+moving the strain does: smoothly and on-distribution. That is why the conditioned cells stay finite where the
+weight-blend cells exploded.
 
 ## A two-parameter descriptor, and conditioning the state rule too
 
@@ -77,30 +68,19 @@ used.
 
 ## What it actually buys: the edges are close, not exact
 
-The load-bearing question is what happens at the trained corners. A tempting story would be that the
-conditioned net reproduces each material exactly, but that is not what the numbers show, and saying so would
-be dishonest. At each material's descriptor the one shared network follows the true simulator to a
-trajectory RMSE of about $0.018$ for the fluid, $0.007$ for the elastic, and $0.002$ for the snow, against
-a simulator noise floor (the true rollout run twice) of around $0.001$ or below. The fluid is roughly
-eighteen times its own noise floor. These are close, one to two percent on the rollout, but they are **not
-exact**, and they are notably worse than the precursor's separate per-material networks, which sat near a
-tenth of a percent.
+At each trained corner the one shared network follows the true simulator to about one to two percent on the
+rollout (the fluid worst, the snow best), close but **not exact**, and notably worse than the precursor's
+separate per-material nets that sat near a tenth of a percent. This gap is the headline, not a defect to
+hide: it is the **capacity cost** of one shared weight set. A single small network holding three
+structurally different stress laws cannot fit any one as tightly as a network free to spend all its
+parameters on that material alone; the shared parameters that let it interpolate are the ones it can no
+longer specialize. The fluid is the worst corner because its near-incompressible det-only pressure is the
+hardest to reproduce precisely and a small pressure error shows up fast in a thin spreading sheet.
 
-This gap is the headline, not a defect to hide. It is the **capacity cost** of one shared weight set. A
-single small network asked to hold three structurally different stress laws, selected by two scalars,
-cannot fit any one of them as tightly as a network free to spend all its parameters on that material alone.
-The shared parameters that let it interpolate smoothly between materials are the same parameters it can no
-longer specialize. The fluid is the worst corner for a specific reason: its stress is a near-incompressible
-det-only pressure whose stiff response to tiny volume changes is the hardest of the three to reproduce
-precisely, and a small pressure error shows up quickly in a thin spreading sheet.
-
-There is a separate check that is easy to confuse with edge accuracy and must be kept distinct. Driving the
-state kernel from the continuous descriptor schedule reduces to the exact pure-material state rule at each
-corner, to within the GPU noise floor. That verifies the **state rule** is scheduled correctly, the kind of
-harness bug that broke the precursor's first attempt, but it is a statement about the isotropization and
-the yield band, **not** a claim that the material is reproduced exactly. The material is reproduced only to
-the one-to-two-percent fidelity above. Conflating the two would be the same overclaim the precursor was
-careful to avoid.
+One check must be kept distinct from edge accuracy: driving the state kernel from the descriptor schedule
+reduces to the exact pure-material state rule at each corner. That verifies the **state rule** is scheduled
+correctly (the harness bug that broke the precursor's first attempt), but it is not a claim that the
+material itself is reproduced exactly. It is reproduced only to the one-to-two-percent fidelity above.
 
 ## The 2-D grid: physical where the physics is well posed
 
@@ -150,17 +130,13 @@ sense in which conditioning beats weight-blending.
 
 ## Why this matters for controllable worlds
 
-A controllable world model wants a continuous material dial, and the two candidate ways to build it are now
-both measured. Blending separate per-material networks, from [[learned-viscosity-interpolation]] and
-[[learned-material-interpolation]], fails universally: the interior leaves the manifold of valid physics and
-explodes. Conditioning a single network on a descriptor, this page, is the better route and does produce a
-usable family, but with two honest caveats that a builder needs to plan around. First, one shared network
-buys smoothness at the cost of exactness at the calibration points, so if a control knob has to hit its
-named settings precisely, a shared net will need more capacity, per-material output heads, or an explicit
-correction at those settings; a single small net alone is one to two percent off. Second, the morph is only
-smooth along axes where the interpolated material is physically realizable, so the descriptor itself has to
-be **designed to keep its interior inside the manifold of real materials**, avoiding ill-posed corners like
-a plastic fluid, and the state rules a material's identity depends on have to be conditioned along with the
-stress. Conditioning is the right primitive for a material dial. It is not an automatic guarantee of a
-smooth physical continuum, and the places it breaks are exactly the places the requested physics does not
-exist.
+The two ways to build a continuous material dial are now both measured. Blending separate per-material
+networks ([[learned-material-interpolation]]) fails universally, the interior leaving the manifold of valid
+physics and exploding. Conditioning one network on a descriptor is the better route and produces a usable
+family, with two caveats a builder must plan around. One shared network buys smoothness at the cost of
+exactness at the calibration points, so a knob that must hit its named settings precisely needs more
+capacity, per-material output heads, or an explicit correction there. And the morph is only smooth where the
+requested material is physically realizable, so the descriptor has to be **designed to keep its interior
+inside the manifold of real materials** (no ill-posed corners like a plastic fluid), with the state rules
+conditioned alongside the stress. Conditioning is the right primitive for a material dial, not an automatic
+guarantee of a smooth physical continuum.

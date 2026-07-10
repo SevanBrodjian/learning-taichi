@@ -150,7 +150,6 @@
   "custom_html": null,
   "training_refs": [
     "learned-material-interpolation",
-    "learned-viscosity-interpolation",
     "material-showcase",
     "differentiable-materials",
     "constitutive-models",

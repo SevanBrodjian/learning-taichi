@@ -146,7 +146,6 @@
   "training_refs": [
     "conditioned-material-net",
     "learned-material-interpolation",
-    "learned-viscosity-interpolation",
     "material-showcase",
     "constitutive-models",
     "svd-polar",

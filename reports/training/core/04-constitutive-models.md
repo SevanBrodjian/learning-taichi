@@ -148,21 +148,17 @@ optimizer setting does not survive a change of material**: the learning rate tha
 the elastic case to diverge, because the same control parameter now sits on a stiffer, more curved loss
 surface. Choosing the optimizer step is not separable from choosing the physics.
 
-This is the sensitivity a controllable world model has to expose and to tame. If the goal is to *steer* a
-simulated material by gradients, the constitutive model sets the texture of the landscape those gradients
-ride, smooth and forgiving for a fluid, curved for an elastic solid, and kinked for anything with a plastic
-projection. The materials that are visually most interesting, the ones that crumple, pack, and hold a
-shape, are exactly the ones whose non-smooth physics makes them hardest to control, which is precisely why
-this corner of the problem is worth the attention.
+This is the sensitivity a controllable world model has to expose and tame: the constitutive model sets the
+texture of the landscape gradients ride, smooth for a fluid, curved for an elastic solid, kinked for anything
+with a plastic projection. The visually richest materials are exactly the ones whose non-smooth physics makes
+them hardest to control.
 
 ## What's open
 
-The clean separation above, ballistics reachable for all, controllability set by smoothness, is read from a
-single, near-ballistic control task where the center of mass is essentially a point projectile. A task that
-forces large **internal deformation**, shape matching against a target outline, packing a material into a
-mold, or driving it into sustained contact, would make the constitutive differences bite far harder, since
-there the recoverable elastic energy and the active plastic clamp directly shape the quantity being
-optimized rather than averaging out of it. Whether the smooth-to-kinked ordering of optimization difficulty
-*sharpens* on such tasks, and whether a deliberately **smoothed** plastic projection (a soft clamp, in the
-spirit of the softened wall) recovers a usable gradient for snow without distorting its physics, are open
-and directly testable questions.
+The clean separation above, ballistics reachable for all and controllability set by smoothness, is read from
+a single near-ballistic task where the center of mass is essentially a point projectile. A task that forces
+large **internal deformation** (shape matching, packing into a mold, sustained contact) would make the
+constitutive differences bite far harder, since there the elastic energy and the plastic clamp shape the
+optimized quantity directly rather than averaging out. Whether the smooth-to-kinked ordering sharpens on such
+tasks, and whether a **smoothed** plastic clamp recovers a usable gradient for snow, are open, testable
+questions.

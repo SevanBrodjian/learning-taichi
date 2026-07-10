@@ -8,12 +8,11 @@ takes. No second material, no reaction chemistry, no extra solver. One passive n
 particle, and a small change in the renderer, is enough to show two colored liquids braid together and
 blend to an intermediate hue where they meet.
 
-The reason this belongs in a book about controllable, differentiable worlds is that it is the cleanest
-possible example of a **passive tracer**, a quantity the flow carries but never acts back on. A world model
-that wants to paint, label, or track material as it moves, which region of fluid came from where, what
-temperature or concentration a parcel holds, needs exactly this: a field advected by the dynamics that does
-not disturb the dynamics. Color is the tracer that happens to be visible, so it is the easiest one to debug
-by eye, but the machinery is identical for any advected attribute.
+This is the cleanest possible example of a **passive tracer**, a quantity the flow carries but never acts
+back on. A world model that wants to paint, label, or track material as it moves, which region came from
+where, what concentration a parcel holds, needs exactly this: a field advected by the dynamics that does not
+disturb the dynamics. Color is the tracer that happens to be visible, so it is the easiest to debug by eye,
+but the machinery is identical for any advected attribute.
 
 It is worth being precise about how this differs from a genuine second material. In [[material-showcase]]
 three materials share one solver, but there each material carries its own constitutive law and the physics
@@ -152,16 +151,11 @@ real blend to develop.
 
 ## What this does and does not model
 
-The register is the same honest one [[fluid-realism]] insists on. This is a **passive color advection**, not
-a model of how real liquids mix. Real mixing is driven by molecular diffusion across the interface and, at
-these scales, by turbulent stirring that folds the interface down to where diffusion finishes the job; none
-of that chemistry or fine-scale physics is present. The blend seen here is purely the two particle
-populations becoming spatially interleaved by the resolved flow, plus the renderer averaging their colors over
-a blur width chosen by eye. Nothing crosses the interface at the particle level, a red particle never becomes
-purple, so at infinite resolution the "blend" would resolve back into interleaved red and blue rather than a
-true continuum of intermediate concentration. The colors, the saturation of the deep tint, and the blur width
-are all hand-tuned for legibility, and the whole thing rides on the [[fluid-rendering]] pipeline's stylized
-2D side view rather than any real light transport. What it demonstrates, and demonstrates cleanly, is the
-tracer pattern: attach a quantity to the particles, let the dynamics move it and never read it back, and
-recover a smooth field by local averaging at render time. That the tracer is visible as color is a
-convenience; the same three lines carry any advected attribute a controllable world eventually needs to track.
+The register is the honest one [[fluid-realism]] insists on: this is a **passive color advection**, not a
+model of how real liquids mix. Real mixing runs on molecular diffusion and turbulent stirring, none of which
+is present; the blend here is purely two particle populations interleaving by the resolved flow, plus the
+renderer averaging their colors over a hand-tuned blur width. Nothing crosses the interface at the particle
+level, so at infinite resolution the blend would resolve back into interleaved red and blue rather than a
+true continuum. What it demonstrates cleanly is the tracer pattern: attach a quantity to the particles, let
+the dynamics move it and never read it back, and recover a smooth field by local averaging at render time.
+The same three lines carry any advected attribute a controllable world needs to track.

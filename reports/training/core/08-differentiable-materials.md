@@ -158,13 +158,9 @@ finite differences.
 
 ## What is open
 
-The check here certifies correctness on a center-of-mass loss, which is the loss least sensitive to the
-constitutive model. The natural next probe is a loss that strongly excites internal deformation, a
-shape-matching or contact task, where the elastic and snow stress gradients would be exercised hard and the
-snow clamp would couple into the loss directly. The prediction is that those gradients stay
-finite-difference-correct while the snow landscape visibly roughens, forcing a smaller step or a smoothed
-clamp, so that the correctness-versus-usability split shows up as an optimization difficulty rather than a
-wrong number. Whether a softened clamp meaningfully smooths that landscape without distorting the physics is
-a real question, untested here only because the hard clamp already verified on this task. So is whether the
-near-identity SVD degeneracy ever bites in a task that deliberately holds a blob undeformed while
-differentiating through it.
+The check certifies correctness on a center-of-mass loss, the loss least sensitive to the constitutive model.
+The natural next probe is a loss that strongly excites internal deformation (shape-matching or contact),
+where the elastic and snow gradients are exercised hard and the snow clamp couples into the loss directly.
+The prediction is that those gradients stay finite-difference-correct while the snow landscape visibly
+roughens, so the correctness-versus-usability split shows up as optimization difficulty rather than a wrong
+number.

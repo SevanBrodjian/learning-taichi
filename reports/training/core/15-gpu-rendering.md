@@ -19,11 +19,9 @@ top. At $1080^2$ that is a stack of million-pixel passes, and in single-threaded
 order of **1.7 seconds per frame**. A two-scene, few-hundred-frame showcase therefore takes tens of minutes,
 almost all of it spent in the renderer while the GPU that just ran the physics sits idle.
 
-This matters beyond one demo. The spine of this project is controllable, generative simulated worlds, and a
-world that cannot be rendered quickly cannot be watched, iterated on, or eventually folded into a training
-loop that scores frames. A slow renderer is a slow feedback loop. The physics being cheap and the render
-being expensive is not a quirk of this pipeline; it is the normal shape of the problem, and it is worth
-learning to recognize.
+This matters beyond one demo. A world that cannot be rendered quickly cannot be watched, iterated on, or
+folded into a training loop that scores frames, so a slow renderer is a slow feedback loop. Cheap physics
+and an expensive render is the normal shape of the problem, not a quirk of this pipeline.
 
 ![Measured render time per 1080-squared frame on the same 30000-particle dam-break frame, on a log scale.
 The CPU renderer takes about 1686 milliseconds, roughly one frame every 1.7 seconds. The full GPU renderer,
@@ -148,20 +146,12 @@ stage out to numpy and back, as a naive port might, would pay that transfer cost
 would throw away most of the speedup. On a GPU the arithmetic is nearly free and the memory traffic is the
 budget, so the rule is to move data across the host boundary as few times as possible, ideally twice.
 
-## What is open
+## What is open, and the lesson
 
-The speedup is a timing on one scene, one frame, one resolution, and one GPU, run uncontended; it is not a
-claim that every renderer sees 130x or that this renderer would scale the same way at a very different
-resolution or particle count. The morphological closing is a faithful stand-in for the connected-component
-fill on these scenes, where the real cavities are wide, but it fills by width rather than by area, so a
-genuine narrow-but-large enclosed pocket would be sealed where the CPU's area cap would have kept it; the
-scenes here never produce one, but a different scene could. The JFA distance transform is Euclidean and
-exact for these seed densities, though its approximate variants can miss on pathological seed layouts. And
-the renderer is still the stylized, non-differentiable, 2D screen-space renderer of [[fluid-realism]]; making
-it fast does not make it a light-transport simulation, and it still carries no gradients.
-
-The lesson worth keeping is the diagnosis. When a simulated world is too slow to work with, the instinct is
-to blame the simulation, but the measurement here points the other way: the physics was already free and the
-render was the whole cost. Naming the expensive layer before optimizing it is what turned a nearly-four-minute
-scene into a one-second one, and it is the same habit that separates a real speedup from effort spent making
-an already-cheap thing slightly cheaper.
+The speedup is a timing on one scene, frame, resolution, and GPU, run uncontended, not a claim that every
+renderer sees 130x. The bounded morphological closing fills by width rather than area, so a narrow-but-large
+enclosed pocket would be sealed where the CPU's area cap kept it open; these scenes never produce one, but
+another could. And the renderer is still the stylized, non-differentiable 2D one of [[fluid-realism]]; making
+it fast does not make it light transport. The lesson worth keeping is the diagnosis: the instinct is to blame
+the simulation, but here the physics was already free and the render was the whole cost. Naming the expensive
+layer before optimizing it is what turned a four-minute scene into a one-second one.

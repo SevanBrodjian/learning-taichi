@@ -139,11 +139,8 @@ become live questions rather than settled ones.
 
 ## What is open
 
-The residual studied here is bounded to a small per-component magnitude, which is adequate only because
-the missing physics is weak. A larger or more violent mismatch would need either a larger bound, which
-rerisks the blow-up the bound was there to prevent, or a smarter parameterization that stays stable
-while correcting more. Whether the same late-residual trainability survives a genuinely hard mismatch (a
-non-smooth contact law, an anisotropic or state-dependent drag), and whether the velocity-space
-generalization holds across changes the held-out test did not probe (blob shape, resolution, mismatch
-type), are the questions that separate a promising demonstration from a method. The structural reason the
-gradient survives is understood; the limits of what it can be asked to learn are not.
+The residual here is bounded to a small per-component magnitude, adequate only because the missing physics
+is weak; a more violent mismatch would need a larger bound (rerisking the blow-up) or a smarter stable
+parameterization. Whether the late-residual trainability survives a genuinely hard mismatch (a non-smooth
+contact law, a state-dependent drag), and whether the velocity-space generalization holds across blob shape,
+resolution, and mismatch type, are what separate a promising demonstration from a method.

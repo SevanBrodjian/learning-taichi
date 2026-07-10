@@ -1,164 +1,126 @@
-# Learning three materials with one net, and why interpolating them breaks in the middle
+# Interpolating learned materials, and why blending their weights breaks
 
-[[learned-viscosity-interpolation]] asked whether a continuous control knob can be built cheaply, by
-training a small network at a few settings and linearly blending its weights for the settings in between.
-There the knob was viscosity, a single scalar multiplying a fixed stress form, and the answer was a
-clean but bounded negative: the blended fluid was stable and plausible but systematically too thin
-through the middle of the range. This page pushes the same question somewhere harder. Instead of one
-functional form scaled by a knob, take three genuinely different constitutive laws from
-[[constitutive-models]] and [[material-showcase]] (a weakly compressible fluid, a corotated elastic
-solid, and Stomakhin snow), learn each with the same network, and interpolate the weights between them.
-There is no linear ideal to undershoot here because a fluid and a solid are not two points on a line
-through function space. What emerges is a sharper and more useful negative: the endpoints can be made
-exact, but the interior of the interpolation is degenerate, a material that scatters into a diffuse
-cloud rather than settling into anything in between.
+A controllable world model wants a continuous material dial: turn it from water toward putty toward snow and
+get a continuous family of dynamics. The cheapest imaginable way to build that dial is to train a small
+network at a few settings and **linearly blend its weights** for the settings in between. This page tests
+that shortcut in two cases of increasing difficulty and finds a clean negative in both. The lesson is not
+that networks cannot imitate a stress law (they can); it is that a straight line in weight space is not a
+straight line in behavior, so the blend is untrustworthy in exactly the interior region a dial exists to
+cover.
 
-This is the exact shape of the shortcut a controllable world model is tempted to take. A world with a
-material dial (turn it from water toward putty toward snow) needs a continuous family of dynamics, and
-the cheapest imaginable way to fill it in is to train a handful of materials and blend. Knowing precisely
-how and why that shortcut fails is what tells a builder to spend the effort on the honest alternative
-instead.
+## Case 1: viscosity, a single form scaled by a knob
 
-## The hard part is making the weights comparable
-
-Blending two weight vectors only means something if the two networks are the same shape doing the same
-job in the same coordinates. The three materials natively carry different state, which is the obstacle. A
-fluid tracks only the scalar volume ratio $J = \det F$, where $F$ is the deformation gradient, the matrix
-that maps a small material vector from its rest configuration to its current one. An elastic solid tracks
-the full $F$. Snow tracks $F$ plus an accumulated plastic record. Three different state layouts cannot
-share a weight vector, so the first move is to force one shared substrate onto all three.
-
-Every net here reads the **same position-free local features** and writes the **same output**. Carry the
-full $F$ for all three materials, including the fluid, for which it is the special case where only
-$\det F$ matters. Feed the network not the raw $F$ but its symmetric stretch $S$ from the polar
-decomposition $F = R\,S$, where $R$ is a rotation and $S$ is symmetric positive-definite (the derivation
-and why it is the right thing to feed a corotated model are in [[svd-polar]]). Along with $S$ give it the
-APIC affine matrix $C_p$, the velocity, and the plastic record. The output is the three independent
-entries of the symmetric stress in the material frame, rotated back to the world frame by the analytic
-$R$. So a single map
+The friendliest possible version fixes the functional form and varies one scalar. The fluid stress from
+[[viscosity]] is a pressure plus a viscous term, and only the viscous term is handed to a per-particle
+network $g_\theta$ that reads position-free local features (the affine matrix $C_p$ and velocity) and
+outputs the symmetric viscous stress:
 
 $$
-g_\theta(S,\, C_p,\, v,\, J_p) \;\approx\; \text{material-frame stress},
+g_\theta(C_p, v_p) \;\approx\; \mu_{\text{visc}}\,\big(C_p + C_p^{\top}\big).
 $$
 
-with only the weights $\theta$ differing between fluid, elastic, and snow, and a single shared feature
-standardization and output scale so nothing about the three fits differs except $\theta$.
+Each per-viscosity net is fit by plain supervised regression onto the true stress from forward runs, which
+sidesteps the long-horizon rollout gradient entirely and makes several fits fast and stable. Position-free
+features push the net to learn the local rule rather than a trajectory, and it does: each net reproduces its
+fluid and transfers to an unseen dam-break.
 
-Feeding the stretch $S$ rather than $F$ is not cosmetic. The corotated stress lives in the small
-difference $F - R$, an elastic strain of a few percent buried inside an order-one rotation. A network fed
-raw $F$ would have to first undo the rotation itself, and its error on that large rotation swamps the
-tiny strain that actually carries the stress. The polar decomposition hands the strain over directly.
-This is the same discipline that made the learned residual in [[hybrid-learned-residual]] and the
-viscosity net in [[learned-viscosity-interpolation]] generalize instead of memorize: give the network
-the rotation-invariant, position-free local state and it is forced to learn a genuine local law.
+This target is the right one to study because it is **linear in the knob**. With $f_\mu(C) = \mu\,(C+C^{\top})$,
 
-## The stress is learnable, but the state rule is not in the weights
+$$
+(1-\alpha)\,f_{\mu_{\text{thin}}} + \alpha\,f_{\mu_{\text{thick}}}
+\;=\; \big((1-\alpha)\,\mu_{\text{thin}} + \alpha\,\mu_{\text{thick}}\big)\,\big(C + C^{\top}\big),
+$$
 
-There is a piece of each material's identity that a memoryless stress network cannot hold. A fluid keeps
-its $F$ purely volumetric (the shear part has no restoring force and simply is not tracked). Snow's
-plastic clamp limits the singular values of $F$ into a yield band $[1-\theta_c,\, 1+\theta_s]$ each step
-and pushes the excess into the plastic record. Both are **state updates**, rules for how $F$ evolves, not
-stresses, so they sit outside $\theta$. The honest choice, following the differentiable-materials
-treatment in [[differentiable-materials]], is to keep these state rules as shared analytic code and let
-the network learn only the stress. The snow net does see the current plastic record as an input, so it
-can represent the hardening as a function of the present state, but it never learns how that record
-accumulates. Scoping every interpolation claim to what the weights actually control, and being explicit
-that they do not control the state rule, is the whole ballgame later.
+so in *function* space the blend is exactly an intermediate fluid, with no ambiguity about the right answer.
+Any failure of *weight* interpolation is then a statement about the weight-to-behavior map alone.
 
-Under this substrate all three nets reproduce their material when they drive the rollout, and, trained on
-a handful of varied scenes that genuinely exercise each material (a soft drop, a hard impact that fires
-snow's plastic clamp on more than half of its particles, a slumping column, a settling slab, a lateral
-throw), plus a reflected copy of every state since the physics is symmetric under left-right mirroring,
-they transfer to held-out scenes they never saw. The picture below is the load-bearing check that
-the snow net is really snow and not a soft solid: on a hard impact the three learned nets separate
-cleanly.
+### Weight space is not behavior space
 
-![Three panels showing the three learned networks driving the same hard downward impact of a disk onto
-the floor. The left panel, the learned fluid, has splattered into a thin sheet spread across the whole
-floor. The middle panel, the learned elastic, has rebounded into a single compact rounded blob. The right
-panel, the learned snow, sits as a compact crumpled heap that neither flowed flat like the fluid nor
-sprang back like the elastic. The three learned materials are visibly distinct, and the snow one behaves
-like snow.](/api/data/learning-taichi/runs/material-variants/train-material-replicating-nns-and-interpolate/q1b_distinct_hard_still.png)
+The map $\mathcal F(\theta)$ from a weight vector to the function it computes is nonlinear, and that is what
+bites. Ignoring bias and nonlinearity, a one-hidden-layer net computes a **product** $W_2 W_1 x$, and a
+product is not linear in its factors. If the thin net uses small matrices and the thick net larger ones,
+interpolating both at once multiplies two half-grown factors, and the product of two half-grown factors is
+smaller than the average of the two full products. A straight line in weight space is a sagging path in
+output magnitude, and $\tanh$ only sharpens it. The thick viscous stress here is about fifteen times the
+thin one, so the chord runs a long way and its interior undershoots.
 
-## The endpoints must be exact before the interior means anything
+![Effective viscosity of the interpolated fluid against the interpolation coefficient, thin net at zero to
+thick net at one. The dotted line is the intermediate viscosity a smooth slider would need. Both the
+independent-start (red) and warm-started (green) curves touch the ideal only at the endpoints and bow well
+below it across the entire middle, so the interpolated fluid is markedly too thin at every interior point,
+and warm-starting does not close the gap.](/api/data/learning-taichi/runs/material-variants/train-and-interpolate-nns-to-mimic-viscous-liquids/interp_effmu.png)
 
-The interpolation is the sweep $\theta(\alpha) = (1-\alpha)\,\theta_A + \alpha\,\theta_B$ from material
-$A$ at $\alpha = 0$ to material $B$ at $\alpha = 1$. Before reading anything off the interior, the two
-endpoints have to be right: at $\alpha = 0$ the blended net **is** the trained net for $A$, so its
-rollout must be identical to $A$'s own replication rollout, and likewise at $\alpha = 1$. If an endpoint
-does not reproduce its material, the harness is broken and the interior is meaningless.
+At the halfway coefficient the intended viscosity is about $0.16$ but the interpolated fluid measures roughly
+half that. Crucially, the standard cure fails: **warm-starting** the thick net from the thin net's weights,
+meant to remove the coordinate mismatch of linear-mode-connectivity, sags essentially as much (the green
+curve). Warm-starting shares a starting point, but the thick net still has to travel a long way to represent
+a stress fifteen times larger, and it is the length of the chord through a nonlinear $\mathcal F$, not the
+random seed, that causes the sag. Coordinate mismatch is real but not the dominant effect here.
 
-The subtlety that makes this non-trivial is the state rule. The blended net at $\alpha = 0$ carries $A$'s
-weights, but the rollout also needs $A$'s state rule (the fluid's volumetric projection, or elastic's
-free deformation, or snow's clamp), and that rule is not in $\theta$. The fix is to run every rollout
-through one unified state kernel with two continuous knobs, an isotropization that at its extreme keeps
-$F$ volumetric for the fluid and a yield band that at its extreme is snow's clamp, and to co-interpolate
-those knobs along the sweep so that each endpoint gets its own true state rule. With that, both endpoints
-reproduce their material to the level of the simulator's own run-to-run noise. The isotropization also
-earns its keep numerically: a fluid run with a fully free $F$ lets the untracked shear part drift without
-bound, and $\det F$ computed from a wildly ill-conditioned $F$ turns to catastrophic-cancellation
-garbage, which is exactly the kind of silent numerical failure that makes a learned rollout blow up for
-reasons that have nothing to do with the network.
+## Case 2: three materials, different functional forms
 
-The lesson hiding in this plumbing is worth stating plainly. Part of what makes a fluid a fluid and snow
-snow is not in the learnable stress at all, it is in a fixed state rule, so weight interpolation alone
-cannot even connect the two endpoints. Something outside the weights has to move with $\alpha$ too.
+Now take three genuinely different constitutive laws from [[constitutive-models]] and [[material-showcase]]
+(fluid, corotated elastic, Stomakhin snow), learn each with the same network, and interpolate. There is no
+linear ideal to undershoot, because a fluid and a solid are not two points on a line through function space.
 
-## The interior is degenerate, and why
+Blending weights only means something if the nets share a shape, job, and coordinates, so all three read the
+**same position-free features** and write the **same output**. The key discipline is to feed the network the
+symmetric stretch $S$ from the polar decomposition $F = R\,S$ (see [[svd-polar]]), not the raw deformation
+gradient $F$: the corotated stress lives in the small difference $F - R$, an elastic strain of a few percent
+buried inside an order-one rotation, and a net fed raw $F$ would spend its capacity undoing the rotation and
+swamp the strain. So one map, weights differing per material:
 
-With the endpoints exact, the interior is a clean negative for both material pairs. Every interpolated
-blend between the endpoints disperses.
+$$
+g_\theta(S,\, C_p,\, v,\, J_p) \;\approx\; \text{material-frame stress}.
+$$
 
-![Five panels along the fluid-to-elastic interpolation. The far-left panel at coefficient zero is a clean
-spreading fluid puddle sitting on its true-fluid reference, and the far-right panel at coefficient one is
-a clean compact elastic blob sitting on its true-elastic reference. The three interior panels are each a
-sparse spray of particles scattered across the entire domain, not a puddle and not a blob, a diffuse
-cloud filling the box. The two endpoints are correct materials and every point in between is a broken
-one.](/api/data/learning-taichi/runs/material-variants/train-material-replicating-nns-and-interpolate/interp_fluid_elastic_still.png)
+One subtlety controls everything downstream: part of a material's identity is **not in the stress**. A fluid
+keeps $F$ purely volumetric; snow clamps the singular values of $F$ into a yield band each step and banks the
+excess as plastic record. Both are **state rules**, not stresses, so they sit outside $\theta$ and must be
+supplied as shared analytic code. Every interpolation claim has to be scoped to what the weights actually
+control, which is the stress and not the state rule.
 
-The mechanism follows from two facts stacked together. The first, established in
-[[learned-viscosity-interpolation]], is that the map from a weight vector to the function it computes is
-strongly nonlinear. A one-hidden-layer network computes roughly $W_2\,\tanh(W_1 x)$, and the magnitude of
-its output runs through the product of the two weight matrices, which is not linear in the matrices. A
-straight line in weight space is a curved path in function space, so the midpoint weights of two distant
-solutions do not compute the midpoint function.
+### The endpoints must be exact before the interior means anything
 
-The second fact is what makes this case qualitatively worse than the viscosity one rather than just
-quantitatively worse. In the viscosity study both endpoints were the **same functional form**,
-$\mu\,(C + C^{\top})$, scaled by the knob. Every point along the chord in weight space was therefore
-still a valid viscous stress, merely the wrong size, which is why the interpolated fluid stayed a fluid
-and only came out too thin. Here the two endpoints are **different functional forms**, a det-only
-isotropic pressure and a full corotated tensor. The chord between their weight vectors passes through
-networks whose output is neither, a tensor field that is not the gradient of any stored energy and
-carries no guarantee of being dissipative or even sign-definite. A stress that is not dissipative injects
-energy into the material every step instead of removing it, so the blob heats up and its particles fly
-apart until they are the diffuse cloud in the figure. Leaving the linear family means leaving the
-manifold of valid constitutive laws, and most of the chord lies off that manifold.
+The interpolation is $\theta(\alpha) = (1-\alpha)\,\theta_A + \alpha\,\theta_B$. The endpoints have to
+reproduce their materials first, or the interior is meaningless. Because the state rule is not in $\theta$,
+every rollout runs through one unified state kernel with two continuous knobs (an isotropization that keeps
+$F$ volumetric for the fluid, and a yield band that becomes snow's clamp), co-interpolated along $\alpha$ so
+each endpoint gets its own true state rule. With that, both endpoints reproduce their material to the
+simulator's own run-to-run noise. The plumbing carries a lesson: weight interpolation alone cannot even
+connect the two endpoints, because something outside the weights (the state rule) has to move with $\alpha$
+too.
 
-Co-interpolating the state rule does not rescue this, and seeing why is the point. The interior's problem
-is the blended stress, which is invalid; the state rule is a separate axis. Snow's plastic clamp can be
-engaged smoothly along the elastic-to-snow sweep, and the endpoints still come out as clean elastic and
-clean snow, but every interior blend still scatters, because the stress driving it is off the manifold no
-matter how the clamp is scheduled.
+![Five panels along the fluid-to-elastic interpolation. The far-left panel (coefficient zero) is a clean
+spreading fluid puddle on its true-fluid reference, and the far-right (coefficient one) a clean compact
+elastic blob on its true-elastic reference. The three interior panels are each a sparse spray of particles
+scattered across the whole domain, neither puddle nor blob. Correct materials at the endpoints, a broken one
+everywhere between.](/api/data/learning-taichi/runs/material-variants/train-material-replicating-nns-and-interpolate/interp_fluid_elastic_still.png)
 
-## Why this matters for controllable worlds, and what is open
+### The interior is degenerate
 
-The tempting shortcut for a continuous material control is to train a few materials and blend their
-weights. [[learned-viscosity-interpolation]] showed the shortcut is unsafe even in the friendliest case,
-a target exactly linear in the knob, where it merely gave the wrong magnitude. This page shows that when
-the endpoints are structurally different, the friendliest case is gone and the shortcut does not produce
-a material at all through the interior. A world model built to be trusted between its calibration points
-cannot be built by interpolating separate per-material stress networks. The two routes that would work
-are the same two that closed the viscosity case, scaled up to this harder setting: **condition** a single
-network on a material descriptor so the entire continuum is trained on real physics rather than assumed
-by averaging, and, because a material's identity also lives in state rules outside the stress, **learn or
-condition those state rules too** rather than hoping they come along for free.
+With the endpoints exact, every interior blend disperses into a diffuse cloud, and the mechanism is the
+weight-space nonlinearity of case 1 made qualitatively worse. In the viscosity study both endpoints were the
+**same functional form**, so every point on the chord was still a valid viscous stress, merely the wrong
+size. Here the endpoints are **different functional forms**, a det-only isotropic pressure and a full
+corotated tensor, and the chord between their weight vectors passes through networks whose output is neither.
+That output is a tensor field that is not the gradient of any stored energy and carries no guarantee of being
+dissipative. A non-dissipative stress injects energy every step, so the blob heats up and its particles fly
+apart. Leaving the linear family means leaving the manifold of valid constitutive laws, and most of the chord
+lies off it. Co-interpolating the state rule does not rescue this: the interior's problem is the invalid
+stress, a separate axis from the clamp schedule.
 
-What stays open is the reach of the negative. The degenerate interior is argued from the endpoints lying
-off one linear family and is expected to be robust to the training seed, but that was not measured across
-seeds. It is untested whether a shared frozen backbone with small per-material output heads, which would
-force the blend to stay closer to a common function, would connect structurally different materials any
-better than it connected the viscosities. And the sharpest question for the vision is whether a single
-material-conditioned network, trained across the fluid-elastic-snow family at once, produces a genuinely
-smooth and physical morph where blending separate networks produces a cloud. That is the experiment this
-negative result is meant to motivate.
+## The fixes, and what is open
+
+Two routes actually work, and both point away from blending separate networks. The first is to stop carrying
+the magnitude through a product: freeze a single hidden layer shared across materials and let only the
+**linear output layer** differ, so weight interpolation becomes function interpolation. The second, and the
+right one for a controllable model, is to never interpolate weights at all but to **condition** one network
+on a material descriptor fed as an input, so the continuum is trained on real physics rather than assumed by
+averaging. That is the experiment [[conditioned-material-net]] runs, and it is where a material's state rules
+have to be conditioned along with its stress.
+
+What stays open is the reach of the negative. The degenerate interior is argued from the endpoints lying off
+one linear family and is expected to be robust to the training seed, but that was not measured across seeds.
+Whether a shared frozen backbone with small per-material output heads connects structurally different
+materials better than blending whole networks is argued for but not run here.

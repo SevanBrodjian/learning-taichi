@@ -8,12 +8,11 @@ first is a simulation problem, the second is a reconstruction problem, and neith
 optical polish on top. This page is about both, and about the smaller realism cues that close some of the
 remaining distance once they are dealt with.
 
-The reason this is worth a page rather than a footnote is that the two defects are textbook examples of a
-model looking wrong for reasons that have nothing to do with the thing a newcomer would first blame. The
-sluggish motion is not a rendering problem and no shader fixes it. The interior holes are not a physics
-problem and no amount of solver tuning removes them. Diagnosing which layer a visual defect lives in, before
-reaching for a fix, is the whole skill, and it is exactly the skill a controllable world model demands when
-its output looks off and the cause could be the dynamics, the reconstruction, or the shading.
+The two defects are textbook examples of a model looking wrong for reasons a newcomer would misattribute.
+The sluggish motion is not a rendering problem and no shader fixes it; the interior holes are not a physics
+problem and no solver tuning removes them. Diagnosing which layer a visual defect lives in before reaching
+for a fix is the whole skill, and it is exactly what a controllable world model demands when its output looks
+off and the cause could be the dynamics, the reconstruction, or the shading.
 
 ## Why weakly compressible MPM water looks sluggish
 
@@ -158,14 +157,9 @@ it marks torn, fast, thin water without chalking the calm surface. Every one of 
 none of them would survive a gradient, which is the same non-differentiable bargain [[fluid-rendering]]
 already made and [[material-showcase]] sets against the trainable core of the project.
 
-The honest register does not change. This is still a stylized 2D side view, not a light-transport
-simulation. The thickness is a screen-space distance, not a real optical path through a 3D volume; the
-caustics are painted, not computed; the absorption coefficient and every color are chosen by eye. What the
-two fixes on this page buy is not photorealism but the removal of two specific tells that were louder than
-any missing light-transport subtlety. Water that moved like gel and a body full of holes are the kind of
-defect a viewer notices instantly, and clearing them moves the result from obviously synthetic to
-convincing-at-a-glance. The gap that remains is the genuine 3D light transport the pipeline never attempts,
-and that gap is smaller and higher-frequency than the two it just closed. For the larger goal the lesson is
-the diagnosis, not the fluid: when a generated world looks wrong, the cause lives in a definite layer, and
-naming that layer before fixing it is what separates a real correction from optical spackle over a dynamics
-bug.
+The honest register is unchanged from [[fluid-rendering]]: still a stylized 2D side view, not light
+transport, with a screen-space thickness, painted caustics, and colors chosen by eye. What the two fixes buy
+is not photorealism but the removal of two tells louder than any missing light-transport subtlety, moving the
+result from obviously synthetic to convincing-at-a-glance. The lesson is the diagnosis, not the fluid: when a
+generated world looks wrong, the cause lives in a definite layer, and naming it before fixing separates a
+real correction from optical spackle over a dynamics bug.

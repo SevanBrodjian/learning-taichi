@@ -35,10 +35,12 @@ committed:
 1. **Motivation** — what problem this solves and why it matters to the world-models vision.
 2. **Intuition** — the mental model before the math.
 3. **The math** — derived, not asserted; KaTeX (`$...$`, `$$...$$`); define all notation.
-4. **Implementation mapping** — tie the math to the *actual code* (reference `sim/...` files and line
-   ranges); explain the Taichi idioms used.
+4. **Implementation mapping (brief, and only when it teaches)** — tie the math to the *idea* in code and
+   the Taichi idiom that matters. Keep this light: name the file, not line ranges (they go stale and are
+   task-specific), and skip it entirely when it would just be a code tour. Exact hyperparameters and
+   one-run numbers belong in the run manifest, not here.
 5. **Failure modes & fixes** — what broke, *why* (mechanistically), and what resolved it. This section
-   is mandatory and often the most valuable.
+   is mandatory and often the most valuable. Teach the mechanism, not the debugging chronology.
 6. **What's open** — honest limits, what's hard, what's an active research question.
 
 **Top-level organization (the textbook groups).** The report is organized like a textbook into three
@@ -65,9 +67,27 @@ genuine intellectual limit that teaches something, not a backlog of experiments 
 - Tie ideas back to my core objectively strongly and frequently. If you are struggling to do this, then the connection probably isn't very clear, and I'm probably going to lose interest. Even if it's a negative connection, like "this idea does this, which is common and considered standard, but it probably will get overwritten by approaches that do this in your work".
 - Write in an engaging format, not dense and cold technicality. It can be lightly humorous, although I prefer dry humor. Don't be cringy. If something is genuinely interesting to you, or you think there's a real connection to my core research, don't hold back. Let the enthusiasm shine through.
 
-## Length & math
-The length should be as long as needed. There's really no limit, and in some sense longer is better. The key is to grow it appropriately and slowly but steadily. If every task is adding 3 pages that may be overloading to try and keep up. But if many tasks accumulate steadily into a 20 page training document and I kept up along the way that's an excellent outcome in my eyes.
+## Brevity and prioritization (the report must stay trackable)
+The textbook is a corpus a person actually reads and keeps in their head, and it had started to balloon into
+something hard to track. So the governing constraint is now **cohesion and concision**, not volume:
+- **Lead with the key idea and its "why", then stop climbing.** Each page gets the main intuition across
+  fast and offers deeper insight only where it earns its place. A reader should grasp the core of a page in
+  the first screen; anything past that is genuinely additive depth, not padding.
+- **Prioritize ruthlessly.** Most of the value is in a few ideas per page. Cut throat-clearing, restated
+  context, and near-duplicate explanations that another page already owns.
+- **Grow the corpus slowly and keep it organized.** Many short, focused, well-linked pages beat a few
+  sprawling ones (see "Granularity"). When a new result fits an existing page's one idea, tighten that page
+  rather than bolting on a section.
+- **Implementation details and task-specific results have a *limited* presence.** Exact hyperparameters,
+  code line ranges, this-run loss numbers, and one-off decisions live in the run manifest, not the textbook.
+  A page teaches the timeless understanding; the run carries the evidence.
 
+This reframes, but does not cancel, the "over-explain rather than under-explain" preference above: over-explain
+the **math and the mechanism** (never leave a symbol undefined or a "why" unanswered), because those are cheap
+to skim and expensive to reconstruct. Do **not** over-explain by logging implementation steps or restating
+context. Depth in service of understanding, yes; length for its own sake, no.
+
+## Math
 Mathematical rigor is preferred but used precisely. In general I struggle to feel engaged with the math unless I understand why I'm learning it. Also, don't hesitate to explain the principles needed before showing equations. I don't just want to learn what an equation for this system looks like, I want to learn the underlying mathematics and physics that explains where it came from and how someone could have arrived at that idea.
 
 ## Explain every symbol and every "why" (skim beats lost)

@@ -84,6 +84,19 @@ actually exists and actually covers what the referring text promises (a link to 
 is a defect to catch here) — and check that the **math prerequisites** the new page leans on are present in
 the prerequisites layer, adding them if not. Fix or extend before committing.
 
+The orchestrator also **schedules workers by the task's effort tier** and **keeps the training report
+trim**. Each task carries an `effort` of `quick | standard | deep` (set on the dashboard). Match the spawn
+to it: `quick` → a cheaper model at low reasoning effort on a short leash; `standard` → Opus at normal
+effort; `deep` → Opus at high reasoning effort with an explicit instruction to persist on a genuinely hard
+task (no separate worktree — keep it in the main checkout). A running worker writes coarse live status via
+`harness/tools/task_status.py`, which the dashboard shows as the Active task's current step. And **on a
+semi-recurrent basis — not every task, but whenever the corpus starts to sprawl — the orchestrator does an
+organizational sweep of `reports/training/`**: consolidate near-duplicate pages, trim implementation detail
+and task-specific results down to the timeless understanding, lead each page with its key intuition, fix
+stale or dangling `[[links]]`, and keep the whole thing cohesive and skimmable per
+`spec/style_training_report.md` ("Brevity and prioritization"). A ballooning, hard-to-track textbook is a
+defect to correct, not a sign of progress.
+
 ## Persistence — the filesystem is the backbone
 Durable state lives in the repo, on disk, as files (mostly Markdown + JSON). **Do not rely on auto-memory
 or session context for anything that must survive.** A worker's value is its output on disk, not its
@@ -117,8 +130,10 @@ orchestrator to pick up the whole `queued` backlog and run it to completion (see
    one). The proposed task's `note` is only a seed for that decision, not an executable spec.
 2. The orchestrator **expands that seed into a full contract** at `coordination/tasks/<id>.md` (objective,
    concrete experiments, deliverables, the schema-v2 manifest, definition-of-done, paths, KaTeX rules),
-   **spawns a worker**, and flips the task to **active** (not user-undoable).
-3. The worker **fires a `started` ping**, executes, and writes one polished task to
+   **spawns a worker matched to the task's `effort` tier** (quick/standard/deep → model + reasoning effort +
+   how long to persist), and flips the task to **active** (not user-undoable).
+3. The worker **fires a `started` ping**, posts coarse **live status** as it goes
+   (`harness/tools/task_status.py`, so the board shows the Active task's current step), executes, and writes one polished task to
    `runs/<direction-id>/<task-id>/` — an **objective**, **scoped findings** (what was tested, no
    overclaiming), a **hypothesis** for *why* the result holds and what would test its generality, an honest
    **limitations** note, and typed results with **informative visuals** (see the visualization standard in

@@ -4,13 +4,22 @@
 > before spawning a worker. It is the full executable contract; the proposed task's one-line `note` was
 > only the seed. Keep it concrete enough that a cold subagent can execute without further questions.
 
+## Effort tier: <quick | standard | deep>
+This task's intensity, set on the dashboard, drives how this worker was spawned (model + reasoning effort
++ how long to persist). The orchestrator fills this in and matches the spawn to it (see the `/execute`
+skill). As the worker, treat it as the expected depth:
+- **quick** — a light, cheap, bounded task. One clean pass, minimal sweeps; do not over-engineer.
+- **standard** — the default. Normal depth and iteration.
+- **deep** — a genuinely hard task. Persist: iterate, debug, run the sweeps it takes, and do not stop at
+  the first plausible result. Long is fine; a shallow answer is not.
+
 ## Your role (paste verbatim into the spawn prompt)
 You are a **worker agent** for task `<task-id>`. You are **NOT the orchestrator**. Do not spawn further
 agents. Read this brief, do the task, write **all** results to disk under
 `runs/<direction-id>/<task-id>/`, extend the training textbook, and exit. **Do not commit** — the
-orchestrator reviews and commits your work. Fire the two pings below.
+orchestrator reviews and commits your work. Fire the pings below.
 
-## Notifications (exactly two)
+## Notifications (exactly two) + live status
 At the start:
 ```
 python harness/tools/notify.py --kind started --task <task-id> "<one plain sentence: what you're starting>"
@@ -21,6 +30,15 @@ python harness/tools/notify.py --kind finished --task <task-id> "<one plain sent
 ```
 Use `--kind blocked` instead of `finished` if you hit a hard stop. **One sentence of human status, never a
 metrics dump or a technical report.**
+
+**Live status (a few times, not spammed).** So the dashboard shows what step this Active task is on, call
+this at each coarse milestone (starting, the main phase, rendering, wrapping up) — think 3–6 times over the
+run, one short phrase each:
+```
+python harness/tools/task_status.py --direction <direction-id> --task <task-id> --step "<a few words: current step>"
+```
+It writes `runs/<direction-id>/<task-id>/status.json` (ephemeral, gitignored). Use `--state blocked` if you
+stall on something the user must resolve.
 
 ## Objective
 <The precise question this task answers. One or two sentences.>
@@ -60,6 +78,15 @@ reference to this brief or "this run", and readable cold by someone who never sa
 or two short new pages over one long one**, link prerequisites with `[[anchors]]`, and embed an
 informative figure or short video where a picture beats prose. Teach the *understanding* the task
 produced, not a log of what was done.
+- **Lead with the intuition, keep it short, and add depth only where it earns its place.** The textbook is
+  a growing corpus a person actually has to track, so a new page states the key idea and its "why" up front
+  and stays skimmable. Reach for concision (`spec/style_training_report.md` → "Brevity and prioritization").
+- **Keep implementation details and task-specific numbers out of the textbook.** Exact hyperparameters,
+  code line ranges, this-run loss values, and one-off results belong in the manifest fields below, not in a
+  timeless teaching page. Put the *understanding* in the book; put the *evidence* in the run.
+- **Before adding a page, check whether the idea belongs on an existing one.** If a current page already
+  owns this idea, extend or tighten it instead of adding a near-duplicate — the corpus should stay cohesive,
+  not accrete overlapping pages.
 - **Over-include math prerequisites** the page leans on (linear algebra especially — matrices, determinant
   and trace, SVD/polar decomposition). Write or extend the prerequisite page **before** linking to it.
 - **Every `[[link]]` you write must resolve** to a section that already exists and covers what the sentence
@@ -73,6 +100,10 @@ Write `runs/<direction-id>/<task-id>/manifest.json` (schema v2 — see `runs/REA
 with: `objective`, scoped `findings`, `hypothesis`, `limitations`, typed `results[]` (video / image /
 plot / table), and `training_refs[]` pointing at the page(s) you added. Leave everything on disk; do not
 commit.
+- **Keep the prose fields tight — this is a summary card, not a paper.** `objective` is one or two
+  sentences. `findings` leads with the headline result, then the few points that matter, scoped to what was
+  tested; it is not an exhaustive log. Let the `results[]` visuals and the linked training page carry the
+  depth. A reader should get the point of the task in about fifteen seconds of skimming this page.
 - **Write the manifest LAST, after every media file it references already exists on disk, and make
   `results[]` reference ONLY files that actually exist.** Never list a planned-but-unrendered scene — a
   dangling media `src` renders as a broken tile on the dashboard, and the orchestrator will reject it.

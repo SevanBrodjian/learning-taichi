@@ -27,10 +27,19 @@ State the plan briefly before you start.
 ## 3. For each task: expand → spawn → flip to active
 1. Expand the queued seed into a full contract by copying `coordination/tasks/_TEMPLATE.md` to
    `coordination/tasks/<task-id>.md` and filling every field (objective, experiments, evidence-discipline
-   scope, visualization standard, training-page requirement, paths, DoD).
-2. Spawn a **worker subagent** with the role stamp from the template. The worker writes results to
-   `runs/<direction-id>/<task-id>/`, adds a training page, fires its start/finish pings, and exits without
-   committing.
+   scope, visualization standard, training-page requirement, paths, DoD). Fill the **Effort tier** line from
+   the task's `effort` field.
+2. Spawn a **worker subagent** with the role stamp from the template, **matching the spawn to the task's
+   `effort` tier** (set on the dashboard, read from the direction JSON — default `standard`):
+   - **quick** → a cheaper/faster model at low reasoning effort (e.g. Sonnet), short leash. Good for light
+     learning tasks and quick forward-sim demos.
+   - **standard** → Opus at normal effort. The default.
+   - **deep** → Opus at high reasoning effort, and tell the worker in its prompt to **persist** — iterate,
+     debug, and run the sweeps a genuinely hard task needs rather than stopping at the first plausible
+     result. (No separate git worktree — keep the worker in the main checkout.)
+   The worker writes results to `runs/<direction-id>/<task-id>/`, calls `harness/tools/task_status.py` at a
+   few milestones so the board shows its live step, adds a training page, fires its start/finish pings, and
+   exits without committing.
 3. Flip the task to `active` on the board (POST `/api/task-status`, or edit the direction JSON) so the
    dashboard shows it live.
 

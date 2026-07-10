@@ -1,0 +1,94 @@
+{
+  "schema_version": "2",
+  "task_id": "implement-liquids-across-viscosity-and-surface-tension",
+  "direction": "material-variants",
+  "title": "Liquids across viscosity and surface tension: a forward-only 3x3 grid",
+  "status": "active",
+  "created": "2026-07-10T06:04:56.828864+00:00",
+  "objective": "Add a surface-tension term (continuum surface force on the grid) to the weakly-compressible MLS-MPM fluid alongside the existing Newtonian viscosity, and show forward-only (no gradients) how a liquid changes across the two independent axes viscosity x surface tension. The headline is a 3x3 grid of one dropped blob at three viscosities and three surface tensions, plus an isolation test (a square rounds into a droplet, two blobs merge) verifying the term is real surface tension and sigma_st=0 recovers the viscous fluid.",
+  "findings": "Adding a continuum surface force (CSF / Brackbill) to the weakly-compressible MLS-MPM fluid gives a second, independent liquid knob beyond viscosity: a capillary term that minimises the free surface. A color field phi = grid_m / (p_rho dx^2) is scattered and box-smoothed on the grid, its gradient gives the surface normal n = grad(phi)/|grad(phi)|, the curvature is kappa = -div(n), and the force per volume f = sigma_st kappa grad(phi) is added to the grid velocity. The sign was verified first on one cheap blob (gravity off): a square relaxes into a round droplet as sigma_st rises, with circularity climbing monotonically from 0.691 at sigma=0 toward 0.988 at high sigma, and two separate blobs bead and merge (connected components 2 -> 1) where they stay apart at sigma=0. sigma_st=0 recovers the pure-viscosity fluid exactly (the term is skipped). On the headline 3x3 grid (one dropped blob, three viscosities x three surface tensions to the same physical time) the two axes are visibly separable: down the rows viscosity slows the spread and holds height (the oil-to-honey ordering), across the columns surface tension rounds the shape and cuts the final puddle width, resisting the splash into a thin sheet. The high-surface-tension cells run a smaller dt to respect the capillary stability limit. Every still and video was viewed; no panel went non-finite or flung particles to a corner at the recorded settings.",
+  "hypothesis": "The rounding follows directly from the Young-Laplace picture the CSF term encodes. The smoothed color phi is ~1 in the packed fluid and 0 outside, so its gradient grad(phi) points from the empty side into the fluid and is nonzero only in a thin band at the surface, which is why the force is a genuine interface effect and not a bulk stress like viscosity. The unit normal n = grad(phi)/|grad(phi)| points inward, and for a convex droplet div(n) = -1/R in 2D, so kappa = -div(n) = +1/R is large where the surface is tightly curved (a corner) and small where it is flat. The force f = sigma_st kappa grad(phi) therefore pushes hardest inward exactly at the sharp corners of a square, pulling them in until the curvature is uniform, which is a circle, the shape of least perimeter for the enclosed area. Two blobs merge because a single larger droplet has less total interface than two, so the same area-minimising force draws them together and fuses them. This differs from viscosity in kind: viscosity is a bulk momentum diffusion that dissipates the RATE of shear everywhere, changing how FAST the fluid moves, while surface tension is a conservative capillary force at the boundary that changes the SHAPE it settles into. That is why the two axes of the grid are separable rather than redundant. The small dt for high sigma is the explicit capillary wave limit dt <~ sqrt(rho dx^3 / (2 pi sigma_st)): a stiffer interface carries faster capillary waves and needs finer time resolution. What would test generality: a resolution sweep (the band width and thus kappa depend on the smoothing and grid), calibrating sigma_st to a real surface tension via a static-droplet Young-Laplace pressure jump, and more scenes (a thin sheet retracting, a jet breaking into drops).",
+  "limitations": "A forward demonstration on a handful of fixed 2D scenes at one grid resolution (n_grid=128), f32, with one surface-tension model (grid CSF with a 6-pass box-smoothed color field) and hand-tuned, per-cell timesteps chosen for stability. The mapping from the parameter sigma_st to a physical surface tension is NOT calibrated, so the labels none / medium / high are evocative, not measured; only the monotonic rounding/beading trend and the separability of the viscosity and surface-tension axes are claimed. The curvature is computed from a smoothed indicator, so the effective interface thickness is a few cells and the measured kappa depends on the smoothing passes and the resolution; this is a diffuse-interface approximation, not a sharp free surface. The fluid stays weakly compressible (a pressure from J, no incompressible projection), boundaries are a Coulomb-friction floor and sticky walls, and the exact widths and circularities depend on those choices. Circularity and component counts come from rasterising the particles onto an occupancy grid, a robust but resolution-dependent proxy for a true perimeter. sigma_st is capped where the explicit capillary timestep becomes impractical. No gradients, optimisation, or loss anywhere; this task makes no claim about controllability or gradient behavior. GPU atomic-add is not bitwise reproducible; rerun if a frame looks off.",
+  "results": [
+    {
+      "type": "image",
+      "src": "runs/material-variants/implement-liquids-across-viscosity-and-surface-tension/grid_still.png",
+      "caption": "The headline 3x3 grid, late frame. The same blob is dropped onto the floor in every panel. Rows increase viscosity top to bottom (thin oil, syrup, thick); columns increase surface tension left to right (none, medium, high). The left column has no surface tension and reproduces the pure-viscosity fluid. Moving right along any row, the puddle pulls in and rounds up instead of spreading into a flat sheet. The two axes are visibly separable: viscosity sets how fast it moves, surface tension sets how round and cohesive it stays."
+    },
+    {
+      "type": "video",
+      "src": "runs/material-variants/implement-liquids-across-viscosity-and-surface-tension/grid.mp4",
+      "caption": "The 3x3 grid as an animation, same layout: viscosity down the rows, surface tension across the columns, one dropped blob per panel to the same physical time. Watch the right-hand (high surface tension) panels bead and hold a rounded droplet while the left column splashes and spreads."
+    },
+    {
+      "type": "image",
+      "src": "runs/material-variants/implement-liquids-across-viscosity-and-surface-tension/isolation_round_still.png",
+      "caption": "Isolation test with gravity off. A square blob is released and left to relax. At sigma=0 (left) it stays blocky. As surface tension rises (middle, right) it pulls its corners in and rounds into a droplet. This is the check that the added term is real surface tension, minimising the interface, not just extra damping."
+    },
+    {
+      "type": "image",
+      "src": "runs/material-variants/implement-liquids-across-viscosity-and-surface-tension/isolation_circularity.png",
+      "caption": "Circularity (4 pi Area / Perimeter^2, equal to 1 for a perfect disk) of the relaxed square versus surface tension. It rises monotonically from 0.691 at sigma=0 toward 0.988 at high sigma, the quantitative face of the rounding."
+    },
+    {
+      "type": "video",
+      "src": "runs/material-variants/implement-liquids-across-viscosity-and-surface-tension/isolation_round.mp4",
+      "caption": "The square-blob relaxation as a clip: sigma=0 stays a diffuse square, higher surface tension actively rounds it into a disk over the same physical time."
+    },
+    {
+      "type": "image",
+      "src": "runs/material-variants/implement-liquids-across-viscosity-and-surface-tension/isolation_merge_still.png",
+      "caption": "Two separate square blobs, gravity off, late frame. At sigma=0 (left) they sit apart. Under surface tension (right) they bead, draw together, and merge into a single rounded droplet (connected components 2 -> 1)."
+    },
+    {
+      "type": "video",
+      "src": "runs/material-variants/implement-liquids-across-viscosity-and-surface-tension/showcase_merge.mp4",
+      "caption": "Surface-tension showcase, gravity off: a long thin bar of fluid. Without surface tension it just sits there as a bar; with high surface tension it retracts along its length and pulls itself into a single round droplet, the clearest signature of a force that minimises interface area."
+    },
+    {
+      "type": "image",
+      "src": "runs/material-variants/implement-liquids-across-viscosity-and-surface-tension/grid_spread_vs_sigma.png",
+      "caption": "At fixed low viscosity, final puddle width versus surface tension for the dropped blob. Width falls as surface tension rises: the capillary force resists spreading into a thin sheet, an independent axis from viscosity."
+    },
+    {
+      "type": "table",
+      "columns": [
+        "viscosity \\ surface tension",
+        "none (sigma=0)",
+        "medium",
+        "high"
+      ],
+      "rows": [
+        [
+          "low (oil)",
+          "0.136 / 0.886",
+          "0.917 / 0.172",
+          "0.935 / 0.152"
+        ],
+        [
+          "med (syrup)",
+          "0.370 / 0.423",
+          "0.942 / 0.184",
+          "0.953 / 0.166"
+        ],
+        [
+          "high",
+          "0.748 / 0.255",
+          "0.927 / 0.190",
+          "0.995 / 0.170"
+        ]
+      ],
+      "caption": "Final-frame circularity / puddle-width for every cell of the 3x3 grid (dropped blob onto the floor). Reading left to right along a row, circularity rises and width falls as surface tension increases. Reading top to bottom down a column, higher viscosity holds a more compact, taller shape. The two knobs move the numbers along different axes."
+    }
+  ],
+  "custom_html": null,
+  "training_refs": [
+    "surface-tension",
+    "viscosity",
+    "material-showcase",
+    "constitutive-models",
+    "mpm-in-context",
+    "vector-calculus",
+    "linear-algebra"
+  ]
+}

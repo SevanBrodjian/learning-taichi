@@ -17,7 +17,8 @@
         { "id": "mpm-in-context", "title": "MPM in context", "file": "prerequisites/01-mpm-in-context.md" },
         { "id": "linear-algebra", "title": "Linear algebra for MPM", "file": "prerequisites/02-linear-algebra.md" },
         { "id": "svd-polar", "title": "SVD and polar decomposition", "file": "prerequisites/03-svd-polar.md" },
-        { "id": "math-toolkit", "title": "Math toolkit", "file": "prerequisites/04-math-toolkit.md" }
+        { "id": "math-toolkit", "title": "Math toolkit", "file": "prerequisites/04-math-toolkit.md" },
+        { "id": "vector-calculus", "title": "Vector calculus on a grid: gradient, divergence, curvature", "file": "prerequisites/05-vector-calculus.md" }
       ]
     },
     {
@@ -38,7 +39,8 @@
         { "id": "conditioned-material-net", "title": "Conditioning one network on a material descriptor, and the fidelity it costs", "file": "core/16-conditioned-material-net.md" },
         { "id": "fluid-realism", "title": "Making it read as water: dynamics, interior fill, and the realism gap", "file": "core/12-fluid-realism.md" },
         { "id": "gpu-rendering", "title": "Rendering on the GPU: the render was the bottleneck, not the physics", "file": "core/15-gpu-rendering.md" },
-        { "id": "fluid-color-mixing", "title": "Two liquids in one solver: advecting a color and compositing the mix", "file": "core/14-fluid-color-mixing.md" }
+        { "id": "fluid-color-mixing", "title": "Two liquids in one solver: advecting a color and compositing the mix", "file": "core/14-fluid-color-mixing.md" },
+        { "id": "surface-tension", "title": "Surface tension: the force that minimizes the interface", "file": "core/17-surface-tension.md" }
       ]
     }
   ]

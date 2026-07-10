@@ -95,7 +95,7 @@
         "implement-liquids-across-viscosity-and-surface-tension",
         "one-nn-for-three-materials"
       ],
-      "effort": "deep"
+      "effort": "quick"
     }
   ]
 }

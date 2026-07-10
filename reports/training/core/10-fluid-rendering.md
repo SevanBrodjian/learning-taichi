@@ -7,14 +7,11 @@ those dots does not look like water. It looks like static. This page is about cl
 visual side: how to take the same particle cloud the [[material-showcase]] fluid produces and turn it into a
 frame that reads as a real liquid seen side-on, like water in a glass tank.
 
-This matters to the larger goal for a blunt reason. A controllable, differentiable world model is only
-compelling if what it produces looks like the world. The physics can be perfect and the demo still falls
-flat if the output is a point cloud. Rendering is not decoration here, it is the last stage that decides
-whether a viewer believes the simulated world at all. The rendering below is deliberately
-**non-differentiable** and offline, which is the honest trade: none of it needs to survive a gradient, so it
-can reach for whatever makes the image convincing rather than whatever is smooth. That is a different regime
-from the rest of this book, and the contrast is the lesson. When the goal is a believable picture rather
-than a trainable one, the constraints change completely.
+This matters to the larger goal for a blunt reason: a controllable world model is only compelling if what it
+produces looks like the world, and a raw point cloud does not. The rendering below is deliberately
+**non-differentiable** and offline, which is the honest trade. None of it needs to survive a gradient, so it
+can reach for whatever makes the image convincing rather than whatever is smooth. That regime, a believable
+picture rather than a trainable one, is itself the lesson.
 
 ![The dam-break scene at the moment the returning wave curls over and traps a pocket of air, the classic
 breaking-wave tube. The body carries a depth gradient from bright shallow cyan at the thin top edge to deep
@@ -185,11 +182,9 @@ bent background, an angle-dependent reflection, a glint, and some foam, can carr
 toward looking real. It gets most of the way to a double-take and stops short of photoreal, and the gap that
 remains is exactly the 3D light transport it never attempts.
 
-The connection back to the spine of this project is the trade it makes. Everywhere else in this book the
-simulator is built to be differentiated, and that constraint shapes every choice, from the constitutive
-stress in [[material-showcase]] to the smoothness of the loss. Here the constraint is lifted, and the moment
-it is, the renderer reaches for hard thresholds, per-pixel branches, and image samples that no gradient
-could flow through, because the only goal is the picture. A controllable world model eventually has to serve
-both masters at once, a forward pass that looks like the world and a backward pass that can steer it, and
-seeing the visual-quality regime on its own makes clear how much of what sells an image is exactly the
-non-smooth, non-differentiable machinery the rest of the project has to work around.
+The connection back to the project is the trade it makes. Everywhere else the simulator is built to be
+differentiated; here that constraint is lifted, and the renderer immediately reaches for hard thresholds,
+per-pixel branches, and image samples no gradient could flow through. A controllable world model eventually
+has to serve both masters at once, a forward pass that looks like the world and a backward pass that can
+steer it, and seeing the visual-quality regime on its own shows how much of what sells an image is exactly
+the non-differentiable machinery the trainable core has to work around.

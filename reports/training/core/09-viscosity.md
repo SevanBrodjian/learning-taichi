@@ -91,30 +91,17 @@ splashy fluid.
 
 The clean surprise is that MLS-MPM already computes the velocity gradient it needs, for free, every step.
 The APIC affine matrix $C_p$ carried on each particle is precisely an estimate of $\nabla v$ around that
-particle (its construction as a weighted sum of outer products of node velocities is derived in
-[[mpm-in-context]] and [[linear-algebra]]). So the viscous stress needs no new field and no finite
-differences. It is just
+particle (derived in [[mpm-in-context]] and [[linear-algebra]]). So the viscous stress needs no new field
+and no finite differences. It is just
 
 $$
 \sigma^{\text{visc}}_p = \mu_{\text{visc}}\,\big(C_p + C_p^{\top}\big),
 $$
 
-the symmetric part of the affine matrix already sitting on the particle. In `sim/fluid_viscosity.py` the
-stress function adds this straight onto the pressure and hands the sum to the same MLS-MPM affine
-prefactor the fluid and the solids all use:
-
-```
-pressure    = E * (J[p] - 1.0)                 # scalar; isotropic pressure tensor is pressure * I
-strain_rate = C[p] + C[p].transpose()          # symmetric part of grad v
-sigma       = pressure * I + mu_visc * strain_rate
-return -dt * 4.0 * p_vol * inv_dx * inv_dx * sigma
-```
-
-That single tensor is scattered to the grid by the ordinary particle-to-grid step, so viscosity costs one
-matrix add and changes nothing else in the pipeline. Everything else, the quadratic B-spline weights, the
-grid update, the Coulomb floor, the grid-to-particle gather that recomputes $C_p$, is identical to the
-inviscid fluid reused from [[material-showcase]]. This is the payoff of the "one stress slot" view from
-[[constitutive-models]]: a whole material property enters through the same door as the pressure.
+the symmetric part of the affine matrix already on the particle, added straight onto the pressure and
+scattered to the grid by the ordinary particle-to-grid step. Viscosity costs one matrix add and changes
+nothing else in the pipeline. This is the payoff of the "one stress slot" view from [[constitutive-models]]:
+a whole material property enters through the same door as the pressure.
 
 ## What the parameter does: oil to honey, and the price in timestep
 
@@ -161,14 +148,9 @@ simulation knob.
 
 ## What's open
 
-This is a forward demonstration on two fixed 2D scenes at one resolution with a single Newtonian model, so
-it shows *what viscosity does to this fluid here*, not a calibrated rheology. The mapping from the
-parameter $\mu_{\text{visc}}$ to a physical viscosity in real units is not established, so the labels are
-evocative rather than measured, and only the monotonic ordering is claimed. Three questions are genuinely
-open and directly testable. First, whether the visible signatures survive a resolution sweep, since the
-spread and front are measured in grid-limited units. Second, whether an **implicit** viscosity solve can
-reach honey-and-beyond without the punishing explicit timestep, trading a linear solve per step for
-freedom from the diffusion limit. Third, whether the more dramatic viscous phenomena, a falling stream
-coiling into a rope, need ingredients this model omits, namely surface tension and a genuine free-surface
-reconstruction, rather than just more viscosity. The honest boundary of the demonstration is that it makes
-a splashy fluid ooze, monotonically and stably, and that is exactly as far as it reaches.
+This is a forward demonstration with a single Newtonian model, so it shows what viscosity does to this
+fluid, not a calibrated rheology: the map from $\mu_{\text{visc}}$ to a physical viscosity is not
+established, so the labels are evocative and only the monotonic ordering is claimed. The genuinely open
+questions are whether an **implicit** viscosity solve can reach honey-and-beyond without the punishing
+explicit timestep, and whether the more dramatic viscous phenomena (a falling stream coiling into a rope)
+need surface tension and a real free-surface reconstruction rather than just more viscosity.

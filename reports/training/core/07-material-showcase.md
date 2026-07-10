@@ -8,10 +8,10 @@ No gradients, no optimization, no loss appear here. This is the physics before a
 person can just look at and recognize.
 
 The recognition is the point. A controllable, differentiable world model is only worth building if its
-dynamics look like the world, and the constitutive model is the knob that decides whether a simulated blob
-reads as a splash of water, a bouncing ball of jelly, or a heap of packed snow. Before trusting gradients
-to steer such a thing, it is worth seeing that the forward physics produces the right *character* in the
-first place. It does, and the reasons are exactly the three stress laws.
+dynamics look like the world, and the constitutive model is the knob that decides whether a blob reads as
+water, jelly, or packed snow. Before trusting gradients to steer such a thing, it is worth seeing the
+forward physics produce the right *character* first. It does, and the reasons are exactly the three stress
+laws.
 
 ## The setup: same start, three stress laws
 
@@ -83,28 +83,14 @@ repose**, the way a real pile of granular material holds a slope instead of spre
 standing like a solid. (A pile holds a slope only if there is friction under it; the demo puts Coulomb
 friction on the floor so snow can build its repose angle rather than sliding out on a frictionless sheet.)
 
-## Snow is literally the in-between material
+## Snow is the in-between material
 
-The three signatures are not just qualitatively distinct, they order cleanly on a simple diagnostic. Measuring
-the final horizontal spread (how wide the material ended up) and the final pile height (how tall) gives, on
-both scenes:
-
-| scene | material | final width | pile height |
-|---|---|---|---|
-| drop | fluid | 0.89 | 0.08 |
-| drop | elastic | 0.18 | 0.28 |
-| drop | snow | 0.35 | 0.14 |
-| column | fluid | 0.90 | 0.10 |
-| column | elastic | 0.14 | 0.51 |
-| column | snow | 0.42 | 0.22 |
-
-Fluid is the widest and the lowest in every row. Elastic is the narrowest and the tallest, because it recovers
-its shape rather than losing it. Snow sits between the two on both measures, which is the numerical face of
-what the eye already saw: a material that neither flows flat like a liquid nor springs back like a solid, but
-plastically holds whatever crumpled or slumped form it was pushed into. Plasticity is, almost definitionally,
-the middle ground between fluid flow and elastic recovery, and here it shows up as an actual midpoint in the
-numbers. (These are hand-tuned 2D scenes at one resolution, and snow runs at softer settings for stability,
-so the ordering is the honest takeaway, not the exact figures.)
+The three signatures also order cleanly on a simple diagnostic. Measuring final horizontal spread and pile
+height on both scenes, fluid is always the widest and lowest, elastic the narrowest and tallest (it recovers
+its shape rather than losing it), and snow sits between the two on both measures. That is the numerical face
+of what the eye already saw: plasticity is almost definitionally the middle ground between fluid flow and
+elastic recovery, and it shows up as an actual midpoint. (Hand-tuned 2D scenes at one resolution, snow on
+softer settings, so the ordering is the takeaway, not the exact figures.)
 
 ## The stiffness dial, seen directly
 
@@ -125,13 +111,11 @@ oscillation frequency, the stable timestep, and, once gradients enter, the usabl
 enough to see that one scalar slides a material smoothly from gel to hard rubber without changing anything
 else about the solver.
 
-## Why this matters for the vision
+## Why this matters
 
-The materials that are visually most interesting, the ones that crumple, pack, slump, and hold a shape, are
-exactly the ones whose stress laws carry the most state and the most non-smoothness: a full deformation
-gradient for the solid, a per-step plastic projection for snow. That richness is what makes them look real,
-and it is the same richness that [[constitutive-models]] and [[svd-polar]] flag as the hard part to
-differentiate through. Seeing the forward behavior first is the honest order of operations. A world model
-worth steering has to move like the world before it is worth asking whether it can be steered, and these three
-clips are that first check: the same solver, three formulas in one slot, water and rubber and snow falling out
-the other end.
+The visually richest materials, the ones that crumple, pack, and hold a shape, are exactly the ones whose
+stress laws carry the most state and non-smoothness: a full deformation gradient for the solid, a per-step
+plastic projection for snow. That richness is what makes them look real and, as [[constitutive-models]] and
+[[svd-polar]] flag, the hard part to differentiate through. Seeing the forward behavior first is the honest
+order of operations: a world model worth steering has to move like the world before it is worth asking
+whether it can be steered.

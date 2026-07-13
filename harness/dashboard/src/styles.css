@@ -83,7 +83,10 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
 
 /* Top-level section tabs */
 .sections { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
-.section-tab { flex: 1 1 auto; background: var(--panel); border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 7px 10px; font-size: 13px; cursor: pointer; }
+/* flex-basis 0 (not auto) so a tab's width is its equal share of the row, independent of its content —
+   otherwise the active tab's bold text (and a badge clearing) changes its width and shifts the wrap
+   points, making the tabs appear to reorder. min-width fixes a stable wrap so the layout never moves. */
+.section-tab { flex: 1 1 0; min-width: 72px; background: var(--panel); border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 7px 10px; font-size: 13px; cursor: pointer; text-align: center; }
 .section-tab:hover { border-color: #2b3a4d; color: var(--text); }
 .section-tab.active { color: var(--bg); background: var(--accent); border-color: var(--accent); font-weight: 600; }
 

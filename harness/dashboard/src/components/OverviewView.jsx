@@ -39,6 +39,7 @@ const DRAGGABLE = new Set(["proposed", "queued"]);
 function TaskModal({ task, onClose, onChanged }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ title: task.title, note: task.note || "" });
+  const [effort, setEffort] = useState(task.effort || "standard"); // local so the picker updates live
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -84,11 +85,11 @@ function TaskModal({ task, onClose, onChanged }) {
             <div className="modal-effort">
               <span className="modal-effort-label">Intensity</span>
               <EffortPicker
-                value={task.effort || "standard"}
+                value={effort}
                 disabled={busy}
-                onPick={(e) => { setTaskEffort(task.direction, task.id, e).then(onChanged); }}
+                onPick={(e) => { setEffort(e); setTaskEffort(task.direction, task.id, e).then(onChanged); }}
               />
-              <span className="modal-effort-hint">{effortMeta(task.effort || "standard").hint}</span>
+              <span className="modal-effort-hint">{effortMeta(effort).hint}</span>
             </div>
             {task.rework_history?.length > 0 && (
               <div className="modal-rework">

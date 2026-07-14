@@ -302,26 +302,38 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
         </section>
       )}
 
-      {task.findings && (
-        <section className="task-block">
-          <h2>Findings</h2>
-          <p>{task.findings}</p>
-        </section>
-      )}
-
-      {task.hypothesis && (
-        <section className="task-block">
-          <h2>Why / hypothesis</h2>
-          <p>{task.hypothesis}</p>
-        </section>
-      )}
-
-      {task.limitations && (
-        <section className="task-block">
-          <h2>Limitations and scope</h2>
-          <p>{task.limitations}</p>
-        </section>
-      )}
+      {/* The shown layer: a tight summary. Falls back to `findings` for older tasks that predate the
+          summary/full_report split. Depth (full findings, hypothesis, limitations) sits in an expander. */}
+      {(() => {
+        const summaryText = task.summary || task.findings;
+        const detail = [];
+        if (task.full_report) detail.push(["Full findings", task.full_report]);
+        else if (task.summary && task.findings && task.findings !== task.summary)
+          detail.push(["Full findings", task.findings]);
+        if (task.hypothesis) detail.push(["Why / hypothesis", task.hypothesis]);
+        if (task.limitations) detail.push(["Limitations and scope", task.limitations]);
+        return (
+          <>
+            {summaryText && (
+              <section className="task-block">
+                <h2>Summary</h2>
+                <p>{summaryText}</p>
+              </section>
+            )}
+            {detail.length > 0 && (
+              <details className="full-report">
+                <summary>Full report</summary>
+                {detail.map(([h, body], i) => (
+                  <section className="task-block" key={i}>
+                    <h2>{h}</h2>
+                    <p>{body}</p>
+                  </section>
+                ))}
+              </details>
+            )}
+          </>
+        );
+      })()}
 
       {results.length > 0 && (
         <section className="task-block">

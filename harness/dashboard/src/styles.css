@@ -152,6 +152,14 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
 .done-item { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left; background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; color: var(--text); cursor: pointer; }
 .done-item:hover { border-color: var(--accent-2); }
 
+/* "Full report" expander — the shown layer is a tight summary; depth folds away here */
+.full-report { max-width: 92ch; margin: 0 0 26px; border-top: 1px solid var(--border); }
+.full-report > summary { cursor: pointer; font-family: var(--mono); font-size: 12px; text-transform: uppercase;
+  letter-spacing: .5px; color: var(--muted); padding: 10px 0; }
+.full-report > summary:hover { color: var(--text); }
+.full-report[open] > summary { color: var(--accent); }
+.full-report .task-block { margin: 14px 0 18px; }
+
 /* Task detail — first-class, dynamic, no placeholders for absent results */
 .task-nav { display: flex; flex-direction: column; gap: 4px; }
 .task-group { margin-bottom: 12px; }

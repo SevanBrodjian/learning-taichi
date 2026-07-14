@@ -40,7 +40,8 @@
         { "id": "fluid-realism", "title": "Making it read as water: dynamics, interior fill, and the realism gap", "file": "core/12-fluid-realism.md" },
         { "id": "gpu-rendering", "title": "Rendering on the GPU: the render was the bottleneck, not the physics", "file": "core/15-gpu-rendering.md" },
         { "id": "fluid-color-mixing", "title": "Two liquids in one solver: advecting a color and compositing the mix", "file": "core/14-fluid-color-mixing.md" },
-        { "id": "surface-tension", "title": "Surface tension: the force that minimizes the interface", "file": "core/17-surface-tension.md" }
+        { "id": "surface-tension", "title": "Surface tension: the force that minimizes the interface", "file": "core/17-surface-tension.md" },
+        { "id": "conditioned-fluid", "title": "Conditioning one network across viscosity and surface tension", "file": "core/18-conditioned-fluid.md" }
       ]
     }
   ]

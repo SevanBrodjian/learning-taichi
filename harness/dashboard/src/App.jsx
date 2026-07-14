@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchOverview, fetchTraining, fetchNotifications } from "./api.js";
 import OverviewView from "./components/OverviewView.jsx";
+import GraphView from "./components/GraphView.jsx";
 import TaskView from "./components/TaskView.jsx";
 import TrainingView from "./components/TrainingView.jsx";
 import ReportsView from "./components/ReportsView.jsx";
@@ -8,6 +9,7 @@ import InboxView from "./components/InboxView.jsx";
 
 const SECTIONS = [
   { id: "overview", label: "Overview" },
+  { id: "map", label: "Map" },
   { id: "tasks", label: "Tasks" },
   { id: "training", label: "Training" },
   { id: "reports", label: "Reports" },
@@ -176,7 +178,7 @@ export default function App() {
   // article to the bottom first.
   const isSplit = section === "training" || section === "reports";
   const mainContent = (
-    <main className={`content${isSplit ? " content-split" : ""}`}>
+    <main className={`content${isSplit ? " content-split" : ""}${section === "map" ? " content-map" : ""}`}>
       {section === "overview" && (
         <OverviewView
           overview={overview}
@@ -185,6 +187,9 @@ export default function App() {
           focus={overviewFocus}
           onFocusHandled={() => setOverviewFocus(null)}
         />
+      )}
+      {section === "map" && (
+        <GraphView overview={overview} onOpenTask={openTask} onOpenRef={openRef} />
       )}
       {section === "tasks" && (
         <TaskView

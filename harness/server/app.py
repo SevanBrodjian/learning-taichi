@@ -310,6 +310,7 @@ def overview() -> dict:
                 "id": tid, "title": t.get("title", tid), "status": t.get("status", "proposed"),
                 "note": t.get("note", ""),
                 "effort": t.get("effort", "standard"),
+                "tags": t.get("tags", []),
                 "live": live.get((did, tid)),
                 "has_artifact": has, "detail": f"/api/task/{did}/{tid}" if has else None,
                 "rework_history": t.get("rework_history", []),
@@ -423,6 +424,22 @@ def set_task_effort(direction: str, task: str, effort: str) -> dict:
             t["effort"] = effort
             f.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
             _git_commit(f, f"dashboard: {direction}/{task} effort -> {effort}")
+            return {"ok": True}
+    return {"ok": False, "error": "no such task"}
+
+
+def set_task_tags(direction: str, task: str, tags: list) -> dict:
+    """Set a task's tags (the sorting/filtering axis that replaces directions-as-containers)."""
+    f = MAIN_ROOT / "coordination" / "directions" / f"{direction}.json"
+    if not f.is_file():
+        return {"ok": False, "error": "no such direction"}
+    data = json.loads(f.read_text("utf-8"))
+    clean = [str(t).strip() for t in (tags or []) if str(t).strip()]
+    for t in data.get("tasks", []):
+        if t.get("id") == task:
+            t["tags"] = list(dict.fromkeys(clean))
+            f.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+            _git_commit(f, f"dashboard: {direction}/{task} tags")
             return {"ok": True}
     return {"ok": False, "error": "no such task"}
 
@@ -715,6 +732,13 @@ def _build_app():
         if not (d and t and e):
             raise HTTPException(400, "direction, task, effort required")
         return set_task_effort(d, t, e)
+
+    @app.post("/api/task-tags")
+    def api_task_tags(payload: dict):
+        d, t = payload.get("direction"), payload.get("task")
+        if not (d and t):
+            raise HTTPException(400, "direction, task required")
+        return set_task_tags(d, t, payload.get("tags", []))
 
     @app.post("/api/task-edit")
     def api_task_edit(payload: dict):

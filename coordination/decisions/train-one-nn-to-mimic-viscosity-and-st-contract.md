@@ -16,7 +16,7 @@ capillary force remains in the learned rollout. (This is the fix for last time, 
 ## ⚠️ Needs your call — the seed contradicts itself
 It lists **(low ST, low viscosity)** as a *trained* condition **and** says to *hold out* that same corner.
 My planned reading (matching the prior design): **train (0,0) low/low, (1,0) high-visc/low-ST,
-(0,1) low-visc/high-ST; hold out (1,1) high-visc/high-ST.** Adjust here if you meant something else.
+(0,1) low-visc/high-ST; hold out (1,1) high-visc/high-ST.** Adjust here if you meant something else. Note from Sevan: Yes, that's what I meant, good catch.
 
 ## Deliverables
 5×5 learned-vs-GT grid (still + video/interactive), GT reference clips, trained-corner fidelity, held-out

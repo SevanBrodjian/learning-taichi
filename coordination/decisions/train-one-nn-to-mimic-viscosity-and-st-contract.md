@@ -27,3 +27,6 @@ corner test, a per-cell RMSE heatmap, one short training page. Tight summary + f
 - Ground truth for surface tension uses the existing (working, not-yet-canonical) CSF; **promoting ST into
   `sim/physics` is a separate follow-up**, not part of this task.
 - No differentiable canonical GT (GT is forward only); no 3D; one resolution.
+
+
+**Resolution: APPROVED**

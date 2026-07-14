@@ -267,7 +267,7 @@
         "net_vs_true": 0.03133855015039444,
         "true_self_noise": 3.14953126689943e-07,
         "stress_relrmse": 0.06363717734643191,
-        "cap_relrmse": NaN,
+        "cap_relrmse": null,
         "state_relrmse": 0.0921100214125695,
         "net_stable": true,
         "true_stable": true
@@ -282,7 +282,7 @@
         "net_vs_true": 0.030111046507954597,
         "true_self_noise": 5.665002333898883e-08,
         "stress_relrmse": 0.1973265056187972,
-        "cap_relrmse": NaN,
+        "cap_relrmse": null,
         "state_relrmse": 0.06362064475351929,
         "net_stable": true,
         "true_stable": true

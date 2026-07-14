@@ -33,6 +33,21 @@ MAIN_ROOT = Path(__file__).resolve().parents[2]
 PORT = int(os.environ.get("DASHBOARD_PORT", "8732"))
 
 
+def _json_safe(o):
+    """Recursively replace NaN / Infinity floats with None. A worker's manifest can carry a NaN metric
+    (e.g. a degenerate held-out value); Python's json.load accepts it, but Starlette's JSONResponse
+    serializes with allow_nan=False and 500s — which hangs the task page forever. Sanitizing here makes
+    the data server resilient to any NaN-bearing manifest instead of dying on it."""
+    import math
+    if isinstance(o, float):
+        return None if (math.isnan(o) or math.isinf(o)) else o
+    if isinstance(o, dict):
+        return {k: _json_safe(v) for k, v in o.items()}
+    if isinstance(o, list):
+        return [_json_safe(v) for v in o]
+    return o
+
+
 def _root_id(branch: str, path: Path) -> str:
     """URL-safe, stable id for a worktree. Prefer the leaf dir name (unique per worktree)."""
     name = path.name or branch or "main"
@@ -663,7 +678,7 @@ def _build_app():
         if target.name == "manifest.json":
             m = json.loads(target.read_text("utf-8"))
             rw = rewrite_task if str(m.get("schema_version")) == "2" else rewrite_manifest
-            return JSONResponse(rw(m, rid))
+            return JSONResponse(_json_safe(rw(m, rid)))
         return FileResponse(target)
 
     @app.get("/api/training")
@@ -698,7 +713,7 @@ def _build_app():
         d = task_detail(direction, task)
         if d is None:
             raise HTTPException(404, "task not found")
-        return d
+        return JSONResponse(_json_safe(d))
 
     @app.post("/api/task-status")
     def api_task_status(payload: dict):

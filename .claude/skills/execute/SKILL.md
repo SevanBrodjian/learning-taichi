@@ -60,6 +60,14 @@ State the plan briefly before you start.
    exits without committing.
 3. Flip the task to `active` on the board (POST `/api/task-status`, or edit the direction JSON) so the
    dashboard shows it live.
+4. **Arm the adaptive check-in.** Note the spawn time and the task's `budget_minutes` (a soft expectation
+   from the effort tier, tunable on the dashboard). Launch, in the **background**,
+   `python harness/tools/watch_worker.py --direction <d> --task <t> --budget <min> --started <unix_ts>`.
+   It wakes you every ~20 min (or at the budget); on its exit act per the verdict: **HEALTHY (0)** → re-arm
+   another watch and keep going; **STALE (1)** → the worker went silent / ended its turn on a background job
+   → intervene (nudge it to converge, or take over its run); **OVER_BUDGET (2)** → converge (review the
+   on-disk result / take over — if a manifest exists it likely has a complete result). This is the fix for
+   "a deep worker ran for hours and nobody noticed" — budgets are a soft check, not a hard cap.
 
 ## 4. Review and commit each finished worker
 When a worker finishes, **review before committing** (`CLAUDE.md`):

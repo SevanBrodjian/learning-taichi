@@ -97,6 +97,20 @@ stale or dangling `[[links]]`, and keep the whole thing cohesive and skimmable p
 `spec/style_training_report.md` ("Brevity and prioritization"). A ballooning, hard-to-track textbook is a
 defect to correct, not a sign of progress.
 
+## Watching workers — adaptive check-ins, not blanket limits
+A spawned worker is not fire-and-forget. Each task carries an adaptive **`budget_minutes`** — a *soft*
+expectation set from the effort tier (quick ~15, standard ~40, deep ~90) and tunable per task on the
+dashboard, **not a hard cap** (a genuinely long task just gets a bigger budget). After spawning, the
+orchestrator arms a periodic check-in: `harness/tools/watch_worker.py` wakes it every ~20 min (or at the
+budget) and reports the worker's health — **HEALTHY** (fresh status, under budget) re-arms and keeps going;
+**STALE** (status not updating) means the worker went silent or ended its turn on a background job, so the
+orchestrator intervenes (nudge to converge, or take over its run); **OVER_BUDGET** means converge and review
+the on-disk result. This is how "a deep worker ran for hours before anyone noticed" gets caught early.
+The data server is kept alive by `harness/tools/serve_watchdog.py` (run it instead of the raw server): it
+restarts the server if it dies or stops responding on `/api/health`, so a worker's memory spike can't leave
+the dashboard showing an API error. (The server also sanitizes NaN/Inf out of JSON responses, so a
+degenerate metric in a manifest can't hang a task page.)
+
 ## Persistence — the filesystem is the backbone
 Durable state lives in the repo, on disk, as files (mostly Markdown + JSON). **Do not rely on auto-memory
 or session context for anything that must survive.** A worker's value is its output on disk, not its

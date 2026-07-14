@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { setTaskStatus, setTaskEffort, createTask, editTask, createDirection, deleteTask } from "../api.js";
+import { setTaskStatus, setTaskEffort, setTaskBudget, createTask, editTask, createDirection, deleteTask } from "../api.js";
 import { EFFORTS, effortMeta } from "../effort.js";
 import LiveLine from "./LiveLine.jsx";
 
@@ -40,6 +40,7 @@ function TaskModal({ task, onClose, onChanged }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ title: task.title, note: task.note || "" });
   const [effort, setEffort] = useState(task.effort || "standard"); // local so the picker updates live
+  const [budget, setBudget] = useState(task.budget_minutes || 40); // adaptive time expectation (minutes)
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -90,6 +91,16 @@ function TaskModal({ task, onClose, onChanged }) {
                 onPick={(e) => { setEffort(e); setTaskEffort(task.direction, task.id, e).then(onChanged); }}
               />
               <span className="modal-effort-hint">{effortMeta(effort).hint}</span>
+            </div>
+            <div className="modal-effort">
+              <span className="modal-effort-label">Time budget</span>
+              <span className="budget-edit">
+                <input type="number" min="1" max="600" step="5" value={budget} disabled={busy}
+                  onChange={(e) => setBudget(e.target.value)}
+                  onBlur={() => { const v = Math.max(1, Math.min(600, parseInt(budget, 10) || 40)); setBudget(v); setTaskBudget(task.direction, task.id, v).then(onChanged); }} />
+                <span className="budget-unit">min</span>
+              </span>
+              <span className="modal-effort-hint">Soft expectation — the orchestrator checks in and steps in if a worker goes silent or blows past this.</span>
             </div>
             {task.rework_history?.length > 0 && (
               <div className="modal-rework">

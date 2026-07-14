@@ -44,6 +44,14 @@ export const setTaskEffort = (direction, task, effort) =>
     body: JSON.stringify({ direction, task, effort }),
   }).then((r) => r.json());
 
+// Set a task's adaptive time budget in minutes (a soft expectation the orchestrator watches against).
+export const setTaskBudget = (direction, task, minutes) =>
+  fetch(`${API_BASE}/api/task-budget`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ direction, task, minutes }),
+  }).then((r) => r.json());
+
 const post = (path, payload) =>
   fetch(`${API_BASE}${path}`, {
     method: "POST",

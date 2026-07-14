@@ -426,6 +426,10 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
 .modal-effort { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
 .modal-effort-label { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); font-family: var(--mono); }
 .modal-effort-hint { flex: 1 1 100%; font-size: 12px; color: var(--muted); line-height: 1.4; }
+.budget-edit { display: inline-flex; align-items: center; gap: 6px; }
+.budget-edit input { width: 68px; background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 4px; padding: 5px 8px; font-family: var(--mono); font-size: 13px; }
+.budget-unit { font-family: var(--mono); font-size: 12px; color: var(--muted); }
 .effort-tag { margin-left: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px;
   font-family: var(--mono); border-radius: 3px; padding: 1px 5px; border: 1px solid var(--border); }
 .effort-tag.effort-deep { color: var(--accent); border-color: #173243; background: #0f2230; }

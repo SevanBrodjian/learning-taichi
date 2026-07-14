@@ -327,6 +327,7 @@ def overview() -> dict:
                 "id": tid, "title": t.get("title", tid), "status": t.get("status", "proposed"),
                 "note": t.get("note", ""),
                 "effort": t.get("effort", "standard"),
+                "budget_minutes": t.get("budget_minutes") or default_budget(t.get("effort", "standard")),
                 "tags": t.get("tags", []),
                 "live": live.get((did, tid)),
                 "has_artifact": has, "detail": f"/api/task/{did}/{tid}" if has else None,
@@ -375,6 +376,7 @@ def task_detail(direction: str, task: str) -> dict | None:
             this = by_id.get(task, {})
             m["status"] = this.get("status", m.get("status"))
             m["effort"] = this.get("effort", "standard")
+            m["budget_minutes"] = this.get("budget_minutes") or default_budget(this.get("effort", "standard"))
             m["live"] = live_statuses().get((direction, task))
             m["rework_history"] = this.get("rework_history", [])
             # follow_up_of is now a LIST of resolved refs (a proposal may follow up on several parents).
@@ -424,6 +426,34 @@ def set_task_status(direction: str, task: str, status: str, note: str | None = N
 
 
 EFFORTS = ("quick", "standard", "deep")
+# Default adaptive time budget (minutes) per effort tier — a soft expectation, not a hard cap. The
+# orchestrator watches a running worker against this (harness/tools/watch_worker.py) and intervenes if it
+# goes silent or blows past it. The user can override per task on the dashboard.
+EFFORT_BUDGET = {"quick": 15, "standard": 40, "deep": 90}
+
+
+def default_budget(effort: str) -> int:
+    return EFFORT_BUDGET.get(effort or "standard", 40)
+
+
+def set_task_budget(direction: str, task: str, minutes) -> dict:
+    """Set a task's adaptive time budget in minutes (the soft expectation the orchestrator watches against)."""
+    try:
+        minutes = int(minutes)
+    except (TypeError, ValueError):
+        return {"ok": False, "error": "minutes must be an integer"}
+    minutes = max(1, min(600, minutes))
+    f = MAIN_ROOT / "coordination" / "directions" / f"{direction}.json"
+    if not f.is_file():
+        return {"ok": False, "error": "no such direction"}
+    data = json.loads(f.read_text("utf-8"))
+    for t in data.get("tasks", []):
+        if t.get("id") == task:
+            t["budget_minutes"] = minutes
+            f.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+            _git_commit(f, f"dashboard: {direction}/{task} budget -> {minutes}m")
+            return {"ok": True}
+    return {"ok": False, "error": "no such task"}
 
 
 def set_task_effort(direction: str, task: str, effort: str) -> dict:
@@ -756,6 +786,17 @@ def _build_app():
         if not (d and t):
             raise HTTPException(400, "direction, task required")
         return set_task_tags(d, t, payload.get("tags", []))
+
+    @app.post("/api/task-budget")
+    def api_task_budget(payload: dict):
+        d, t, mn = payload.get("direction"), payload.get("task"), payload.get("minutes")
+        if not (d and t and mn is not None):
+            raise HTTPException(400, "direction, task, minutes required")
+        return set_task_budget(d, t, mn)
+
+    @app.get("/api/health")
+    def api_health():
+        return {"ok": True}
 
     @app.post("/api/task-edit")
     def api_task_edit(payload: dict):

@@ -6,8 +6,13 @@ description: Run the learning-taichi orchestrator loop over the directions board
 # /execute — burn down the queued backlog
 
 You are the **orchestrator** (see `CLAUDE.md` → Roles). `/execute` means: take the whole `queued` backlog
-and run it to completion, autonomously, then report. This is the everyday loop — the user curates the
-board on the dashboard, queues tasks, and types `/execute`.
+and run it to completion, then report. This is the everyday loop — the user curates the board on the
+dashboard, queues tasks, and types `/execute`.
+
+**Two modes.** By default, `/execute` **expands each task into a short contract and surfaces it for approval
+before spawning** (step 3) — the user catches scope mismatches cheaply. If the command contains the word
+**`hard`** (e.g. `/execute hard`), **bypass approvals entirely** and run the whole queue autonomously (the
+old behavior). Check the invocation text for `hard`.
 
 ## 1. Read the board
 Enumerate `coordination/directions/*.json` and collect every task with `"status": "queued"`. If there are
@@ -24,11 +29,18 @@ GPU** (`CLAUDE.md` → Orchestrator responsibilities). There is no fixed serial 
   giving up on the result.
 State the plan briefly before you start.
 
-## 3. For each task: expand → spawn → flip to active
+## 3. For each task: expand → (approve) → spawn → flip to active
 1. Expand the queued seed into a full contract by copying `coordination/tasks/_TEMPLATE.md` to
    `coordination/tasks/<task-id>.md` and filling every field (objective, experiments, evidence-discipline
    scope, visualization standard, training-page requirement, paths, DoD). Fill the **Effort tier** line from
-   the task's `effort` field.
+   the task's `effort` field. **Use the canonical `sim/physics/` for any ground truth** — never fork the
+   physics into the task (CLAUDE.md → "Canonical physics").
+1b. **Approval gate (skip in `hard` mode).** Post a short contract to the Inbox
+   (`coordination/decisions/<task-id>-contract.md`, plus a `gate` ping) — a few bullets: the seam it
+   replaces, what it tests, the deliverables, and **explicitly what it will NOT do** — with a pointer to the
+   full brief. Then move on to other unblocked work; resume this task when the user Approves (in `hard` mode,
+   skip this and spawn immediately). This is where "you're learning the stress, not the whole update" gets
+   caught before the compute is spent.
 2. Spawn a **worker subagent** with the role stamp from the template, **matching the spawn to the task's
    `effort` tier** (set on the dashboard, read from the direction JSON — default `standard`):
    - **quick** → a cheaper/faster model at low reasoning effort (e.g. Sonnet), short leash. Good for light

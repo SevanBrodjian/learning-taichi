@@ -106,6 +106,38 @@ reading the filesystem. Everything learned, designed, decided, or instructed mus
 research), `runs/` (results), `agents/<branch>/` (status + log). If it is only in a chat context, it does
 not exist.
 
+## Canonical physics — freeze the ground truth
+There is **one** definition of the simulation physics: `sim/physics/` (see `sim/physics/PROMOTION.md`). It
+is frozen and tested. **Every task imports it and uses it unchanged.** Re-deriving the MLS-MPM step or a
+material's parameters inside a task — a per-task copy of "snow" with its own softened clamp — is a **defect
+the reviewer rejects**, because that is exactly how ground truth drifts (snow quietly starts behaving like
+elastic across a task sequence). Rules:
+- **Ground truth is a *forward* sim; it never needs gradients.** To generate observations to fit or evaluate
+  a network, call `sim.physics.simulate` (forward, cheap, stable). A task that must optimize *through* the
+  physics builds its own differentiable variant and **says so in its contract** — it does not make the
+  canonical GT differentiable.
+- **Golden signatures gate every change.** `sim/physics/signatures.py` asserts the qualitative truths (snow
+  crumbles and holds an angle of repose; fluid spreads; the fluid/snow/elastic ordering). Any change to the
+  physics must keep them green. Promotion of new code into the library follows the three gates in
+  `PROMOTION.md` (it is ground truth, the signatures pass, the version bumps).
+- **Stamp every run.** A run records the `physics_version` (from `sim.physics.VERSION`) it used, so two tasks
+  are provably on the same ground truth or provably not.
+- The portable idea for the next project: *freeze the ground truth* — one versioned, tested module for the
+  domain's data-generating process, imported unchanged, forking forbidden.
+
+## Presenting results to the user — brief, comparative, legible
+The user reads a **short** summary, not a wall of text. This is graded like evidence discipline:
+- **Two layers.** Every task result has a tight `summary` (1–2 clean paragraphs, human-legible, jargon only
+  where it earns its keep — the thing shown by default) and a `full_report` (all the detail, behind an
+  expander). The raw numbers live in `runs/.../metrics.json`. Lead the summary with the picture and the
+  one-line takeaway. A summary that is a wall of text is a defect to fix before committing.
+- **Any comparison shows both sides against each other.** If a result is an improvement, a change, or a
+  claim relative to a baseline or a ground truth, **visualize both, in the same medium as the claim** — if
+  the claim is about motion, show both as video (not two final frames), side by side or overlaid. **The
+  baseline / ground truth is mandatory, never optional.** A "learned output" with no clear ground-truth
+  comparison is not evidence. More generally: think about how a result lands for a human who will not read a
+  wall of text, and make the honest comparison impossible to miss.
+
 ## Evidence discipline — scope every claim to what you tested
 The fastest way to make this project worthless is to overclaim, and it is the single biggest failure mode
 of agent-run research. A result on one task is a result on **one task**, not a truth about the method, the
@@ -129,9 +161,16 @@ orchestrator to pick up the whole `queued` backlog and run it to completion (see
 1. The user **queues a task** (drags a proposed task to `queued`, adds one on the dashboard, or asks for
    one). The proposed task's `note` is only a seed for that decision, not an executable spec.
 2. The orchestrator **expands that seed into a full contract** at `coordination/tasks/<id>.md` (objective,
-   concrete experiments, deliverables, the schema-v2 manifest, definition-of-done, paths, KaTeX rules),
-   **spawns a worker matched to the task's `effort` tier** (quick/standard/deep → model + reasoning effort +
-   how long to persist), and flips the task to **active** (not user-undoable).
+   concrete experiments, deliverables, the schema-v2 manifest, definition-of-done, paths, KaTeX rules).
+   **Then it surfaces a short contract for approval before spawning** (unless in `hard` mode — below):
+   post a compact contract to the **Inbox** (`coordination/decisions/`, kind `contract`) — a few bullets the
+   user can review in seconds (what seam it replaces, what it tests, the deliverables, and **explicitly what
+   it will NOT do**), with the full brief a click away. The user Approves, Adjusts, or Rejects. This is where
+   scope mismatches get caught cheaply ("this only learns the stress, not the whole update") instead of after
+   a long run. On approval the orchestrator **spawns a worker matched to the task's `effort` tier**
+   (quick/standard/deep → model + reasoning effort + how long to persist) and flips the task to **active**.
+   **`/execute hard`** (the word `hard` in the command) bypasses the approval gate entirely and runs the whole
+   queue autonomously — the old behavior, for when the user wants it to just burn down.
 3. The worker **fires a `started` ping**, posts coarse **live status** as it goes
    (`harness/tools/task_status.py`, so the board shows the Active task's current step), executes, and writes one polished task to
    `runs/<direction-id>/<task-id>/` — an **objective**, **scoped findings** (what was tested, no
@@ -146,9 +185,21 @@ orchestrator to pick up the whole `queued` backlog and run it to completion (see
    textbook voice (`spec/style_training_report.md`) — over-including math **prerequisites** (linear algebra,
    calculus, numerics) it leans on and making sure every `[[link]]` it writes points at content that
    actually exists — **fires a `finished` ping**, and exits, leaving everything **on disk** (it does not
-   commit).
+   commit). The manifest carries a tight **`summary`** (shown by default) and a **`full_report`** (the
+   detail, behind an expander) — see "Presenting results to the user" — and any comparison against a
+   baseline/ground truth shows **both sides against each other**, ground truth mandatory.
 4. The orchestrator **reviews, commits, and surfaces** it on the dashboard. **Done is the user's call**,
    made after discussion — never set automatically.
+
+## Directions are emergent — tasks form a graph
+The mental model is a **network of tasks** (a Zettelkasten), not folders. Tasks are the primary unit; the
+**follow-up links** (`follow_up_of`, now multi-parent, + `follow_ups`) make them a directed graph, and a
+research **"direction" is any connected set of tasks in that graph**, not a container you create up front.
+Tasks also carry **`tags`** for sorting and filtering (the old direction names live on as tags). The
+dashboard renders this as a graph view. Storage is unchanged for now (tasks still live in
+`coordination/directions/<id>.json`; runs still at `runs/<direction>/<task>/`) — the direction file is an
+implementation detail behind the graph, not the user's mental model. Prefer creating a task as a **follow-up
+of** existing tasks (which places it in the graph) over inventing a new top-level direction.
 
 ## Repository map
 The repo separates a **portable harness** (the reusable skeleton) from **project-specific** calibration

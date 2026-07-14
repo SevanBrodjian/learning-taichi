@@ -59,6 +59,11 @@ Results are how the work becomes understandable, so make the visuals *informativ
 - **Show the quantity the objective is actually about.** If the task optimizes the center of mass to a
   target, the video must overlay the center-of-mass trajectory and the target, not just show the blob
   moving. The viewer should be able to see *how close it got*, not infer it.
+- **Any comparison shows both sides against each other, in the same medium as the claim.** If the result is
+  an improvement, a change, or a learned output judged against a baseline or ground truth, **the ground
+  truth is mandatory** and must be shown *next to or overlaid on* the result — as video if the claim is
+  about motion (not two lone final frames). A learned rollout with no clear ground-truth comparison is not
+  evidence. (Use the canonical `sim.physics.simulate` for the ground truth.)
 - **Prefer clear, simple, informative demos over dense technical ones.** A frame with the grid drawn and a
   heatmap of mass or velocity teaches more than a raw particle splat. Annotate axes, targets, and key
   quantities.
@@ -100,10 +105,13 @@ Write `runs/<direction-id>/<task-id>/manifest.json` (schema v2 — see `runs/REA
 with: `objective`, scoped `findings`, `hypothesis`, `limitations`, typed `results[]` (video / image /
 plot / table), and `training_refs[]` pointing at the page(s) you added. Leave everything on disk; do not
 commit.
-- **Keep the prose fields tight — this is a summary card, not a paper.** `objective` is one or two
-  sentences. `findings` leads with the headline result, then the few points that matter, scoped to what was
-  tested; it is not an exhaustive log. Let the `results[]` visuals and the linked training page carry the
-  depth. A reader should get the point of the task in about fifteen seconds of skimming this page.
+- **Two-layer prose: `summary` (shown) + `full_report` (expander).** Put a tight, human-legible
+  **`summary`** (1–2 clean paragraphs, jargon only where it earns its keep, leading with the takeaway) in the
+  manifest — this is what the user reads by default. Put the full detail (the exhaustive findings, method
+  notes, per-condition numbers) in **`full_report`**, shown behind a "Full report" expander. Raw numbers go
+  in `metrics.json`. `objective` stays one or two sentences. A reader should get the point in ~15 seconds
+  from the `summary` alone. (If a worker writes only `findings`, the dashboard shows it as the summary — so
+  keep `findings` short and put depth in `full_report`.)
 - **Write the manifest LAST, after every media file it references already exists on disk, and make
   `results[]` reference ONLY files that actually exist.** Never list a planned-but-unrendered scene — a
   dangling media `src` renders as a broken tile on the dashboard, and the orchestrator will reject it.

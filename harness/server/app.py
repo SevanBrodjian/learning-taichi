@@ -198,10 +198,12 @@ def decisions_list() -> dict:
                 txt = f.read_text("utf-8", errors="ignore")
             except Exception:
                 txt = ""
+            mt = re.search(r"auto_run_at:\s*(\d+)", txt)
             items.append({"id": f.stem, "title": f.stem.replace("-", " ").replace("_", " / "),
                           "url": _shared_url(f"coordination/decisions/{f.name}"),
                           "kind": "contract" if "contract" in f.stem.lower() else "note",
-                          "resolved": "**Resolution:" in txt})
+                          "resolved": "**Resolution:" in txt,
+                          "auto_run_at": int(mt.group(1)) if mt else None})
     return {"decisions": items}
 
 

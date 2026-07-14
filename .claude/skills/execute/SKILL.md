@@ -36,11 +36,17 @@ State the plan briefly before you start.
    the task's `effort` field. **Use the canonical `sim/physics/` for any ground truth** — never fork the
    physics into the task (CLAUDE.md → "Canonical physics").
 1b. **Approval gate (skip in `hard` mode).** Post a short contract to the Inbox
-   (`coordination/decisions/<task-id>-contract.md`, plus a `gate` ping) — a few bullets: the seam it
-   replaces, what it tests, the deliverables, and **explicitly what it will NOT do** — with a pointer to the
-   full brief. Then move on to other unblocked work; resume this task when the user Approves (in `hard` mode,
-   skip this and spawn immediately). This is where "you're learning the stress, not the whole update" gets
-   caught before the compute is spent.
+   (`coordination/decisions/<task-id>-contract.md`) — a few bullets: the seam it replaces, what it tests, the
+   deliverables, and **explicitly what it will NOT do** — with a pointer to the full brief. **Include a
+   machine-readable auto-run deadline** as an HTML comment near the top: `<!-- auto_run_at: <unix ts now+600> -->`
+   (10 minutes out; the dashboard shows a live countdown, and the task auto-runs at the deadline if the user
+   has not acted). Fire a `gate` ping.
+   Then **set up the wake instead of blocking**: launch, in the **background** (never a foreground wait —
+   those time out), `python harness/tools/await_contract.py --id <task-id>-contract --deadline <ts>`. It
+   exits when the user Approves (0), Rejects (1), or the deadline passes (2), which re-invokes you — then
+   **spawn** on approve or timeout (run it as-is), or **send the task back to the queue** with the note on
+   reject. Meanwhile do any other unblocked work. This is where "you're learning the stress, not the whole
+   update" gets caught before the compute is spent, and it auto-runs so the user need not come back.
 2. Spawn a **worker subagent** with the role stamp from the template, **matching the spawn to the task's
    `effort` tier** (set on the dashboard, read from the direction JSON — default `standard`):
    - **quick** → a cheaper/faster model at low reasoning effort (e.g. Sonnet), short leash. Good for light

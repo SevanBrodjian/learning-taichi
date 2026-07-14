@@ -167,8 +167,12 @@ orchestrator to pick up the whole `queued` backlog and run it to completion (see
    user can review in seconds (what seam it replaces, what it tests, the deliverables, and **explicitly what
    it will NOT do**), with the full brief a click away. The user Approves, Adjusts, or Rejects. This is where
    scope mismatches get caught cheaply ("this only learns the stress, not the whole update") instead of after
-   a long run. On approval the orchestrator **spawns a worker matched to the task's `effort` tier**
-   (quick/standard/deep → model + reasoning effort + how long to persist) and flips the task to **active**.
+   a long run. The contract carries a 10-minute **auto-run deadline** (`<!-- auto_run_at: ts -->`) the
+   dashboard counts down; the orchestrator does not block but launches `harness/tools/await_contract.py` in
+   the background, which wakes it on Approve / Reject / timeout — so the task **auto-runs on approval or at
+   the deadline** without the user coming back. On approval (or timeout) the orchestrator **spawns a worker
+   matched to the task's `effort` tier** (quick/standard/deep → model + reasoning effort + how long to
+   persist) and flips the task to **active**; a reject sends it back to the queue with the note.
    **`/execute hard`** (the word `hard` in the command) bypasses the approval gate entirely and runs the whole
    queue autonomously — the old behavior, for when the user wants it to just burn down.
 3. The worker **fires a `started` ping**, posts coarse **live status** as it goes

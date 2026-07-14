@@ -25,7 +25,11 @@ export default function InboxView({ notifData }) {
   const [rejecting, setRejecting] = useState(false);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [now, setNow] = useState(Date.now());
   const notifs = notifData;
+
+  // Tick every second so a contract's "auto-runs in M:SS" countdown updates live.
+  useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, []);
 
   const load = () =>
     fetchDecisions()
@@ -80,6 +84,12 @@ export default function InboxView({ notifData }) {
               {active && active.kind === "contract" && !active.resolved && (
                 <div className="contract-actions">
                   <span className="contract-label">Run this task?</span>
+                  {active.auto_run_at && (() => {
+                    const rem = Math.round(active.auto_run_at - now / 1000);
+                    if (rem <= 0) return <span className="contract-countdown go">auto-running…</span>;
+                    const m = Math.floor(rem / 60), s = rem % 60;
+                    return <span className="contract-countdown">auto-runs in {m}:{String(s).padStart(2, "0")}</span>;
+                  })()}
                   {rejecting ? (
                     <div className="contract-reject">
                       <textarea className="reopen-input" rows={2} value={note} placeholder="What to change (sent back to the queue)"

@@ -41,7 +41,8 @@
         { "id": "gpu-rendering", "title": "Rendering on the GPU: the render was the bottleneck, not the physics", "file": "core/15-gpu-rendering.md" },
         { "id": "fluid-color-mixing", "title": "Two liquids in one solver: advecting a color and compositing the mix", "file": "core/14-fluid-color-mixing.md" },
         { "id": "surface-tension", "title": "Surface tension: the force that minimizes the interface", "file": "core/17-surface-tension.md" },
-        { "id": "conditioned-fluid", "title": "Conditioning one network across viscosity and surface tension", "file": "core/18-conditioned-fluid.md" }
+        { "id": "conditioned-fluid", "title": "Conditioning one network across viscosity and surface tension", "file": "core/18-conditioned-fluid.md" },
+        { "id": "learning-the-whole-material", "title": "Learning the whole material, not just the stress", "file": "core/19-learning-the-whole-material.md" }
       ]
     }
   ]

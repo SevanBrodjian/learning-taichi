@@ -186,16 +186,39 @@ def reports_list() -> dict:
 
 
 def decisions_list() -> dict:
-    """The inbox: open decisions awaiting the user (coordination/decisions/*.md)."""
+    """The inbox: open decisions awaiting the user (coordination/decisions/*.md). A file whose name
+    contains 'contract' is a task contract the user can Approve/Reject before the run spawns."""
     d = MAIN_ROOT / "coordination" / "decisions"
     items = []
     if d.is_dir():
         for f in sorted(d.glob("*.md")):
             if f.name.lower() == "readme.md":
                 continue
-            items.append({"id": f.stem, "title": f.stem.replace("-", " "),
-                          "url": _shared_url(f"coordination/decisions/{f.name}")})
+            try:
+                txt = f.read_text("utf-8", errors="ignore")
+            except Exception:
+                txt = ""
+            items.append({"id": f.stem, "title": f.stem.replace("-", " ").replace("_", " / "),
+                          "url": _shared_url(f"coordination/decisions/{f.name}"),
+                          "kind": "contract" if "contract" in f.stem.lower() else "note",
+                          "resolved": "**Resolution:" in txt})
     return {"decisions": items}
+
+
+def resolve_decision(decision_id: str, resolution: str, note: str = "") -> dict:
+    """Record the user's Approve/Reject on a decision (esp. a task contract) by appending a resolution
+    marker to the decision file. The orchestrator reads this to know whether to spawn the run."""
+    f = MAIN_ROOT / "coordination" / "decisions" / f"{decision_id}.md"
+    if not f.is_file():
+        return {"ok": False, "error": "no such decision"}
+    res = "APPROVED" if resolution == "approve" else "REJECTED"
+    line = f"\n\n**Resolution: {res}**"
+    if note:
+        line += f" — {note}"
+    with open(f, "a", encoding="utf-8") as fh:
+        fh.write(line + "\n")
+    _git_commit(f, f"dashboard: decision {decision_id} -> {res}")
+    return {"ok": True}
 
 
 # ---- Direction -> Task model (schema v2) ----
@@ -639,6 +662,13 @@ def _build_app():
     @app.get("/api/decisions")
     def api_decisions():
         return decisions_list()
+
+    @app.post("/api/decision-resolve")
+    def api_decision_resolve(payload: dict):
+        did, resn = payload.get("id"), payload.get("resolution")
+        if not (did and resn in ("approve", "reject")):
+            raise HTTPException(400, "id and resolution (approve|reject) required")
+        return resolve_decision(did, resn, payload.get("note", ""))
 
     @app.get("/api/overview")
     def api_overview():

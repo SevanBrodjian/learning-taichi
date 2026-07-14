@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { fetchDecisions } from "../api.js";
+import { fetchDecisions, resolveDecision } from "../api.js";
 import DocView from "./DocView.jsx";
 
-// The I/O channel. Two clean parts: Decisions (things that need you, from coordination/decisions/) and
-// a Notifications feed pulled live from ntfy so you do not have to switch apps.
+// The I/O channel. Two clean parts: Decisions (things that need you, from coordination/decisions/ —
+// including task CONTRACTS you Approve/Reject before a run spawns) and a live ntfy notification feed.
 const DISMISS_KEY = "lt_dismissed_notifs";
 const loadDismissed = () => {
   try { return new Set(JSON.parse(localStorage.getItem(DISMISS_KEY) || "[]")); } catch { return new Set(); }
@@ -18,18 +18,36 @@ function timeAgo(sec) {
   return `${Math.floor(d / 86400)}d ago`;
 }
 
-// `notifData` is the ntfy feed lifted into App (so the nav badge and this view share one fetch).
 export default function InboxView({ notifData }) {
   const [decisions, setDecisions] = useState([]);
-  const [activeUrl, setActiveUrl] = useState(undefined);
+  const [activeId, setActiveId] = useState(undefined);
   const [dismissed, setDismissed] = useState(loadDismissed);
+  const [rejecting, setRejecting] = useState(false);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
   const notifs = notifData;
 
-  useEffect(() => {
+  const load = () =>
     fetchDecisions()
-      .then((d) => { const it = d.decisions || []; setDecisions(it); setActiveUrl(it[0]?.url ?? null); })
-      .catch(() => { setDecisions([]); setActiveUrl(null); });
-  }, []);
+      .then((d) => {
+        const it = d.decisions || [];
+        setDecisions(it);
+        setActiveId((cur) => (it.find((x) => x.id === cur) ? cur : it[0]?.id ?? null));
+      })
+      .catch(() => { setDecisions([]); setActiveId(null); });
+  useEffect(() => { load(); }, []);
+
+  const active = decisions.find((d) => d.id === activeId);
+
+  const resolve = async (resolution) => {
+    if (!active) return;
+    setBusy(true);
+    try {
+      await resolveDecision(active.id, resolution, note.trim());
+      setRejecting(false); setNote("");
+      await load();
+    } finally { setBusy(false); }
+  };
 
   const dismiss = (id) => {
     const next = new Set(dismissed);
@@ -37,7 +55,6 @@ export default function InboxView({ notifData }) {
     setDismissed(next);
     localStorage.setItem(DISMISS_KEY, JSON.stringify([...next]));
   };
-
   const visible = (notifs?.notifications || []).filter((n) => !dismissed.has(n.id));
 
   return (
@@ -51,12 +68,37 @@ export default function InboxView({ notifData }) {
             <nav className="toc">
               <div className="toc-group-title">Open</div>
               {decisions.map((it) => (
-                <button key={it.id} className={`toc-item ${it.url === activeUrl ? "active" : ""}`} onClick={() => setActiveUrl(it.url)}>
-                  {it.title}
+                <button key={it.id} className={`toc-item ${it.id === activeId ? "active" : ""}`}
+                        onClick={() => { setActiveId(it.id); setRejecting(false); setNote(""); }}>
+                  <span className="toc-item-title">{it.title}</span>
+                  {it.kind === "contract" && !it.resolved && <span className="new-tag">contract</span>}
+                  {it.resolved && <span className="done-tag">done</span>}
                 </button>
               ))}
             </nav>
-            <article className="doc-body"><DocView url={activeUrl} /></article>
+            <article className="doc-body">
+              {active && active.kind === "contract" && !active.resolved && (
+                <div className="contract-actions">
+                  <span className="contract-label">Run this task?</span>
+                  {rejecting ? (
+                    <div className="contract-reject">
+                      <textarea className="reopen-input" rows={2} value={note} placeholder="What to change (sent back to the queue)"
+                                onChange={(e) => setNote(e.target.value)} />
+                      <div className="reopen-actions">
+                        <button className="act-btn" onClick={() => { setRejecting(false); setNote(""); }}>Cancel</button>
+                        <button className="act-btn danger" disabled={busy} onClick={() => resolve("reject")}>Send back</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="contract-btns">
+                      <button className="act-btn primary" disabled={busy} onClick={() => resolve("approve")}>Approve &amp; run</button>
+                      <button className="act-btn" disabled={busy} onClick={() => setRejecting(true)}>Reject</button>
+                    </div>
+                  )}
+                </div>
+              )}
+              <DocView url={active?.url} />
+            </article>
           </div>
         )}
       </section>

@@ -20,6 +20,9 @@ export const fetchTraining = () => get("/api/training", "json");
 export const fetchDirections = () => get("/api/directions", "json");
 export const fetchReports = () => get("/api/reports", "json");
 export const fetchDecisions = () => get("/api/decisions", "json");
+// Approve/reject a decision (esp. a task contract) — appends a resolution the orchestrator reads.
+export const resolveDecision = (id, resolution, note) =>
+  post("/api/decision-resolve", { id, resolution, note });
 
 // Direction -> Task model: the Overview board and a single task's detail.
 export const fetchOverview = () => get("/api/overview", "json");

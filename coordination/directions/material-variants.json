@@ -101,7 +101,7 @@
     {
       "id": "train-one-nn-to-mimic-viscosity-and-st",
       "title": "Train One NN to Mimic Viscosity and ST",
-      "status": "active",
+      "status": "done",
       "note": "Train one neural network to mimic liquids with different viscosities and surface tensions across the axes of low ST high viscosity, high ST low viscosity, and low ST low viscosity, but hold out the low ST low viscosity corner. Keep 2 free parameters which designate these conditions which also gets passed to the model. The NN should learn the entire material physics, replacing the equation entirely, but should still exist within the entire MPM scaffolding. Then, demonstrate whether the NN can interpolate between conditions and generalize to the held-out corner in a big 5x5 grid of results.",
       "follow_up_of": "implement-liquids-across-viscosity-and-surface-tension",
       "effort": "deep"

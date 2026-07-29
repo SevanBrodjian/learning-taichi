@@ -1,8 +1,26 @@
 # Orchestrator status — main
 
-_Snapshot as of 2026-07-09. All work committed to main (not pushed this session). Working tree clean._
+_Snapshot refreshed 2026-07-28 (re-orientation after a ~2-week idle gap). Working tree clean; last commit
+`1b07411`, 2026-07-14. **Local main is 47 commits ahead of `origin/main` — nothing has been pushed.**_
 
-## Latest session — harness/dashboard upgrades (7-item backlog)
+## Health check — 2026-07-28
+- **Environment OK.** Taichi 1.7.4 / Python 3.11.15, `arch=cuda` starts clean.
+- **Canonical physics OK.** `sim.physics.signatures` → **ALL PASS** (6/6) at `phys-1dc280eb52c9`.
+- **Manifests OK.** 126 media `src` refs across 20 manifests — **0 dangling**.
+- **Services restarted** — watchdog-managed data server on 8732 (`/api/health` ok, `/api/index` 21 runs),
+  Vite dashboard on 5174.
+
+### Open items needing the user (not auto-resolved)
+1. **`material-variants/generalize-one-nn-across-viscosity-and-surface-tension` is stuck `active`.** It ran
+   2026-07-10 as an honest partial, was then superseded by the re-do
+   `train-one-nn-to-mimic-viscosity-and-st` (whole-material, now `done`). Done is the user's call — needs a
+   Done / rework decision, and the board should not show two near-duplicate tasks indefinitely.
+2. **47 unpushed commits** to `git@github.com:SevanBrodjian/learning-taichi.git` (0 behind).
+3. **Stale worktree** `.claude/worktrees/elegant-bassi-cb7174` (branch fully merged into main, but carries
+   ~300 lines of *uncommitted* dashboard WIP across 5 files from an old branch point — likely superseded by
+   main's later Inbox/LossChart/styles work). Needs a keep-or-discard call before removal.
+
+## Prior session — harness/dashboard upgrades (7-item backlog)
 Shipped: **per-task effort tiers** quick/standard/deep (dashboard picker + `/api/task-effort` + `effort` in
 overview/detail; consumed at spawn time by `/execute` and the task template); **live running status**
 (worker writes `runs/<dir>/<task>/status.json` via `harness/tools/task_status.py`, gitignored; server
@@ -17,10 +35,11 @@ Skipped by user request: the execute-trigger mechanism (#1) — deferred pending
 Deeper 30–40% cuts on the mid/foundational pages are an open follow-up (kept surgical this pass).
 
 
-## Queue
-**Empty.** Nothing queued. Proposed (not queued): `residual-hard-mismatch` (learned-dynamics),
-`checkpointing-long-horizon` + `jacobian-norms` (long-rollout-pathologies), `shape-match-materials`
-(material-variants).
+## Queue (as of 2026-07-28)
+**Empty — nothing `queued`, so `/execute` has nothing to burn down.** One task sits `active`
+(`generalize-one-nn-…`, see Open items). Four **proposed**, unchanged: `residual-hard-mismatch`
+(learned-dynamics), `checkpointing-long-horizon` + `jacobian-norms` (long-rollout-pathologies),
+`shape-match-materials` (material-variants).
 
 ## Directions (completed tasks; all `active`/`done` awaiting or given the user's Done)
 - **differentiable-control** — throw-to-target; optimizer-comparison (reworked, multi-task).
@@ -48,5 +67,12 @@ Deeper 30–40% cuts on the mid/foundational pages are an open follow-up (kept s
 - **Textbook** grew to 16 core pages + linear-algebra & SVD/polar prereqs.
 
 ## Live services
-Data server (`.venv\Scripts\python.exe harness\server\app.py`) on **8732**; Vite dashboard on **5174**.
-See `coordination/shared_memory/orchestration-lessons.md` for how to restart and other hard-won ops facts.
+Data server on **8732** — launch via the watchdog, not the raw server:
+`.venv\Scripts\python.exe harness\tools\serve_watchdog.py` (restarts it if it dies or stops answering
+`/api/health`). Vite dashboard on **5174** (`npm run dev` in `harness/dashboard`, strictPort — one instance).
+See `coordination/shared_memory/orchestration-lessons.md` for other hard-won ops facts.
+
+## Textbook
+25 markdown pages / ~3,500 lines across `motivation/`, `prerequisites/`, `core/`. Per CLAUDE.md the
+organizational sweep is **semi-recurrent** — the last one was 2026-07-09, so a sweep is due-ish before the
+corpus grows much further (deeper 30–40% cuts on the mid/foundational pages remain the open follow-up).

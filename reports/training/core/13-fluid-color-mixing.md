@@ -1,6 +1,6 @@
 # Two liquids in one solver: advecting a color and compositing the mix
 
-The [[fluid-rendering]] and [[fluid-realism]] pages turn a single MPM fluid into a believable body of water,
+The [[fluid-rendering]] and [[fluid-rendering]] pages turn a single MPM fluid into a believable body of water,
 but they only ever draw one liquid, one fixed water color for the whole field. A great deal of what makes a
 fluid demo read as alive is more than one liquid at once: cream folded into coffee, two paints swirling, a
 dye plume unrolling in clear water. This page adds exactly that, and the striking part is how little it
@@ -65,7 +65,7 @@ locally. That division is the point: the sim moves the paint, the renderer looks
 The renderer in [[fluid-rendering]] tints the liquid body with a single deep water color and a single pale
 shallow color, blended by optical thickness through the Beer-Lambert law. To let the body show the local
 dye, that one fixed pair of colors is replaced by a **per-pixel** color read off the particles nearby. This
-extension lives entirely in the GPU renderer of [[gpu-rendering]], and it reuses machinery that page already
+extension lives entirely in the GPU renderer of [[fluid-rendering]], and it reuses machinery that page already
 built. The per-channel color splat is the same atomic scatter as the density splat, just carrying an RGB
 value instead of a bare count; the blur is the same separable Gaussian; and the normalization divides by the
 particle count blurred to the same width. Adding a visible dye costs a few small on-device kernels and a
@@ -124,7 +124,7 @@ populations, so these scenes run for many thousands of steps rather than a few h
 raises a stability worry the short clips never had. A weakly-compressible fluid stores its incompressibility
 as a stiff pressure that resists changes in the tracked volume ratio $J$, and over a long run two slow errors
 can accumulate. Energy can drift, because the particle-to-grid and grid-to-particle transfers are not exactly
-energy-conserving and a FLIP admixture (the re-injection of particle velocity described in [[fluid-realism]])
+energy-conserving and a FLIP admixture (the re-injection of particle velocity described in [[fluid-rendering]])
 adds energy on purpose to fight numerical damping. And the volume ratio $J$ carried on each particle,
 integrated step after step from the velocity divergence, can wander far from one if the flow is never quite
 divergence-free. Either can turn a calm late frame into grid-scale noise or a slow blow-up.
@@ -151,7 +151,7 @@ real blend to develop.
 
 ## What this does and does not model
 
-The register is the honest one [[fluid-realism]] insists on: this is a **passive color advection**, not a
+The register is the honest one [[fluid-rendering]] insists on: this is a **passive color advection**, not a
 model of how real liquids mix. Real mixing runs on molecular diffusion and turbulent stirring, none of which
 is present; the blend here is purely two particle populations interleaving by the resolved flow, plus the
 renderer averaging their colors over a hand-tuned blur width. Nothing crosses the interface at the particle

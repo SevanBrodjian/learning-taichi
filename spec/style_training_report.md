@@ -75,9 +75,10 @@ something hard to track. So the governing constraint is now **cohesion and conci
   the first screen; anything past that is genuinely additive depth, not padding.
 - **Prioritize ruthlessly.** Most of the value is in a few ideas per page. Cut throat-clearing, restated
   context, and near-duplicate explanations that another page already owns.
-- **Grow the corpus slowly and keep it organized.** Many short, focused, well-linked pages beat a few
-  sprawling ones (see "Granularity"). When a new result fits an existing page's one idea, tighten that page
-  rather than bolting on a section.
+- **Grow the corpus slowly and keep it organized.** Prefer **revising an existing page** to adding another
+  one (see "Granularity" — this is now a hard default, not a preference). When a new result bears on a page's
+  topic, rewrite that page to state the current understanding rather than bolting on a section or starting a
+  sequel.
 - **Implementation details and task-specific results have a *limited* presence.** Exact hyperparameters,
   code line ranges, this-run loss numbers, and one-off decisions live in the run manifest, not the textbook.
   A page teaches the timeless understanding; the run carries the evidence.
@@ -114,13 +115,35 @@ than dressed up as a measured sweep; a figure backed by a real run is better sti
 `material-stiffness` core page, which follows one scalar into stress, wave speed, timestep stability, and
 usable learning rate.
 
-## Granularity — prefer many short pages
-The textbook as a whole should grow large and rich over time. It does that as **many short, focused
-pages, not a few sprawling ones.** Each page covers **one idea** and stays skimmable; if a page is
-growing past a single clear topic, split it. **Default to adding a new small page** rather than appending
-to a long one, and lean on stable anchors and hyperlinks to connect them ([[like-this]]). Editing an
-existing page is correct when the new material genuinely belongs to that page's one idea; otherwise make a
-new page. A worker adding to the textbook should bias toward one or two new short pages over one long one.
+## Granularity — one topic, one page, revised in place
+**Default to editing an existing page. Adding a new page is the exception and must be justified.**
+
+This rule was previously the opposite ("default to adding a new small page"), and eighteen workers followed
+it faithfully. The result was not a textbook, it was an **anthology**: twenty-five pages, each documenting
+the task that produced it, four of them narrating one evolving question and each opening by summarizing the
+previous three. It read as more confusing after than before, which is the exact failure this section now
+exists to prevent.
+
+The corpus is a **curriculum a person reads in order, once** — not a log of what was learned when.
+
+- **One topic owns exactly one page, for the life of the project.** If a later task revises, deepens, or
+  overturns what a page says, **rewrite that page** so it states the current best understanding, with the
+  superseded idea kept only where the *reason it was wrong* is itself instructive. **Never add a sequel
+  page.** "Page X ended on a prediction; this page tests it" is the anthology smell — if you catch yourself
+  opening that way, you are editing the wrong file.
+- **A new page is warranted only when the topic fits no existing page** — a genuinely new concept, not a new
+  *result* about an existing concept. Before creating one, name the existing page it would otherwise extend
+  and say why that does not work.
+- **Write for a reader who has not read any task page.** A page may assume the pages *before it in the
+  index*, never a run, a task id, or "the precursor". No chronology, no task numbers, no "this pass".
+- **Corpus budget: the core spine should stay in the neighborhood of a dozen or so pages.** If adding one
+  would push it well past that, the right move is to consolidate first and then add. A ballooning textbook
+  is a defect to correct, not a sign of progress.
+- **Splitting is still correct when a page genuinely holds two unrelated ideas** — but a long page telling
+  *one* coherent story is fine and usually better than three short ones that each re-establish context.
+
+Connect pages with stable anchors and hyperlinks ([[like-this]]), and make every link resolve to content
+that actually covers what the referring sentence promises.
 
 ## Visuals — clear, simple, informative
 A good picture often teaches faster than a paragraph, and training pages **may and should embed images,
@@ -180,6 +203,9 @@ plaintext (the "red paragraph" failure), so these are not optional:
 
 ## Before a page is done (self-review checklist)
 Run this pass on every new or edited page before handing it off. Each item here has bitten a real page.
+- **If you created a new page, justify it.** Name the existing page this material would otherwise have
+  extended, and why extending it was wrong. If you cannot, you should have edited that page instead. A page
+  that opens by summarizing another page is a sequel and must be merged into its parent (see "Granularity").
 - **Render-check the math** in the dashboard (or headlessly through KaTeX). One bad token turns a whole
   expression into a red paragraph, and it is invisible in the source.
 - **Look at every figure and video you embedded.** Open the actual file. Confirm it shows the quantity the

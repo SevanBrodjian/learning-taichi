@@ -101,7 +101,7 @@
   ],
   "custom_html": null,
   "training_refs": [
-    "learned-material-interpolation",
+    "learned-materials",
     "hybrid-learned-residual",
     "viscosity",
     "differentiating-the-rollout",

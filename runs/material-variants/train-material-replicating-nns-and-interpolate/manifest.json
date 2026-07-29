@@ -149,7 +149,7 @@
   ],
   "custom_html": null,
   "training_refs": [
-    "learned-material-interpolation",
+    "learned-materials",
     "material-showcase",
     "differentiable-materials",
     "constitutive-models",

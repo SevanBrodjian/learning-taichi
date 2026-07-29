@@ -48,7 +48,6 @@
   ],
   "custom_html": null,
   "training_refs": [
-    "fluid-realism",
     "fluid-rendering",
     "material-stiffness",
     "viscosity",

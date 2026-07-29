@@ -74,8 +74,6 @@
   "custom_html": null,
   "training_refs": [
     "fluid-color-mixing",
-    "gpu-rendering",
-    "fluid-realism",
     "fluid-rendering",
     "viscosity",
     "material-showcase"

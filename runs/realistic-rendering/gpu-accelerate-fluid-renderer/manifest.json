@@ -27,11 +27,35 @@
     },
     {
       "type": "table",
-      "columns": ["renderer", "ms / frame", "frames / s", "speedup", "130-frame scene"],
+      "columns": [
+        "renderer",
+        "ms / frame",
+        "frames / s",
+        "speedup",
+        "130-frame scene"
+      ],
       "rows": [
-        ["CPU (numpy/scipy, fluid_render2.py)", "1686.3", "0.59", "1x", "219 s (~3.7 min)"],
-        ["GPU (Taichi, full incl. transfer)", "13.0", "77", "130x", "1.3 s wall"],
-        ["GPU (Taichi, device-only compute)", "6.4", "157", "265x", "0.83 s compute"]
+        [
+          "CPU (numpy/scipy, fluid_render2.py)",
+          "1686.3",
+          "0.59",
+          "1x",
+          "219 s (~3.7 min)"
+        ],
+        [
+          "GPU (Taichi, full incl. transfer)",
+          "13.0",
+          "77",
+          "130x",
+          "1.3 s wall"
+        ],
+        [
+          "GPU (Taichi, device-only compute)",
+          "6.4",
+          "157",
+          "265x",
+          "0.83 s compute"
+        ]
       ],
       "caption": "CPU vs GPU render throughput at 1080^2 on the 30000-particle dam-break hero frame, one 4090 running alone, kernels warmed (one-time ~5.1 s JIT compile excluded from the per-frame figure). The device-only row is the GPU render compute with particles already resident; the full row adds the per-frame particle upload and final image read-back. mp4 encoding is separate and codec/IO-bound at ~0.44 s per scene."
     },
@@ -48,9 +72,7 @@
   ],
   "custom_html": null,
   "training_refs": [
-    "gpu-rendering",
     "fluid-rendering",
-    "fluid-realism",
     "mpm-in-context",
     "mls-mpm-forward"
   ]

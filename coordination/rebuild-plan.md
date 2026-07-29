@@ -1,153 +1,123 @@
-# Rebuild plan — three tracks, one hour at a time
+# Rebuild plan — three tracks, ~1 hour of Sevan's time each
 
-**Written 2026-07-28.** The controlled burn, sequenced. Background and the *why* behind all of this is in
-`coordination/shared_memory/what-is-failing-and-why.md` — read that first if you are picking this up cold.
+**Written 2026-07-28, re-scoped the same evening.** Background and the *why* is in
+`coordination/shared_memory/what-is-failing-and-why.md` — read that first if picking this up cold.
 
-## How to use this
+## Budget reality
 
-Sevan's stated plan: **one chunk per session**, then spend the rest of that session reading the training
-report. Tracks are ordered A → B → C but the *tracks* are independent — do them in whatever order appeals.
-Chunks **within** a track are ordered and depend on each other.
+~4 weeks left at ~5 h/week ≈ **20 hours total**. The first draft of this plan spent 11 of them on harness
+rebuild, which is over half the remaining project spent not learning anything. That was a mis-scope.
 
-**Do not start new research tasks until all three tracks are done** and the material feels solid. That is a
-deliberate decision, not a backlog accident.
+**The correction, and the thing to hold on to: Sevan's scarce resource is *attention*, not wall-clock.**
+The orchestrator can execute; what it cannot do is make the taste calls. So each track below is split into
+**decide** (his, minutes), **execute** (the orchestrator's, unbounded), and **review** (his, minutes). The
+hour per track is *his* hour. Execution happens around it.
 
-Each chunk is scoped to roughly an hour of focused work. When one is done, tick it here and commit.
+**Priority if time runs short:** A and C are worth it. **B is the least valuable** — merging and tagging
+tasks is mostly cosmetic and can be pure execution with a 5-minute approval. Cut B first, not last.
 
-- [x] **Track 0 — Training report** (done 2026-07-28: 25 pages/3,499 lines → 20/3,019; anthology → curriculum;
-      the spec rule that caused the sprawl inverted). Ongoing: Sevan reads it; further trims as he finds
-      gaps. Gaps he hits while reading are the highest-signal input this project has — capture them.
-
----
-
-## Track A — Generative UI for task pages
-
-**The problem.** Task pages "do not convey enough information visually and clearly, and it took a lot of
-pushing from me to even get to this point." Today a task fills a fixed card schema and may attach one
-`custom_html` block — too restricted. The goal is for each task to **design the presentation of its own
-result**: bespoke code and visualization chosen for what that specific result needs, with real reasoning
-behind the choice.
-
-**Why it is first.** It is the most direct attack on the distrust problem. A result you can see properly is
-a result you can check.
-
-### A1 — Write the presentation standard *(1h, no code)*
-Decide the rules before building the machinery, or workers will fill freedom with noise.
-- Audit 3–4 existing task pages on the dashboard. Write down specifically what fails to land and why.
-- Draft `spec/style_task_page.md`: what earns a figure vs a table vs a video vs an interactive; the
-  mandatory both-sides comparison (ground truth is never optional); "if the claim is about motion, the
-  evidence is motion"; when an interactive beats a static image; how much text before the first visual.
-- Include 2–3 worked *examples* and at least one **anti-example** (a page that reports a number with no
-  picture of the quantity).
-- **Done when:** the spec exists and you could hand it to a worker cold.
-
-### A2 — Build the runtime *(1h)*
-- Extend the manifest schema + dashboard so a task can ship a **self-contained bespoke page** (its own
-  HTML/JS/CSS), not just a card in a fixed layout.
-- Sandbox, CSP, sizing, and a graceful fallback when the bespoke page fails to render — a broken custom page
-  must never blank the task.
-- **Done when:** one existing run renders through the new path end-to-end on the dashboard.
-
-### A3 — Build the exemplar *(1h)*
-- Rebuild **one** existing task page as a genuinely bespoke page, to set the bar. Suggested:
-  `material-variants/train-one-nn-to-mimic-viscosity-and-st` — it has a 5×5 grid, a held-out corner, videos,
-  and an honest partial result, so it exercises everything.
-- **Done when:** the page makes the result legible at a glance, and it is linked from `spec/style_task_page.md`
-  as *the* reference.
-
-### A4 — Wire it into the worker contract *(1h)*
-- Update `coordination/tasks/_TEMPLATE.md`, the `/execute` skill, and `CLAUDE.md` so every worker **designs
-  its presentation** and self-reviews it against the standard.
-- Add the presentation check to the orchestrator's review duties.
-- **Done when:** a fresh worker would produce an A3-quality page without being pushed.
+- [x] **Track 0 — Training report** (2026-07-28: 25 pages/3,499 lines → 20/3,019; anthology → curriculum;
+      the spec rule that caused the sprawl inverted). Ongoing: Sevan reads it. See "The reading loop" below —
+      the mechanism matters more than the remaining trims.
 
 ---
 
-## Track B — Task graph, tags, and the dashboard
+## Track A — Generative UI for task pages *(~1h of his time)*
 
-**The problem.** `directions` are a container that no longer matches the mental model. Directions are now
-**lineages** — a direction is any connected set of tasks in the follow-up graph. Tags replace them. The
-existing links were made "very messily" and several tasks overlap or duplicate.
+**What is actually broken.** Less than assumed. `custom_html` is *already* a sandboxed iframe with
+`allow-scripts` + `srcDoc` (`harness/dashboard/src/components/TaskView.jsx:353`), so a task can already ship
+arbitrary self-contained HTML/JS/CSS. Two real limits:
+1. It renders as **one block at the bottom** of the fixed card stack — a footnote, not the presentation.
+2. **Nothing instructs workers to use it** as the primary way to convey the result.
 
-### B1 — Design the migration *(1h, no code)*
-- Read all 22 tasks. Produce a written plan: which tasks **merge**, which are duplicates, which are really
-  extensions of another.
-- Choose **just a few** brief, meaningful tags — reuse the old direction names where they genuinely fit
-  (`materials`, `gradients`, `rendering`, `learned-dynamics` are the obvious candidates). Resist inventing
-  a taxonomy; the test is whether a tag would ever be used to *filter*.
-- Draft the intended follow-up graph (parents per task) on paper before touching JSON.
-- **Done when:** a written migration plan exists that someone could execute mechanically.
+So this is a promotion-and-instruction job, not a runtime build.
 
-### B2 — Migrate the storage *(1h)*
-- Make tags + graph links canonical; retire `directions` as an organizing container.
-- Keep `runs/<direction>/<task>/` paths **stable** — they are referenced by every manifest and every
-  training page's media URLs. Renaming run paths is a separate, much bigger job; do not fold it in here.
-- Migration script + a verification pass (every task reachable, no dangling parent ids, every run still
-  resolves).
-- **Done when:** the server serves the new structure and the existing dashboard still loads.
+- **Decide (20 min, his):** the presentation rules. What earns a figure vs a video vs an interactive; how
+  much text before the first visual; whether the bespoke page should *replace* or *lead* the standard cards.
+  The one non-negotiable already in `CLAUDE.md`: any comparison shows **both sides**, ground truth mandatory.
+- **Execute:** promote `custom_html` to the primary slot with the cards as supporting detail; write the rules
+  into `spec/style_task_page.md` + the task template + `/execute`; rebuild **one** existing task page as the
+  exemplar (`material-variants/train-one-nn-to-mimic-viscosity-and-st` — 5×5 grid, held-out corner, videos,
+  honest partial, so it exercises everything).
+- **Review (40 min, his):** does the exemplar make the result legible at a glance? Does it beat the current
+  page badly enough to be worth the standard? If not, the rules are wrong, not the runtime.
 
-### B3 — Apply the merges and rebuild the graph *(1h)*
-- Execute B1's plan: merge the overlapping tasks, rewrite `follow_up_of` / `follow_ups` as a deliberate DAG,
-  apply tags.
-- **Done when:** every task has considered parents and tags, and the graph reads as a real research lineage.
-
-### B4 — Dashboard: graph view, tag chips, filtering *(1h)*
-- Improve the Map/graph view so the lineage is actually legible (layout by lineage, not a hairball).
-- Tag chips on task cards; filter and sort the Overview by tag; remove the direction-based UI.
-- **Done when:** you can find any task by tag or by walking its lineage.
+**Fold in here:** the training-report reading loop below. Same surface, same session.
 
 ---
 
-## Track C — The research report
+## Track B — Task graph, tags, merges *(~30 min of his time — cut this first)*
 
-**The problem.** `reports/research_report.md` is "basically empty and hardly updated." Nobody has decided
-what it actually *is*, so nothing ever gets added with confidence.
+Directions become **tags**; a "direction" is just a lineage in the follow-up graph. Links were made messily
+and several tasks overlap.
 
-### C1 — Define what it is *(1h, mostly thinking)*
-The real question, and it is a taste call only Sevan can make. Options to decide between:
-- a **shippable paper-like artifact** (conservative, defensible, for an outside reader), or
-- a **findings ledger** (every scoped claim the project has earned, with its evidence and limits), or
-- a **narrative of the research arc** (what was asked, what was found, what it means).
+- **Decide (5 min, his):** approve or edit a proposed tag list. Candidates, reusing old direction names:
+  `materials`, `gradients`, `rendering`, `learned-dynamics`. Four tags, multiple per task. The test for a
+  tag is whether it would ever actually be used to *filter*.
+- **Execute:** propose the merge list from the 20 tasks, migrate storage so tags + graph links are canonical,
+  rebuild `follow_up_of` / `follow_ups` as a deliberate DAG, apply tags, add tag chips + filtering to the
+  Overview. **Keep `runs/<direction>/<task>/` paths stable** — every manifest and every training-page media
+  URL points at them; renaming is a separate, much bigger job.
+- **Review (25 min, his):** does the graph read as a real research lineage?
 
-Then: who writes it (orchestrator only, per `CLAUDE.md`), when, and what bar a finding must clear to enter.
-- Rewrite `spec/style_research_report.md` to match the decision.
-- **Done when:** the definition is written and a section skeleton exists.
+The existing Map view already exists; improving its layout is optional polish, not part of the hour.
 
-### C2 — Backfill it from the completed work *(1h)*
-- Walk the ~18 done runs. Pull each defensible finding into the structure from C1, **scoped per evidence
-  discipline** — "on this task, X", never "X is true". Several existing findings are already correctly
-  scoped in their manifests and can be lifted nearly as-is.
-- Flag honestly where the project has a hypothesis rather than a result.
-- **Done when:** the report reflects where the project genuinely is today.
+---
 
-### C3 — Make it stay current *(1h)*
-- Decide and encode the update mechanism so it stops going stale: a step in the orchestrator's review, a
-  checklist item, or an explicit "does this change the research report?" gate at task close.
-- Update `CLAUDE.md`.
-- **Done when:** there is a rule that would have prevented the current emptiness.
+## Track C — The research report *(~1h of his time)*
+
+`reports/research_report.md` is "basically empty and hardly updated" because nobody decided what it **is**.
+This is the track most likely to matter in four weeks, since it is the shippable deliverable.
+
+- **Decide (30 min, his — the real work of this track):** what is it?
+  - a **shippable paper-like artifact** (conservative, defensible, for an outside reader), or
+  - a **findings ledger** (every scoped claim the project earned, with evidence and limits), or
+  - a **narrative of the research arc** (what was asked, what was found, what it means).
+
+  Then: what bar must a finding clear to enter, and when does it get written.
+- **Execute:** rewrite `spec/style_research_report.md` to match; backfill from the ~18 done runs, scoped per
+  evidence discipline ("on this task, X", never "X is true"); encode an update rule in `CLAUDE.md` so it
+  stops going stale.
+- **Review (30 min, his):** does it honestly represent where the project is?
+
+---
+
+## The reading loop — the point-of-confusion problem
+
+Sevan's objection, which is correct: *"Fixing the training report after I've already read the bad version
+isn't very satisfying because then I just have to re-read, again."*
+
+**A note that becomes a fix he must re-read is a debt, not a fix.** The loop has to resolve confusion at the
+moment it happens. Design, in priority order:
+
+1. **Answer at the point of confusion.** Marking a spot should produce a **targeted explanation to him**, not
+   just a ticket. That unblocks the read immediately and means there is nothing to re-read — the page fix is
+   a *byproduct*, not the payoff.
+2. **Anchor the note.** Select text → "you lost me here" / "explain this", written to disk with the paragraph
+   anchor and his words. Specific beats general by a mile: *"I didn't know what $C_p$ was by the time it got
+   used"* is fixable in minutes; *"chapter 4 was confusing"* is not.
+3. **Make re-reading a delta, never a re-read.** When a page changes materially, flag **only the changed
+   sections** as "updated since you read this". He should never be asked to re-read a page he has read.
+
+**Available tonight with zero infrastructure:** he is reading while the orchestrator is live, so pasting
+confusions straight into chat gets an immediate answer. The dashboard mechanism just makes that durable,
+anchored, and usable when nobody is live.
 
 ---
 
 ## Backlog state while this is underway
 
-Pruned 2026-07-28 so the board is clean to return to. **Two proposed tasks kept**, both about the gradient
-itself and both named as open in the rewritten training report:
+Pruned 2026-07-28. **Two proposed tasks kept**, both about the gradient itself and both named as open in the
+rewritten training report:
 
-- **`jacobian-norms`** — estimate the per-step Jacobian norm by finite differences to find exactly where the
-  rollout gradient becomes ill-conditioned. Measures what `core/03-failure-modes.md` currently only asserts.
+- **`jacobian-norms`** — estimate the per-step Jacobian norm by finite differences to find where the rollout
+  gradient becomes ill-conditioned. Measures what `core/03-failure-modes.md` currently only asserts.
 - **`checkpointing-long-horizon`** — recompute instead of store, to reach 1024+ steps.
   `core/02-differentiating-the-rollout.md` explicitly calls this a queued direction, not yet a result.
 
 **Two discarded** — `shape-match-materials` (material-variants is saturated at nine tasks) and
-`residual-hard-mismatch` (legitimate, not urgent). Neither reasoning is lost: both notes were derived from a
-completed task's **limitations** section, which is still on disk in `runs/material-variants/fluid-vs-snow/`
-and `runs/learned-dynamics/learned-residual/`. Re-proposing either is a one-liner if it becomes interesting
-again.
+`residual-hard-mismatch` (legitimate, not urgent). Neither reasoning is lost: both notes came from a
+completed task's **limitations** section, still on disk under `runs/material-variants/fluid-vs-snow/` and
+`runs/learned-dynamics/learned-residual/`. Re-proposing either is a one-liner.
 
-Nothing is `queued`, so `/execute` is a no-op until you deliberately queue something.
-
-## Ordering note
-
-A and B are independent. C benefits from being last (the report is easier to write once the task graph is
-clean, and A/B will themselves generate findings worth recording). If motivation matters more than
-efficiency, do the track you most want to see working.
+Nothing is `queued`, so `/execute` is a no-op until something is deliberately queued.

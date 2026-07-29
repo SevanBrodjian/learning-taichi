@@ -5,16 +5,10 @@
   "summary": "Swap the constitutive model (elastic, weakly-compressible fluid, snow plasticity) and study how each behaves and optimizes under the same control task. The most visually striking axis for the demo.",
   "tasks": [
     {
-      "id": "shape-match-materials",
-      "title": "Shape-matching across materials (where the constitutive differences bite)",
-      "status": "proposed",
-      "note": "fluid-vs-snow found the constitutive model barely moves COM ballistics on the throw task \u2014 the differences were an optimization-landscape effect on a near-ballistic loss. The honest next step (flagged in that task's limitations and training page): swap the COM-to-target loss for a task that forces large internal deformation \u2014 match a target outline / pack into a mold / sustained contact \u2014 where recoverable elastic energy and the active snow plastic clamp shape the optimized quantity directly. Tests whether the smooth->kinked ordering of optimization difficulty (fluid<elastic<snow) sharpens, and whether a softened plastic clamp recovers a usable gradient for snow. Also map each material's stability lr ceiling instead of hand-picked lr."
-    },
-    {
       "id": "implement-nondifferentiable-material-variants",
       "title": "Implement Nondifferentiable Material Variants",
       "status": "done",
-      "note": "Let\u2019s start simple. Implement a nondifferentiable forward simulatiodemonstrating the difference between solids, liquids, and snow. Show these materials under a few different settings. Verify they are behaving as expected. This is primarily a learning task, meant to get a grounding with these new materials, and demonstrate what they look like. Make sure to update the training report, so that I actually learn from this task.",
+      "note": "Let’s start simple. Implement a nondifferentiable forward simulatiodemonstrating the difference between solids, liquids, and snow. Show these materials under a few different settings. Verify they are behaving as expected. This is primarily a learning task, meant to get a grounding with these new materials, and demonstrate what they look like. Make sure to update the training report, so that I actually learn from this task.",
       "follow_ups": [
         "fluids-snow-and-solids-as-differentiable-simulations"
       ]
@@ -23,7 +17,7 @@
       "id": "fluids-snow-and-solids-as-differentiable-simulations",
       "title": "Fluids, snow, and solids as differentiable simulations",
       "status": "done",
-      "note": "These look really cool. Now let\u2019s build a simple differentiable implementation of each and see what it takes to get meaningful gradients. When you tried this before the gradients were bad and the particles exhibited erroneous behavior. Be sure to test iteratively to check that it\u2019s functional, examining images as needed. If we can\u2019t get meaningful gradients just report so honestly and explain or theorize why. Make sure to give some nice visuals and update training materials.",
+      "note": "These look really cool. Now let’s build a simple differentiable implementation of each and see what it takes to get meaningful gradients. When you tried this before the gradients were bad and the particles exhibited erroneous behavior. Be sure to test iteratively to check that it’s functional, examining images as needed. If we can’t get meaningful gradients just report so honestly and explain or theorize why. Make sure to give some nice visuals and update training materials.",
       "follow_up_of": "implement-nondifferentiable-material-variants"
     },
     {
@@ -50,7 +44,7 @@
       "id": "train-material-replicating-nns-and-interpolate",
       "title": "Train Material Replicating NNs and Interpolate",
       "status": "done",
-      "note": "Good results with the viscous liquids. Now I\u2019d like to see the same thing again but this time train a NN to approximate each of the three materials between fluid, elastic solid, and snow, like we implemented in the \u201cMaterial Variants\u201d direction\u2019s tasks. After the NNs are able to replicate each of the three material types, once again see if they generalize to new conditions. Then, test the linear interpolating again and see what happens! This is a long and detailed task, so the agent should work carefully to ensure it is implemented well.",
+      "note": "Good results with the viscous liquids. Now I’d like to see the same thing again but this time train a NN to approximate each of the three materials between fluid, elastic solid, and snow, like we implemented in the “Material Variants” direction’s tasks. After the NNs are able to replicate each of the three material types, once again see if they generalize to new conditions. Then, test the linear interpolating again and see what happens! This is a long and detailed task, so the agent should work carefully to ensure it is implemented well.",
       "follow_up_of": "train-and-interpolate-nns-to-mimic-viscous-liquids",
       "rework_history": [
         {
@@ -91,7 +85,7 @@
       "id": "generalize-one-nn-across-viscosity-and-surface-tension",
       "title": "Generalize One NN across Viscosity and Surface Tension",
       "status": "done",
-      "note": "Now I want you to train a neural network to replicate the physics of these fluids. Specifically, following the same protocol as in the \u201cOne NN for Three Materials Task\u201d, I want you to have one shared network that learns to replicate three different conditions: high viscosity low surface tension (ST), low viscosity high ST, and low viscosity and low ST. The only difference should be two parameters that we vary with the network, and all other parameters are shared, so that those two parameters reflect our viscosity and surface tension results. Also, use lower maximum surface tension than you do here, or interpolate more smoothly at low values, because even the second ST frames here are very high and effectly act like the max ST ones. Regardless, use the NN with smooth interpolation the two parameters to build a large 5x5 grid showing how it performs at every combination compared to GT, and let\u2019s see if it can also generalize to the held out corner of high viscosity high ST.",
+      "note": "Now I want you to train a neural network to replicate the physics of these fluids. Specifically, following the same protocol as in the “One NN for Three Materials Task”, I want you to have one shared network that learns to replicate three different conditions: high viscosity low surface tension (ST), low viscosity high ST, and low viscosity and low ST. The only difference should be two parameters that we vary with the network, and all other parameters are shared, so that those two parameters reflect our viscosity and surface tension results. Also, use lower maximum surface tension than you do here, or interpolate more smoothly at low values, because even the second ST frames here are very high and effectly act like the max ST ones. Regardless, use the NN with smooth interpolation the two parameters to build a large 5x5 grid showing how it performs at every combination compared to GT, and let’s see if it can also generalize to the held out corner of high viscosity high ST.",
       "follow_up_of": [
         "implement-liquids-across-viscosity-and-surface-tension",
         "one-nn-for-three-materials"

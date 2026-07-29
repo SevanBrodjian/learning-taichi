@@ -128,6 +128,24 @@ Then: who writes it (orchestrator only, per `CLAUDE.md`), when, and what bar a f
 
 ---
 
+## Backlog state while this is underway
+
+Pruned 2026-07-28 so the board is clean to return to. **Two proposed tasks kept**, both about the gradient
+itself and both named as open in the rewritten training report:
+
+- **`jacobian-norms`** — estimate the per-step Jacobian norm by finite differences to find exactly where the
+  rollout gradient becomes ill-conditioned. Measures what `core/03-failure-modes.md` currently only asserts.
+- **`checkpointing-long-horizon`** — recompute instead of store, to reach 1024+ steps.
+  `core/02-differentiating-the-rollout.md` explicitly calls this a queued direction, not yet a result.
+
+**Two discarded** — `shape-match-materials` (material-variants is saturated at nine tasks) and
+`residual-hard-mismatch` (legitimate, not urgent). Neither reasoning is lost: both notes were derived from a
+completed task's **limitations** section, which is still on disk in `runs/material-variants/fluid-vs-snow/`
+and `runs/learned-dynamics/learned-residual/`. Re-proposing either is a one-liner if it becomes interesting
+again.
+
+Nothing is `queued`, so `/execute` is a no-op until you deliberately queue something.
+
 ## Ordering note
 
 A and B are independent. C benefits from being last (the report is easier to write once the task graph is

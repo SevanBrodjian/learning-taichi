@@ -487,6 +487,47 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
   .task-head h1 { font-size: 26px; }
 }
 
-/* A metric term that has a canonical definition (spec/definitions.json). Dotted underline = hover me. */
-.defterm { border-bottom: 1px dotted #4d6478; cursor: help; }
-.defterm:hover { color: var(--accent); border-bottom-color: var(--accent); }
+/* Definition popover. Opens on click (touch) as well as hover -- a `title` attribute is invisible on iPad. */
+.defterm { border-bottom: 1px dotted #4d6478; cursor: help; position: relative; }
+.defterm:hover, .defterm.open { color: var(--accent); border-bottom-color: var(--accent); }
+.defpop { position: fixed; z-index: 60; width: 360px; max-width: calc(100vw - 24px);
+  display: flex; flex-direction: column; gap: 7px; background: var(--panel); color: var(--text);
+  border: 1px solid #2b3a4d; border-radius: 6px; padding: 12px 14px; font-size: 12.5px; line-height: 1.5;
+  box-shadow: 0 10px 30px rgba(0,0,0,.55); text-align: left; font-weight: 400; white-space: normal; }
+.defpop-h { font-family: var(--mono); font-size: 12px; color: var(--accent); letter-spacing: .04em; }
+.defpop-s { color: var(--text); }
+.defpop-r { color: var(--muted); }
+.defpop-r b { color: #9fb0c4; font-weight: 600; margin-right: 5px; }
+.defpop-w { color: #ffd166; border-left: 2px solid #6b5a22; padding-left: 9px; }
+.defpop-src { font-family: var(--mono); font-size: 11px; color: #64748b; }
+
+/* TL;DR — the punchline, first thing on the page, visually distinct from the prose blocks below it. */
+.task-block.tldr { border-left: 3px solid var(--accent); background: rgba(76,194,255,.05);
+  padding: 10px 16px; border-radius: 0 5px 5px 0; margin-bottom: 18px; }
+.task-block.tldr > h2 { color: var(--accent); margin-bottom: 5px; }
+.task-block.tldr > p { margin: 0; font-size: 15px; color: var(--text); max-width: 84ch; }
+
+/* Notes — rolled up to one strip; unrolls on click so notes never eat the page. */
+.notes { margin: 0 0 18px; max-width: 640px; }
+.notes-tab { display: inline-flex; align-items: center; gap: 8px; background: var(--panel);
+  border: 1px solid var(--border); border-radius: 5px; color: var(--muted); font-family: var(--mono);
+  font-size: 12px; padding: 6px 11px; cursor: pointer; }
+.notes-tab:hover { border-color: #2b3a4d; color: var(--text); }
+.notes.has .notes-tab { border-color: #6b5a22; background: #17140c; color: #ffd166; }
+.notes-pin { font-size: 13px; filter: saturate(.9); }
+.notes-chev { opacity: .7; }
+.notes-body { margin-top: 8px; border: 1px solid var(--border); border-radius: 5px;
+  background: var(--panel-2); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.note { border-left: 2px solid #6b5a22; padding: 2px 0 2px 11px; }
+.note-meta { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 11px;
+  color: var(--muted); margin-bottom: 3px; }
+.note-ts { opacity: .75; }
+.note-x { margin-left: auto; background: none; border: 0; color: var(--muted); cursor: pointer;
+  font-size: 15px; line-height: 1; padding: 0 3px; }
+.note-x:hover { color: var(--danger); }
+.note-text { font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; }
+.note-input { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: 5px; padding: 8px 10px; font-family: var(--sans); font-size: 13px; resize: vertical; }
+.note-input:focus { outline: none; border-color: var(--accent); }
+.note-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+.note-hint { font-family: var(--mono); font-size: 11px; color: var(--muted); }

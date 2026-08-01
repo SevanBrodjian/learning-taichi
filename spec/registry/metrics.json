@@ -1,5 +1,5 @@
 {
-  "_comment": "Canonical metric definitions. See spec/definitions.md for the policy. Every entry MUST cite a real source in code -- if you cannot point at the function, it does not go in here. The dashboard reads this file to render hover definitions.",
+  "_comment": "Canonical metric definitions. See spec/registry/README.md for the policy. Every entry MUST cite a real source in code -- if you cannot point at the function, it does not go in here. The dashboard reads this file to render hover definitions.",
   "_schema": {
     "label": "display name",
     "short": "one-line plain-English meaning",
@@ -76,7 +76,7 @@
     "units": "opaque string, e.g. phys-1dc280eb52c9",
     "range": "n/a",
     "source": "sim/physics/__init__.py",
-    "caution": "Equal versions prove the same GROUND TRUTH was used. They do NOT prove a task's own differentiable variant matches it -- see the material-parameter drift noted in spec/definitions.md."
+    "caution": "Equal versions prove the same GROUND TRUTH was used. They do NOT prove a task's own differentiable variant matches it -- see the material-parameter drift noted in spec/registry/README.md."
   },
 
   "_unregistered": [

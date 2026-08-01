@@ -1,0 +1,64 @@
+{
+  "_generated_by": "harness/tools/sync_registry.py -- DO NOT EDIT BY HAND",
+  "_source": "sim/physics/core.py (MAT)",
+  "physics_version": "phys-1dc280eb52c9",
+  "_param_meaning": {
+    "E": "Young's modulus / bulk stiffness. Sets how hard stress pushes back, and via c=sqrt(E/rho) the CFL-stable timestep (dt ~ 1/sqrt(E)).",
+    "dt": "Stable explicit timestep for this material at the canonical resolution.",
+    "xi": "Snow hardening coefficient in h = exp(xi*(1-Jp)): how much compacted snow stiffens. 0 for materials with no plastic record.",
+    "tc": "Plastic clamp, compression side: singular values of F are clamped below 1-tc. 0 = no clamp.",
+    "ts": "Plastic clamp, stretch side: singular values of F are clamped above 1+ts. 0 = no clamp.",
+    "color": "Canonical render colour, so a material looks the same across every task's figures."
+  },
+  "_rule": "A task's differentiable variant may reimplement the STEP; it may not reimplement these PARAMETERS or the constitutive law. Import them from sim.physics and declare any deviation in the task contract.",
+  "friction": 0.5,
+  "materials": {
+    "fluid": {
+      "E": 180.0,
+      "dt": 0.00012,
+      "xi": 0.0,
+      "tc": 0.0,
+      "ts": 0.0,
+      "color": "#4db6ff",
+      "signatures": "asserted in sim/physics/signatures.py"
+    },
+    "elastic": {
+      "E": 400.0,
+      "dt": 0.0001,
+      "xi": 0.0,
+      "tc": 0.0,
+      "ts": 0.0,
+      "color": "#ff9d5c",
+      "signatures": "asserted in sim/physics/signatures.py"
+    },
+    "snow": {
+      "E": 150.0,
+      "dt": 5e-05,
+      "xi": 10.0,
+      "tc": 0.025,
+      "ts": 0.0075,
+      "color": "#e6ecff",
+      "signatures": "asserted in sim/physics/signatures.py",
+      "_known_drift": [
+        {
+          "where": "sim/one_nn_materials.py:71",
+          "param": "xi",
+          "canonical": 10.0,
+          "actual": 3.0
+        },
+        {
+          "where": "sim/learned_materials.py:92",
+          "param": "xi",
+          "canonical": 10.0,
+          "actual": 3.0
+        },
+        {
+          "where": "sim/material_variants.py:50",
+          "param": "dt",
+          "canonical": 5e-05,
+          "actual": 0.0002
+        }
+      ]
+    }
+  }
+}

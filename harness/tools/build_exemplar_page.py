@@ -25,7 +25,7 @@ Design decisions, and why:
    lesson now in spec/style_task_page.md: if your page lets a reader select an item, export that item's
    media so selecting can show it.
 
-5. METRICS DEFINE THEMSELVES. Every metric label carries its canonical definition from spec/definitions.json
+5. METRICS DEFINE THEMSELVES. Every metric label carries its canonical definition from spec/registry/metrics.json
    on hover, so no reader has to guess what "roundness" means and no task reinvents it.
 """
 import json, os
@@ -34,7 +34,7 @@ RUN = 'runs/material-variants/train-one-nn-to-mimic-viscosity-and-st'
 BASE = '/api/data/learning-taichi/' + RUN
 
 m = json.load(open(os.path.join(RUN, 'metrics.json'), encoding='utf-8'))
-defs = json.load(open('spec/definitions.json', encoding='utf-8'))
+defs = json.load(open('spec/registry/metrics.json', encoding='utf-8'))
 
 R = m['rmse_grid']
 NN = m['round_grid']
@@ -81,7 +81,12 @@ h2{font-family:ui-monospace,Menlo,monospace;font-size:12px;text-transform:upperc
 .verdict b{color:#e8eef6}.win{color:#5fd39a}.bad{color:#ff8f6b}
 .panel{border:1px solid #1c2430;border-radius:6px;background:#0d131b;padding:18px;margin:0 0 22px}
 dfn{font-style:normal;border-bottom:1px dotted #4d6478;cursor:help}
-dfn:hover{color:#6fd3ee;border-bottom-color:#6fd3ee}
+dfn:hover,dfn.on{color:#6fd3ee;border-bottom-color:#6fd3ee}
+/* real popover: a title attribute never fires on touch, and this is read on an iPad */
+#pop{position:fixed;z-index:99;width:360px;max-width:calc(100vw - 20px);background:#121821;color:#dfe6ee;
+ border:1px solid #2b3a4d;border-radius:6px;padding:12px 14px;font-size:12.5px;line-height:1.5;
+ box-shadow:0 10px 30px rgba(0,0,0,.6);display:none;white-space:pre-wrap}
+#pop.show{display:block}
 /* architecture strip */
 .arch{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap;margin:0 0 14px}
 .stage{flex:1;min-width:150px;border:1px solid #22303f;border-radius:5px;padding:11px 13px;background:#0f1620}
@@ -129,6 +134,7 @@ th{color:#7f8ea3;font-weight:600;font-size:11px;text-transform:uppercase;letter-
 td:first-child,th:first-child{text-align:left;font-family:ui-monospace,Menlo,monospace}
 .cap{font-size:12px;color:#7f8ea3;margin:9px 0 0;max-width:640px}
 </style></head><body>
+<div id="pop"></div>
 
 <div class="verdict">
   One network learned the <b>entire</b> liquid material &mdash; stress, capillary force and volume
@@ -253,10 +259,10 @@ function draw(){
  document.getElementById('kv').innerHTML=
   `<span class="k">viscosity &mu;</span><span class="v">${(D.muLow+(D.muHigh-D.muLow)*D.mv[c]).toFixed(3)}</span>`+
   `<span class="k">surface tension &sigma;</span><span class="v">${(D.sigMax*Math.pow(D.ms[r],D.stP)).toFixed(4)}</span>`+
-  `<span class="k"><dfn title="${D.tips.traj_rmse}">position error</dfn></span><span class="v">${D.rmse[r][c].toFixed(4)}</span>`+
-  `<span class="k"><dfn title="${D.tips.roundness}">roundness</dfn>, learned</span><span class="v">${D.rnn[r][c].toFixed(3)}</span>`+
-  `<span class="k"><dfn title="${D.tips.roundness}">roundness</dfn>, truth</span><span class="v">${D.rgt[r][c].toFixed(3)}</span>`+
-  `<span class="k"><dfn title="${D.tips.shape_error}">shape error</dfn></span><span class="v">${D.shape[r][c].toFixed(3)}</span>`;
+  `<span class="k"><dfn data-k="traj_rmse">position error</dfn></span><span class="v">${D.rmse[r][c].toFixed(4)}</span>`+
+  `<span class="k"><dfn data-k="roundness">roundness</dfn>, learned</span><span class="v">${D.rnn[r][c].toFixed(3)}</span>`+
+  `<span class="k"><dfn data-k="roundness">roundness</dfn>, truth</span><span class="v">${D.rgt[r][c].toFixed(3)}</span>`+
+  `<span class="k"><dfn data-k="shape_error">shape error</dfn></span><span class="v">${D.shape[r][c].toFixed(3)}</span>`;
 }
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
@@ -267,7 +273,7 @@ const N=D.net;
 document.querySelector('#arch tbody').innerHTML=
  `<tr><td>stress + capillary</td><td>${N.mom.in} (incl. ${N.mom.patch}&times;${N.mom.patch} density patch)</td><td>${N.mom.hidden}</td><td>${N.mom.out}</td><td>momentum scattered at P2G</td></tr>`+
  `<tr><td>carried state</td><td>${N.state.in}</td><td>${N.state.hidden}</td><td>${N.state.out}</td><td>volume rate at G2P</td></tr>`+
- `<tr><td colspan="5" style="color:#7f8ea3;text-align:left">${N.nP} particles on a ${N.nG}&times;${N.nG} grid, ${N.frames} frames &middot; ground truth stamped <span title="${D.tips.physics_version}">${N.phys}</span></td></tr>`;
+ `<tr><td colspan="5" style="color:#7f8ea3;text-align:left">${N.nP} particles on a ${N.nG}&times;${N.nG} grid, ${N.frames} frames &middot; ground truth stamped <dfn data-k="physics_version">${N.phys}</dfn></td></tr>`;
 
 // discordance text, computed from the data rather than asserted
 const dc=D.discord.map(([r,c])=>
@@ -281,7 +287,29 @@ document.getElementById('hoN').textContent=D.ho.round_nn.toFixed(2);
 document.getElementById('hoG').textContent=D.ho.round_gt.toFixed(2);
 document.getElementById('hov').src=D.base+'/heldout_corner.mp4';
 [['t1','traj_rmse'],['t2','roundness'],['t3','roundness'],['t4','traj_rmse'],['t5','self_noise']]
- .forEach(([id,k])=>{const e=document.getElementById(id);if(e)e.title=D.tips[k];});
+ .forEach(([id,k])=>{const e=document.getElementById(id);if(e)e.dataset.k=k;});
+
+// Definition popover. Click works on touch; hover is a desktop convenience. Delegated so it also covers
+// the dfn elements the readout re-renders on every cell click.
+(function(){
+ const pop=document.getElementById('pop');let cur=null;
+ function hide(){pop.classList.remove('show');if(cur)cur.classList.remove('on');cur=null;}
+ function show(el){
+  const k=el.dataset.k;const t=D.tips[k];if(!t)return;
+  pop.textContent=t;pop.classList.add('show');
+  if(cur)cur.classList.remove('on');cur=el;el.classList.add('on');
+  const r=el.getBoundingClientRect();
+  pop.style.left=Math.max(8,Math.min(r.left,window.innerWidth-pop.offsetWidth-10))+'px';
+  pop.style.top=(r.bottom+8+pop.offsetHeight>window.innerHeight?Math.max(8,r.top-pop.offsetHeight-8):r.bottom+8)+'px';
+ }
+ document.addEventListener('click',e=>{
+  const d=e.target.closest('dfn[data-k]');
+  if(!d){if(!e.target.closest('#pop'))hide();return;}
+  e.stopPropagation();cur===d?hide():show(d);
+ });
+ document.addEventListener('mouseover',e=>{const d=e.target.closest('dfn[data-k]');if(d&&d!==cur)show(d);});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')hide();});
+})();
 
 const NAMES={ll:'low visc, low ST',hl:'high visc, low ST',lh:'low visc, high ST'};
 document.querySelector('#edge tbody').innerHTML=Object.entries(D.edge).map(([k,v])=>

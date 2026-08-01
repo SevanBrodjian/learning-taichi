@@ -93,3 +93,9 @@ export const fetchNotifications = () => get("/api/notifications", "json");
 // Canonical metric registry (spec/definitions.json). Rendered as hover definitions so a reader never has
 // to guess what "roundness" means, and so tasks stop reinventing metrics.
 export const fetchDefinitions = () => get("/api/definitions", "json");
+
+// Passive user notes on a task. A note never changes status — it is a margin comment kept with the task.
+export const addTaskNote = (direction, task, text) =>
+  post("/api/task-note", { direction, task, text });
+export const deleteTaskNote = (direction, task, ts) =>
+  post("/api/task-note-delete", { direction, task, ts });

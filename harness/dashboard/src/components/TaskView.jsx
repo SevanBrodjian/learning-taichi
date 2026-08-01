@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { fetchTask, fetchJSON, fetchText, fetchTraining, fetchOverview, setTaskStatus, deleteTask, proposeFollowUp, fetchDefinitions } from "../api.js";
+import { fetchTask, fetchJSON, fetchText, fetchTraining, fetchOverview, setTaskStatus, deleteTask, proposeFollowUp, fetchDefinitions, addTaskNote, deleteTaskNote } from "../api.js";
 import LossChart from "./LossChart.jsx";
 import MarkdownReport from "./MarkdownReport.jsx";
 import VideoPlayer from "./VideoPlayer.jsx";
@@ -92,13 +92,118 @@ function lookupDef(defs, text) {
   return null;
 }
 
+// A real popover, not a `title` attribute. Native tooltips never fire on touch, and this dashboard is a
+// pinned PWA on an iPad -- so the definition has to open on CLICK as well as hover, or it does not exist.
 function DefTerm({ text, defs }) {
   const d = lookupDef(defs, text);
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e) => { if (!ref.current || !ref.current.contains(e.target)) setOpen(false); };
+    const esc = (e) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", esc); };
+  }, [open]);
+
   if (!d) return <>{text}</>;
-  const tip = [d.short, d.formula && "Formula: " + d.formula, d.units && "Units: " + d.units,
-               d.caution && "⚠ " + d.caution, d.source && "Source: " + d.source]
-    .filter(Boolean).join("\n\n");
-  return <span className="defterm" title={tip}>{text}</span>;
+
+  const show = () => {
+    const r = ref.current && ref.current.getBoundingClientRect();
+    if (r) setPos({ left: Math.min(r.left, window.innerWidth - 380), top: r.bottom + 6 });
+    setOpen(true);
+  };
+
+  return (
+    <span
+      ref={ref}
+      className={"defterm" + (open ? " open" : "")}
+      onClick={(e) => { e.stopPropagation(); open ? setOpen(false) : show(); }}
+      onMouseEnter={show}
+      onMouseLeave={() => setOpen(false)}
+    >
+      {text}
+      {open && pos && (
+        <span className="defpop" style={{ left: pos.left, top: pos.top }} onClick={(e) => e.stopPropagation()}>
+          <span className="defpop-h">{d.label || text}</span>
+          {d.short && <span className="defpop-s">{d.short}</span>}
+          {d.formula && <span className="defpop-r"><b>Formula</b> {d.formula}</span>}
+          {d.units && <span className="defpop-r"><b>Units</b> {d.units}</span>}
+          {d.range && <span className="defpop-r"><b>Range</b> {d.range}</span>}
+          {d.caution && <span className="defpop-w">⚠ {d.caution}</span>}
+          {d.source && <span className="defpop-src">{d.source}</span>}
+        </span>
+      )}
+    </span>
+  );
+}
+
+// ── The user's notes ───────────────────────────────────────────────────────────────────────────────
+// A passive margin comment: a question, a doubt, a conclusion reached. It never changes task status.
+// Rolled up to a single strip by default and unrolls on click, so a task with notes is marked without
+// the notes eating the page.
+function TaskNotes({ task, onChange }) {
+  const notes = task.notes || [];
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    const text = draft.trim();
+    if (!text) return;
+    setBusy(true);
+    try {
+      await addTaskNote(task.direction, task.task_id, text);
+      setDraft("");
+      onChange && onChange();
+    } finally { setBusy(false); }
+  };
+  const remove = async (ts) => {
+    setBusy(true);
+    try { await deleteTaskNote(task.direction, task.task_id, ts); onChange && onChange(); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className={"notes" + (open ? " open" : "") + (notes.length ? " has" : "")}>
+      <button className="notes-tab" onClick={() => setOpen((o) => !o)}>
+        <span className="notes-pin">🗒</span>
+        <span className="notes-label">
+          {notes.length ? `${notes.length} note${notes.length > 1 ? "s" : ""}` : "Add a note"}
+        </span>
+        <span className="notes-chev">{open ? "▾" : "▸"}</span>
+      </button>
+      {open && (
+        <div className="notes-body">
+          {notes.map((n) => (
+            <div className="note" key={n.ts}>
+              <div className="note-meta">
+                <span>{n.author || "Sevan"}</span>
+                <span className="note-ts">{String(n.ts).replace("T", " ").slice(0, 16)}</span>
+                <button className="note-x" title="Delete note" disabled={busy} onClick={() => remove(n.ts)}>×</button>
+              </div>
+              <div className="note-text">{n.text}</div>
+            </div>
+          ))}
+          <textarea
+            className="note-input"
+            rows={2}
+            placeholder="A question, a doubt, something you liked, a conclusion you reached…"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit(); }}
+          />
+          <div className="note-actions">
+            <span className="note-hint">⌘/Ctrl + Enter</span>
+            <button className="act-btn primary" disabled={busy || !draft.trim()} onClick={submit}>Add note</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // One typed result. Anything absent or unknown renders nothing (no placeholders cluttering the view).
@@ -259,6 +364,7 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
           <button className="act-btn danger" onClick={() => setConfirmDelete(true)}>Delete</button>
         </div>
       </div>
+      <TaskNotes task={task} onChange={onChange} />
       {!isDone && <LiveLine live={task.live} className="task-live" />}
 
       {confirmDelete && (
@@ -377,6 +483,14 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
             {task.rework_history.map((h, i) => <li key={i}>{h.note}</li>)}
           </ul>
         </div>
+      )}
+
+      {/* One sentence, first thing on the page: the punchline, for scanning many tasks quickly. */}
+      {task.tldr && (
+        <section className="task-block tldr">
+          <h2>TL;DR</h2>
+          <p>{task.tldr}</p>
+        </section>
       )}
 
       {task.objective && (

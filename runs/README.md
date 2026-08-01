@@ -26,6 +26,7 @@ Evidence discipline). Absent results are simply omitted from the display (no pla
   "task_id": "throw-to-target",
   "direction": "diffmpm-baseline",
   "title": "Throw a blob to a target by backprop",
+  "tldr": "ONE sentence, no jargon, including what failed. Shown first; used to triage many tasks fast.",
   "status": "done",
   "created": "2026-06-23T04:12:24Z",
   "objective": "One paragraph: what this task set out to do.",
@@ -42,13 +43,22 @@ Evidence discipline). Absent results are simply omitted from the display (no pla
   "training_refs": ["mls-mpm-forward"]
 }
 ```
-- **Result types**: `video` (auto-plays), `image`, `plot` (a metrics series), `table`. `custom_html` is
-  an optional sandboxed iframe block for a bespoke interactive panel (sliders, buttons).
+- **Result types**: `video` (auto-plays), `image`, `plot` (a metrics series), `table`.
+- **`tldr` is required.** One sentence stating what happened, including the part that failed. It renders
+  above Objective so many tasks can be scanned without opening them.
+- **`custom_html` is the task's OWN page** and now *leads* the task view, with the results grid, full
+  report, hypothesis and limitations collapsed into an "Evidence & detail" expander beneath it. It is a
+  sandboxed iframe (scripts only, no same-origin, no network) that sizes itself to its content. Design it
+  per `spec/style_task_page.md` — it is not an optional extra panel any more.
+- **Metrics come from `spec/registry/`.** Use registered names; register anything new in the same run,
+  with a real source file:line. The dashboard renders definitions on click/hover.
 - Paths (`src`, `series`) are repo-root-relative; the server rewrites them to absolute `/api/data/...` URLs.
 - `training_refs` are section ids from `reports/training/index.json`, transcluded (collapsed) under the task.
 - `hypothesis` and `limitations` render as their own sections; use them to keep observation, explanation,
   and scope cleanly separate, and to seed follow-up tasks.
 - `status` is `active` while a worker runs it; the user marks it `done` after review (never automatic).
+- `notes` are the **user's** passive margin notes. They live in `coordination/directions/<dir>.json` (not
+  here), never change status, and survive re-runs. Workers do not write them.
 
 ## How the dashboard joins it
 The data server (`harness/server`) reads `coordination/directions/<id>.json` (the board source: each

@@ -1,4 +1,17 @@
-# Shared definitions — standardize across tasks wherever possible
+# The registry — standardize across tasks wherever possible
+
+```
+spec/registry/
+  README.md       this file — the policy
+  metrics.json    HAND-AUTHORED. Metrics live across many task files; each entry cites its own file:line.
+  materials.json  GENERATED from sim.physics by harness/tools/sync_registry.py — never edit by hand.
+```
+
+Everything here is served merged at **`/api/definitions`**, and the dashboard renders any registered term
+as a click/hover definition. Splitting by kind keeps it legible and makes the whole directory liftable
+into the next project alongside `harness/`.
+
+Adding a new kind of standard (scenes, scenarios, seeds) means adding a file here, not growing one.
 
 **The principle:** when several tasks measure or model the same thing, they must measure or model it the
 **same way**, from **one** definition, or the task sequence stops being comparable and quietly accumulates
@@ -10,12 +23,12 @@ This applies at three levels, in decreasing order of how well the repo currently
 | level | canonical source | enforcement today |
 | --- | --- | --- |
 | **Physics / ground truth** | `sim/physics/` (`PROMOTION.md`, `signatures.py`) | Strong for forward GT. **Leaks for differentiable variants — see below.** |
-| **Metrics** | `spec/definitions.json` | New. The registry is the source of truth. |
+| **Metrics** | `spec/registry/metrics.json` | New. The registry is the source of truth. |
 | **Scenes / scenarios** | not yet centralised | Open. Drop scenes, dam breaks, and blob seeds are re-specified per task. |
 
 ## Metrics — the registry
 
-`spec/definitions.json` holds every registered metric: what it means, the actual formula, units, expected
+`spec/registry/metrics.json` holds every registered metric: what it means, the actual formula, units, expected
 range, the **source file and line**, and any cautions. The dashboard reads it to show definitions on hover.
 
 Rules:

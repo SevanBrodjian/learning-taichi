@@ -379,6 +379,7 @@ def task_detail(direction: str, task: str) -> dict | None:
             m["budget_minutes"] = this.get("budget_minutes") or default_budget(this.get("effort", "standard"))
             m["live"] = live_statuses().get((direction, task))
             m["rework_history"] = this.get("rework_history", [])
+            m["notes"] = this.get("notes", [])          # the user's own passive margin notes
             # follow_up_of is now a LIST of resolved refs (a proposal may follow up on several parents).
             m["follow_up_of"] = [r for r in (ref(p) for p in _as_parent_list(this.get("follow_up_of"))) if r]
             m["follow_ups"] = [r for r in (ref(x) for x in this.get("follow_ups", [])) if r]
@@ -452,6 +453,45 @@ def set_task_budget(direction: str, task: str, minutes) -> dict:
             t["budget_minutes"] = minutes
             f.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
             _git_commit(f, f"dashboard: {direction}/{task} budget -> {minutes}m")
+            return {"ok": True}
+    return {"ok": False, "error": "no such task"}
+
+
+def add_task_note(direction: str, task: str, text: str, author: str = "Sevan") -> dict:
+    """Append a passive note to a task. A note NEVER changes status -- it is the user's own margin
+    comment (a question, a doubt, a conclusion they reached) attached to the task and kept with it
+    across re-runs, which is why it lives in the direction file and not in the run manifest."""
+    text = (text or "").strip()
+    if not text:
+        return {"ok": False, "error": "empty note"}
+    f = MAIN_ROOT / "coordination" / "directions" / f"{direction}.json"
+    if not f.is_file():
+        return {"ok": False, "error": "no such direction"}
+    data = json.loads(f.read_text("utf-8"))
+    for t in data.get("tasks", []):
+        if t.get("id") == task:
+            note = {"ts": time.strftime("%Y-%m-%dT%H:%M:%S"), "author": author, "text": text}
+            t.setdefault("notes", []).append(note)
+            f.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+            _git_commit(f, f"note: {direction}/{task} — {text[:60]}")
+            return {"ok": True, "note": note}
+    return {"ok": False, "error": "no such task"}
+
+
+def delete_task_note(direction: str, task: str, ts: str) -> dict:
+    """Remove a note by timestamp."""
+    f = MAIN_ROOT / "coordination" / "directions" / f"{direction}.json"
+    if not f.is_file():
+        return {"ok": False, "error": "no such direction"}
+    data = json.loads(f.read_text("utf-8"))
+    for t in data.get("tasks", []):
+        if t.get("id") == task:
+            before = len(t.get("notes", []))
+            t["notes"] = [n for n in t.get("notes", []) if n.get("ts") != ts]
+            if len(t["notes"]) == before:
+                return {"ok": False, "error": "no such note"}
+            f.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+            _git_commit(f, f"note: removed one from {direction}/{task}")
             return {"ok": True}
     return {"ok": False, "error": "no such task"}
 
@@ -725,16 +765,46 @@ def _build_app():
 
     @app.get("/api/definitions")
     def api_definitions():
-        """The canonical metric registry (spec/definitions.json), so the dashboard can show a
-        definition on hover instead of every task reinventing what 'roundness' means."""
-        f = MAIN_ROOT / "spec" / "definitions.json"
-        if not f.is_file():
-            return {}
+        """The standardization registry (spec/registry/*.json) flattened into hoverable terms, so the
+        dashboard can define a metric or a material in place instead of every task reinventing them.
+        Metrics are hand-authored; materials are generated from sim.physics by harness/tools/sync_registry.py."""
+        reg = MAIN_ROOT / "spec" / "registry"
+        terms: dict = {}
+        if not reg.is_dir():
+            return terms
         try:
-            return {k: v for k, v in json.loads(f.read_text(encoding="utf-8")).items()
-                    if not k.startswith("_")}
+            mf = reg / "metrics.json"
+            if mf.is_file():
+                terms.update({k: v for k, v in json.loads(mf.read_text(encoding="utf-8")).items()
+                              if not k.startswith("_")})
         except Exception:
-            return {}
+            pass
+        try:
+            af = reg / "materials.json"
+            if af.is_file():
+                doc = json.loads(af.read_text(encoding="utf-8"))
+                meaning = doc.get("_param_meaning", {})
+                for name, e in (doc.get("materials") or {}).items():
+                    params = ", ".join(f"{k}={e[k]}" for k in ("E", "dt", "xi", "tc", "ts") if k in e)
+                    drift = e.get("_known_drift") or []
+                    caution = None
+                    if drift:
+                        caution = ("KNOWN DRIFT -- tasks that reimplemented instead of importing: "
+                                   + "; ".join(f"{d['where']} uses {d['param']}={d['actual']} "
+                                               f"(canonical {d['canonical']})" for d in drift))
+                    terms[name] = {
+                        "label": name,
+                        "short": f"Canonical {name}. Frozen in sim/physics/core.py; "
+                                 f"every task must import these, never redefine them.",
+                        "formula": params,
+                        "units": "; ".join(f"{k}: {v}" for k, v in meaning.items() if k in e),
+                        "range": f"physics_version {doc.get('physics_version', '?')}",
+                        "source": doc.get("_source", "sim/physics/core.py"),
+                        **({"caution": caution} if caution else {}),
+                    }
+        except Exception:
+            pass
+        return terms
 
     @app.get("/api/decisions")
     def api_decisions():
@@ -792,6 +862,20 @@ def _build_app():
         if not (d and t and e):
             raise HTTPException(400, "direction, task, effort required")
         return set_task_effort(d, t, e)
+
+    @app.post("/api/task-note")
+    def api_task_note(payload: dict):
+        d, t = payload.get("direction"), payload.get("task")
+        if not (d and t):
+            raise HTTPException(400, "direction, task required")
+        return add_task_note(d, t, payload.get("text", ""), payload.get("author", "Sevan"))
+
+    @app.post("/api/task-note-delete")
+    def api_task_note_delete(payload: dict):
+        d, t, ts = payload.get("direction"), payload.get("task"), payload.get("ts")
+        if not (d and t and ts):
+            raise HTTPException(400, "direction, task, ts required")
+        return delete_task_note(d, t, ts)
 
     @app.post("/api/task-tags")
     def api_task_tags(payload: dict):

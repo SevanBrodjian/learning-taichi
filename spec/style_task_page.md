@@ -10,7 +10,8 @@ result and presents it badly has not finished.
 ## The shape of a task page
 
 ```
-  Title
+  Title              [🗒 notes]   <- the user's own passive margin notes, rolled up
+  TL;DR              <- ONE sentence. The punchline. Required.
   Objective
   Summary            <- the tight, human-legible anchor (1-2 paragraphs)
   ─────────────────
@@ -19,6 +20,11 @@ result and presents it badly has not finished.
   ▸ Evidence & detail  <- raw results grid, full findings, hypothesis, limitations
   From the textbook
 ```
+
+**`tldr` is a required manifest field.** One sentence, no jargon, stating what happened *including the
+part that failed*. It exists so a reader scanning many tasks can triage without opening anything. "Trained
+a network on three corners of a viscosity/surface-tension square; exact where trained, not physical
+anywhere else" is a TL;DR. "Investigated conditioned material networks" is not — it says nothing.
 
 The bespoke page **leads**. The standard blocks still exist underneath, collapsed, so the raw material is
 always one click away — that floor is deliberate, and it means a bespoke page never has to re-present
@@ -30,6 +36,28 @@ still works, but it is the exception now, not the default.
 ## The core rule
 
 > **Design the page around what this result needs a reader to understand. Do not fill in a schema.**
+
+## Present findings, not conclusions
+
+The reader is the researcher. **Your job is to make the evidence maximally legible so they can do the
+reasoning — not to do the reasoning for them.** In the user's words: *"Feed me findings and results with as
+clear of a presentation as possible, so that I am able to focus my efforts on the reasoning and
+conclusions."*
+
+In practice:
+
+- **Show what happened; let the reader judge what it means.** "The high-viscosity column throws vertical
+  jets instead of settling" is a finding. "The model fails to generalize because the capillary net is
+  out of distribution" is a conclusion — it belongs in `hypothesis`, clearly labelled as a hypothesis, not
+  asserted on the page as though it were observed.
+- **Keep the three registers separate and visibly so:** what was *observed*, what is *hypothesised* to
+  explain it, what would *test* that. This is the same discipline as `CLAUDE.md` → Evidence discipline,
+  applied to layout.
+- **Never let an interpretation replace the artifact it came from.** If you say the drop under-rounds,
+  the drop is on the page, next to ground truth.
+- **A verdict line is still required** (rule 1) — that is a *summary of what happened*, stated plainly,
+  not an interpretation of why. Say "edge-exact at the trained corners, not physical elsewhere", not
+  "this validates the conditioning approach".
 
 Before writing any HTML, answer in one sentence: *what is the single thing a reader must walk away
 knowing?* Then build the page so that thing is unmissable, and everything else supports it.
@@ -69,7 +97,7 @@ read directly against ground truth (which is interpretable) and show it beside t
 > two metrics correlate only moderately (Spearman $\rho \approx 0.55$) and that **two interior cells** pass
 > the distance check while being badly wrong in shape. The wrong mechanism had already reached a task page,
 > a training-report page, and this spec before anyone read the implementation. **Check the metric's
-> definition before you explain a result with it** — see `spec/definitions.md`.
+> definition before you explain a result with it** — see `spec/registry/README.md`.
 
 **6. A number reported without a picture of the quantity is not evidence.** If a claim rests on a value,
 the page shows the thing that value measures.
@@ -85,7 +113,7 @@ architecture and where does it sit?" is not a side detail a reader should have t
 high-level** version up front — a diagram of the pipeline marking which pieces are learned and which are
 fixed, plus layer shapes — and leave the full specification to the Evidence layer. The same goes for any
 metric the page reports: **define it, or link its definition.** Every metric label on the exemplar carries
-its canonical definition from `spec/definitions.json` on hover.
+its canonical definition from `spec/registry/metrics.json` on hover.
 
 **7. Interactive only when interaction earns it.** Sweeps, grids, parameter families, anything where the
 reader wants to ask "what about *that* cell" — interact. A single comparison does not need a widget; a
@@ -114,10 +142,10 @@ The page renders in a **sandboxed iframe** (`sandbox="allow-scripts"`, no same-o
 
 ## Metrics come from the registry
 
-`spec/definitions.json` is the canonical list. **Check it before inventing a metric**, use registered names,
+`spec/registry/metrics.json` is the canonical list. **Check it before inventing a metric**, use registered names,
 and register anything new in the same run that introduces it — with a real `source` file:line. The dashboard
 renders these as hover definitions, and a bespoke page should do the same for every metric it displays.
-Rationale and the full policy (including material/scene standardization) live in `spec/definitions.md`.
+Rationale and the full policy (including material/scene standardization) live in `spec/registry/README.md`.
 
 ## Before you ship it
 

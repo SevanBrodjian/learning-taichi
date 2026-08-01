@@ -76,6 +76,17 @@ Results are how the work becomes understandable, so make the visuals *informativ
   broken figure is **regenerated, not shipped**. This step is mandatory, not a courtesy.
 - Good visuals here are reusable: the best of them belong in the training textbook too (see below).
 
+## TL;DR (required manifest field)
+Write a **`tldr`**: one sentence, no jargon, stating what happened **including what failed**. It is the
+first thing on the task page and exists so many tasks can be triaged without opening them. "Investigated
+X" is not a TL;DR; "X worked where trained and fell apart everywhere else" is.
+
+## Present findings, not conclusions
+The user does the reasoning; you make the evidence legible. Show **what happened** and keep
+**observed / hypothesised / would-test** visibly separate — an interpretation goes in `hypothesis`,
+labelled as one, never asserted on the page as if observed. Never let an interpretation replace the
+artifact it came from.
+
 ## Your task page (required — read `spec/style_task_page.md` in full)
 You do **not** fill in a fixed card layout. You **design the page this result deserves** and ship it as
 `custom_html` in the manifest; it renders as the lead of the task page, with the standard blocks collapsed

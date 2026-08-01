@@ -76,6 +76,25 @@ Results are how the work becomes understandable, so make the visuals *informativ
   broken figure is **regenerated, not shipped**. This step is mandatory, not a courtesy.
 - Good visuals here are reusable: the best of them belong in the training textbook too (see below).
 
+## Your task page (required — read `spec/style_task_page.md` in full)
+You do **not** fill in a fixed card layout. You **design the page this result deserves** and ship it as
+`custom_html` in the manifest; it renders as the lead of the task page, with the standard blocks collapsed
+beneath it as the evidence layer.
+
+- Before writing any HTML, answer in one sentence: **what is the single thing a reader must walk away
+  knowing?** Build the page so that thing is unmissable.
+- **Find the flip.** The strongest pages let the reader *switch between two states and watch the finding
+  happen* — two metrics over the same cells, learned vs truth, trained vs held-out. A toggle the reader
+  operates beats two static figures side by side. Reach for this first.
+- **If a summary number can look fine while the result is wrong, that gap IS the finding** — show the
+  metric that catches it right next to the flattering one.
+- Fully self-contained (sandboxed iframe: no CDNs, no fetch, inline data and CSS/JS). Media by absolute
+  `/api/data/learning-taichi/runs/<direction>/<task>/<file>` path. Prefer drawing from `metrics.json` data
+  over embedding images. Also write it standalone to `bespoke_page.html` in your run directory.
+- **Open the rendered page and click every control before you ship it.** Not the JSON — the page.
+- Exemplar to match or beat: `runs/material-variants/train-one-nn-to-mimic-viscosity-and-st/bespoke_page.html`
+  (built by `harness/tools/build_exemplar_page.py`).
+
 ## Training textbook contribution (required)
 End the run by adding **at least one short, standalone training page** under `reports/training/` in the
 objective textbook voice (`spec/style_training_report.md`): impersonal, no first or second person, no

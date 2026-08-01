@@ -179,6 +179,13 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
 .result-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); font-family: var(--mono); }
 .result-table tr:last-child td { border-bottom: none; }
 .custom-frame { width: 100%; height: 440px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); }
+/* A task's own page leads the view: full column width, no chrome competing with it, and its height is
+   driven by the content (the frame posts its scrollHeight up). 440px is only the pre-measurement floor. */
+.custom-frame.lead { height: 620px; margin: 0 0 26px; border: 1px solid var(--border); display: block; }
+/* The evidence layer sits under a designed page: present, one click away, visually subordinate. */
+.full-report.evidence { border-top: 1px solid var(--border); margin-top: 4px; }
+.full-report.evidence > summary::before { content: "▸ "; }
+.full-report.evidence[open] > summary::before { content: "▾ "; }
 
 /* ── Industrial pass: squarer, more defined, a touch of character (subtle) ── */
 .card, .result, .board-col, .xclude, .custom-frame, .done-item, .error { border-radius: 5px; }

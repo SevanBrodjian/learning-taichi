@@ -77,7 +77,9 @@ discipline**; **open and look at every figure, plot, and video it produced** (no
 confirm each visual actually shows the quantity its claim rests on, with no degenerate, empty, or
 artefacted output; **verify every manifest media `src` resolves to a file that exists** (a dangling ref is a
 broken tile on the dashboard — reject a manifest that lists planned-but-unrendered media); render-check its
-math **in the dashboard** for KaTeX errors; and **review the training
+math **in the dashboard** for KaTeX errors; **open its task page and click every control** — judged against
+`spec/style_task_page.md`, a page that dumps everything produced instead of being designed around the
+finding is a defect to send back; and **review the training
 page it added** (voice, standalone-ness, length) per `spec/style_training_report.md`. As part of that
 review **verify every cross-reference resolves** — each `[[link]]` must point at a page/section that
 actually exists and actually covers what the referring text promises (a link to a not-yet-written prereq
@@ -199,7 +201,10 @@ orchestrator to pick up the whole `queued` backlog and run it to completion (see
    critically checks it: does it show the quantity the objective is about, are the axes/labels right, is
    anything degenerate (a control that never moved, an empty or clipped frame, a flat or exploded curve)?
    A number reported without looking at its picture is not evidence, and a misleading or broken figure is
-   regenerated, not shipped. It then **adds at least one short, standalone training page** in the objective
+   regenerated, not shipped. It **designs its own task page** (`custom_html`, per `spec/style_task_page.md`)
+   rather than filling a fixed card layout — the bespoke page leads the task view and the standard blocks
+   collapse beneath it as the evidence layer; it opens the rendered page and clicks every control before
+   shipping. It then **adds at least one short, standalone training page** in the objective
    textbook voice (`spec/style_training_report.md`) — over-including math **prerequisites** (linear algebra,
    calculus, numerics) it leans on and making sure every `[[link]]` it writes points at content that
    actually exists — **fires a `finished` ping**, and exits, leaving everything **on disk** (it does not

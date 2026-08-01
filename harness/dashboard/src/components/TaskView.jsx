@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchTask, fetchJSON, fetchText, fetchTraining, fetchOverview, setTaskStatus, deleteTask, proposeFollowUp } from "../api.js";
 import LossChart from "./LossChart.jsx";
 import MarkdownReport from "./MarkdownReport.jsx";
@@ -16,6 +16,47 @@ function LossResult({ series, log }) {
     return () => { alive = false; };
   }, [series]);
   return <LossChart series={data} log={log !== false} />;
+}
+
+// Injected into every bespoke page so the frame can size itself to its content. A designed page must not
+// be trapped in a short scrolling box -- that was the whole reason custom_html read as a footnote.
+const AUTOSIZE = `
+<script>(function(){
+  function send(){
+    var d=document.documentElement,b=document.body;
+    var h=Math.max(d?d.scrollHeight:0,b?b.scrollHeight:0,d?d.offsetHeight:0);
+    try{parent.postMessage({__taskFrame:true,height:h},'*');}catch(e){}
+  }
+  window.addEventListener('load',send); window.addEventListener('resize',send);
+  if(window.ResizeObserver){try{new ResizeObserver(send).observe(document.documentElement);}catch(e){}}
+  setTimeout(send,50); setTimeout(send,400); setTimeout(send,1500);
+})();</script>`;
+
+// The task's own page: arbitrary self-contained HTML/JS the task authored to present its result the way
+// that result deserves. Sandboxed (scripts only, no same-origin), so it cannot reach the parent or network.
+function BespokePage({ html }) {
+  const ref = useRef(null);
+  const [height, setHeight] = useState(null);
+  useEffect(() => {
+    function onMsg(e) {
+      if (!e.data || e.data.__taskFrame !== true) return;
+      if (!ref.current || e.source !== ref.current.contentWindow) return;
+      const h = Number(e.data.height);
+      if (Number.isFinite(h)) setHeight(Math.min(Math.max(h, 200), 6000));
+    }
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, []);
+  return (
+    <iframe
+      ref={ref}
+      className="custom-frame lead"
+      style={height ? { height: height + "px" } : undefined}
+      srcDoc={html + AUTOSIZE}
+      sandbox="allow-scripts"
+      title="task result"
+    />
+  );
 }
 
 // One typed result. Anything absent or unknown renders nothing (no placeholders cluttering the view).
@@ -302,8 +343,11 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
         </section>
       )}
 
-      {/* The shown layer: a tight summary. Falls back to `findings` for older tasks that predate the
-          summary/full_report split. Depth (full findings, hypothesis, limitations) sits in an expander. */}
+      {/* Layered in the order a reader needs them:
+            1. the tight summary (always shown, the human-legible anchor),
+            2. the task's OWN page, if it authored one -- the main event, not a footnote,
+            3. everything else (raw results, full findings, hypothesis, limits) as the evidence layer.
+          A task with no bespoke page keeps its results grid shown directly, so older tasks do not regress. */}
       {(() => {
         const summaryText = task.summary || task.findings;
         const detail = [];
@@ -312,6 +356,31 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
           detail.push(["Full findings", task.findings]);
         if (task.hypothesis) detail.push(["Why / hypothesis", task.hypothesis]);
         if (task.limitations) detail.push(["Limitations and scope", task.limitations]);
+
+        const bespoke = !!task.custom_html;
+        const resultsBody = results.length > 0 && (
+          <>
+            {media.length > 0 && (
+              <div className="results-grid">
+                {media.map((r, i) => <Result key={i} r={r} />)}
+              </div>
+            )}
+            {tableResults.map((r, i) => <Result key={"t" + i} r={r} />)}
+          </>
+        );
+        const resultsBlock = resultsBody && (
+          <section className="task-block">
+            <h2>Results</h2>
+            {resultsBody}
+          </section>
+        );
+        const prose = detail.map(([h, body], i) => (
+          <section className="task-block" key={i}>
+            <h2>{h}</h2>
+            <p>{body}</p>
+          </section>
+        ));
+
         return (
           <>
             {summaryText && (
@@ -320,39 +389,31 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
                 <p>{summaryText}</p>
               </section>
             )}
-            {detail.length > 0 && (
-              <details className="full-report">
-                <summary>Full report</summary>
-                {detail.map(([h, body], i) => (
-                  <section className="task-block" key={i}>
-                    <h2>{h}</h2>
-                    <p>{body}</p>
-                  </section>
-                ))}
-              </details>
-            )}
+
+            {bespoke && <BespokePage html={task.custom_html} />}
+
+            {bespoke
+              ? (resultsBlock || prose.length > 0) && (
+                  <details className="full-report evidence">
+                    <summary>Evidence &amp; detail</summary>
+                    {resultsBlock}
+                    {prose}
+                  </details>
+                )
+              : (
+                  <>
+                    {resultsBlock}
+                    {prose.length > 0 && (
+                      <details className="full-report">
+                        <summary>Full report</summary>
+                        {prose}
+                      </details>
+                    )}
+                  </>
+                )}
           </>
         );
       })()}
-
-      {results.length > 0 && (
-        <section className="task-block">
-          <h2>Results</h2>
-          {media.length > 0 && (
-            <div className="results-grid">
-              {media.map((r, i) => <Result key={i} r={r} />)}
-            </div>
-          )}
-          {tableResults.map((r, i) => <Result key={"t" + i} r={r} />)}
-        </section>
-      )}
-
-      {task.custom_html && (
-        <section className="task-block">
-          <h2>Interactive</h2>
-          <iframe className="custom-frame" srcDoc={task.custom_html} sandbox="allow-scripts" title="custom result" />
-        </section>
-      )}
 
       {refs.length > 0 && (
         <section className="task-block">

@@ -22,7 +22,13 @@ tasks is mostly cosmetic and can be pure execution with a 5-minute approval. Cut
 
 ---
 
-## Track A — Generative UI for task pages *(~1h of his time)*
+## Track A — Generative UI for task pages *(~1h of his time)* — **EXECUTED 2026-08-01, awaiting review**
+
+**Decision taken:** bespoke page *leads*, evidence collapses beneath it (option 1).
+**Shipped:** `spec/style_task_page.md`; TaskView restructured + self-sizing frame; exemplar rebuilt at
+`runs/material-variants/train-one-nn-to-mimic-viscosity-and-st/bespoke_page.html`; wired into
+`_TEMPLATE.md` and `CLAUDE.md` (both worker and reviewer sides). Commit `128531a`.
+**Open:** Sevan's review of the exemplar — does it beat the old page enough to justify the standard?
 
 **What is actually broken.** Less than assumed. `custom_html` is *already* a sandboxed iframe with
 `allow-scripts` + `srcDoc` (`harness/dashboard/src/components/TaskView.jsx:353`), so a task can already ship

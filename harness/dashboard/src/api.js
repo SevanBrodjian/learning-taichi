@@ -89,3 +89,7 @@ export const proposeFollowUp = (direction, parents, title, note) =>
 
 // ntfy notification feed (the server holds the secret topic; it never reaches the browser).
 export const fetchNotifications = () => get("/api/notifications", "json");
+
+// Canonical metric registry (spec/definitions.json). Rendered as hover definitions so a reader never has
+// to guess what "roundness" means, and so tasks stop reinventing metrics.
+export const fetchDefinitions = () => get("/api/definitions", "json");

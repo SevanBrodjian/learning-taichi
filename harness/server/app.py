@@ -723,6 +723,19 @@ def _build_app():
     def api_reports():
         return reports_list()
 
+    @app.get("/api/definitions")
+    def api_definitions():
+        """The canonical metric registry (spec/definitions.json), so the dashboard can show a
+        definition on hover instead of every task reinventing what 'roundness' means."""
+        f = MAIN_ROOT / "spec" / "definitions.json"
+        if not f.is_file():
+            return {}
+        try:
+            return {k: v for k, v in json.loads(f.read_text(encoding="utf-8")).items()
+                    if not k.startswith("_")}
+        except Exception:
+            return {}
+
     @app.get("/api/decisions")
     def api_decisions():
         return decisions_list()

@@ -167,9 +167,16 @@ frozen physics library is *for*.
 liquid. The **interior and the held-out corner are stable but only partially physical**: the thick-plus-high-ST
 composition under-rounds and throws upward particle jets rather than settling.
 
-**A trap worth internalizing:** the held-out corner's trajectory RMSE reads *low*, because a vertical spike
-and a compact blob share a center of mass. A distance-to-truth scalar looks fine while the shape is entirely
-wrong. **Judge a learned simulator by the shape and the motion, against ground truth, not by one number.**
+**A trap worth internalizing: one distance scalar cannot certify a cell as physical.** Position error and
+shape error measure different things, and on this grid they agree only moderately (Spearman $\rho \approx
+0.55$). At the held-out corner both scream, so nothing is hidden there. But there are **interior cells whose
+position error sits within a factor of two of the trained corners while their shape is badly wrong** — a
+drop that stays roughly where it should while being far too round, or not round at all.
+
+The deeper problem is that a distance number has **no interpretable scale**. Told that a cell scores $0.12$,
+you cannot say whether that is "slightly off" or "not a liquid" without a reference. Roundness can be read
+directly against the ground truth's own roundness. **Judge a learned simulator by shape and motion against
+ground truth; use a distance scalar to rank, never to certify.**
 
 ## The crux: per-step supervision does not buy rollout stability
 

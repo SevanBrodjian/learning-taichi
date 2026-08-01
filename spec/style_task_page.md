@@ -55,14 +55,37 @@ changes the story is worth more than two static figures side by side, because th
 comparison rather than being told about it. *This is the highest-leverage move available; reach for it
 first.*
 
-**5. Beware the scalar that lies — and show what catches it.** If a summary number can look acceptable
-while the result is actually wrong, that gap **is** the finding. Put the honest metric next to the
-flattering one. (The exemplar exists for this reason: a held-out corner with a survivable-looking
-trajectory RMSE of 0.24 whose shape was completely wrong, because a vertical spike and a settled blob
-share a centre of mass.)
+**5. Show where your metrics disagree — and never let one scalar certify a result.** If two measures of
+the same run rank it differently, that disagreement **is** a finding: put both on the page and mark the
+cases where they diverge. A distance-style scalar is useful to *rank* and useless to *certify*, because its
+scale usually is not interpretable — "0.12" tells a reader nothing without a reference. Prefer a metric
+read directly against ground truth (which is interpretable) and show it beside the one that is not.
+
+> **This rule earned its place by catching an error in this very spec.** Its first draft asserted the
+> exemplar's held-out corner had a "deceptively low" distance metric because *a spike and a blob share a
+> centre of mass*. That was inherited from the worker's manifest and was **false**: `traj_rmse` is a mean
+> per-particle distance, not a centre-of-mass distance, and the held-out corner scored 0.246 against
+> 0.012–0.031 at the trained corners — it screamed. The real finding, verified from the data, is that the
+> two metrics correlate only moderately (Spearman $\rho \approx 0.55$) and that **two interior cells** pass
+> the distance check while being badly wrong in shape. The wrong mechanism had already reached a task page,
+> a training-report page, and this spec before anyone read the implementation. **Check the metric's
+> definition before you explain a result with it** — see `spec/definitions.md`.
 
 **6. A number reported without a picture of the quantity is not evidence.** If a claim rests on a value,
 the page shows the thing that value measures.
+
+**6b. If it is selectable, selecting it must show it.** A grid, sweep or list the reader can click has to
+reveal *that item's own evidence* — its frames, its clip, its numbers — not merely a readout. This has a
+consequence for the run, not just the page: **export per-item media**, not only an aggregate montage. (The
+exemplar can only show per-cell *stills* because the run exported one whole-grid video and no per-cell
+clips; the stills had to be recovered from a previous page's embedded base64.)
+
+**6c. Answer the obvious questions on the page.** For a task involving a learned component, "what is the
+architecture and where does it sit?" is not a side detail a reader should have to dig for. Put a **compact,
+high-level** version up front — a diagram of the pipeline marking which pieces are learned and which are
+fixed, plus layer shapes — and leave the full specification to the Evidence layer. The same goes for any
+metric the page reports: **define it, or link its definition.** Every metric label on the exemplar carries
+its canonical definition from `spec/definitions.json` on hover.
 
 **7. Interactive only when interaction earns it.** Sweeps, grids, parameter families, anything where the
 reader wants to ask "what about *that* cell" — interact. A single comparison does not need a widget; a
@@ -88,6 +111,13 @@ The page renders in a **sandboxed iframe** (`sandbox="allow-scripts"`, no same-o
   outside the dashboard.
 - Dark theme. Background `#0a0e14`, text `#dfe6ee`, muted `#7f8ea3`, accent `#6fd3ee`. Avoid red/green as
   the sole encoding.
+
+## Metrics come from the registry
+
+`spec/definitions.json` is the canonical list. **Check it before inventing a metric**, use registered names,
+and register anything new in the same run that introduces it — with a real `source` file:line. The dashboard
+renders these as hover definitions, and a bespoke page should do the same for every metric it displays.
+Rationale and the full policy (including material/scene standardization) live in `spec/definitions.md`.
 
 ## Before you ship it
 

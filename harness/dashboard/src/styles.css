@@ -486,3 +486,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
   .task-actions { margin-left: 0; width: 100%; }
   .task-head h1 { font-size: 26px; }
 }
+
+/* A metric term that has a canonical definition (spec/definitions.json). Dotted underline = hover me. */
+.defterm { border-bottom: 1px dotted #4d6478; cursor: help; }
+.defterm:hover { color: var(--accent); border-bottom-color: var(--accent); }

@@ -1,0 +1,88 @@
+{
+  "_comment": "Canonical metric definitions. See spec/definitions.md for the policy. Every entry MUST cite a real source in code -- if you cannot point at the function, it does not go in here. The dashboard reads this file to render hover definitions.",
+  "_schema": {
+    "label": "display name",
+    "short": "one-line plain-English meaning",
+    "formula": "the actual computation, in words or math",
+    "units": "what the number is in",
+    "range": "expected range and what good/bad looks like",
+    "source": "file:line of the implementation",
+    "caution": "optional -- traps, misleading names, what it does NOT tell you"
+  },
+
+  "traj_rmse": {
+    "label": "trajectory RMSE",
+    "short": "How far the run's particles sit from ground truth, averaged over the whole rollout.",
+    "formula": "mean over frames and particles of the per-particle Euclidean distance |x_learned - x_gt|. Particle p is matched to particle p (both runs seed identically).",
+    "units": "domain lengths (the domain is the unit square, so 0.1 is 10% of the box)",
+    "range": ">= 0. On the whole-material task, trained corners sit at 0.012-0.031 and the held-out corner at 0.246.",
+    "source": "sim/one_nn_whole_fluid.py:619",
+    "caution": "THE NAME IS WRONG. It is a mean absolute distance, not a root-mean-square, and it is NOT a centre-of-mass distance. It also has no interpretable scale -- 0.12 could be 'slightly off' or 'not a liquid' and the number alone cannot tell you. Use it to RANK cells, never to CERTIFY one as physical. It correlates only moderately with shape error (Spearman rho ~ 0.55 on the 5x5 whole-material grid)."
+  },
+
+  "roundness": {
+    "label": "roundness (circularity)",
+    "short": "How close the material's silhouette is to a perfect disk.",
+    "formula": "isoperimetric ratio 4*pi*A / P^2 of the filled occupancy mask (64x64, one closing pass), divided by the same ratio for a rasterised disk so that a disk scores 1.0. A = filled cells, P = boundary cells.",
+    "units": "dimensionless, normalised so a perfect disk = 1.0",
+    "range": "0 to ~1. Higher = rounder/more compact. A wide flat puddle is ~0.1-0.2; a settled droplet ~0.6-0.9.",
+    "source": "sim/one_nn_whole_fluid.py:663 (via _iso_raw:642, _disk_iso_raw:654)",
+    "caution": "Computed on the LAST few frames only (settled state), so it says nothing about the motion that got there. Resolution-dependent: the 64x64 raster and the closing pass set how much fine spray is ignored."
+  },
+
+  "shape_error": {
+    "label": "shape error",
+    "short": "How far the run's roundness is from the ground truth's roundness at the same conditions.",
+    "formula": "|roundness_learned - roundness_ground_truth|",
+    "units": "dimensionless (same scale as roundness)",
+    "range": ">= 0. Below ~0.05 is a good match; above ~0.25 the shape is qualitatively wrong.",
+    "source": "derived; introduced by the task page at runs/material-variants/train-one-nn-to-mimic-viscosity-and-st/bespoke_page.html",
+    "caution": "Directly interpretable because it is read against the ground truth's own roundness -- this is exactly what traj_rmse lacks. But it is a single scalar about the SETTLED shape and is blind to how the material got there."
+  },
+
+  "spread_width": {
+    "label": "spread width",
+    "short": "Horizontal extent of the material, robust to outlying particles.",
+    "formula": "95th percentile of particle x minus 5th percentile of particle x",
+    "units": "domain lengths",
+    "range": "0 to 1. A spreading fluid grows this; a holding solid does not.",
+    "source": "sim/one_nn_whole_fluid.py:607",
+    "caution": "Percentile-based, so it deliberately ignores the outermost 10% of particles -- a thin spray or a few flung particles will not show up here."
+  },
+
+  "pile_height": {
+    "label": "pile height",
+    "short": "How tall the settled material stands above the floor.",
+    "formula": "95th percentile of particle y, minus the floor height",
+    "units": "domain lengths",
+    "range": "0 to 1. The signature that separates snow (holds a pile) from fluid (spreads flat).",
+    "source": "sim/one_nn_whole_fluid.py:611"
+  },
+
+  "self_noise": {
+    "label": "simulator self-noise",
+    "short": "The canonical ground-truth simulator run against itself: the error floor nothing can beat.",
+    "formula": "traj_rmse between two runs of the same canonical simulator at the same configuration (nonzero only from GPU non-determinism, e.g. atomic scatter order)",
+    "units": "domain lengths",
+    "range": "~1e-7. Any learned model at or near this is exact to the simulator's own reproducibility.",
+    "source": "reported per trained corner as metrics.edge.<corner>.true_self_noise",
+    "caution": "This is the floor for a DETERMINISTIC comparison. It is not a claim about physical accuracy -- the canonical simulator's own error against reality is a separate, unmeasured thing."
+  },
+
+  "physics_version": {
+    "label": "physics version",
+    "short": "Stamp of the frozen canonical physics a run used, so two runs are provably on the same ground truth.",
+    "formula": "sim.physics.VERSION, a content hash of the canonical module",
+    "units": "opaque string, e.g. phys-1dc280eb52c9",
+    "range": "n/a",
+    "source": "sim/physics/__init__.py",
+    "caution": "Equal versions prove the same GROUND TRUTH was used. They do NOT prove a task's own differentiable variant matches it -- see the material-parameter drift noted in spec/definitions.md."
+  },
+
+  "_unregistered": [
+    "airborne fraction (used by one-nn-for-three-materials)",
+    "gap closed % (used by learned-residual)",
+    "relative RMSE / relRMSE (used for stress, capillary, state fits)",
+    "effective viscosity (used by the weight-interpolation tasks)"
+  ]
+}

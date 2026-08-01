@@ -138,8 +138,28 @@ elastic across a task sequence). Rules:
   `PROMOTION.md` (it is ground truth, the signatures pass, the version bumps).
 - **Stamp every run.** A run records the `physics_version` (from `sim.physics.VERSION`) it used, so two tasks
   are provably on the same ground truth or provably not.
+- **A differentiable variant may reimplement the *step*, never the *parameters* or the *constitutive law*.**
+  It must import its constants from `sim.physics` and state in its contract exactly what differs and why. A
+  variant that silently picks its own value is a defect the reviewer rejects. (Hard-won and still unfixed:
+  snow's hardening ξ is 10.0 canonically but 3.0 in two learned-material tasks, and `material_variants` runs
+  a 4× larger timestep — three tasks, three different snows. See `spec/definitions.md`.)
 - The portable idea for the next project: *freeze the ground truth* — one versioned, tested module for the
   domain's data-generating process, imported unchanged, forking forbidden.
+
+## Standardize across tasks — one definition per thing
+The same argument as canonical physics, applied everywhere: **when several tasks measure or model the same
+thing, they must do it the same way, from one definition**, or a task sequence stops being comparable and
+quietly accumulates nonsense. A follow-up that redefines its parent's metric is not a follow-up, it is a
+different experiment wearing the same name. Full policy in `spec/definitions.md`.
+- **Metrics** live in `spec/definitions.json` — meaning, formula, units, range, **source file:line**, and
+  cautions. Check it before inventing a metric; register anything new in the run that introduces it; report
+  registered names, not private synonyms. The dashboard serves it at `/api/definitions` and renders hover
+  definitions. **Never explain a result with a metric whose implementation you have not read** — an
+  undefined `traj_rmse` (a mean per-particle distance, despite the name) produced a wrong mechanism that
+  propagated through a task page, a training page, and a spec before anyone checked.
+- **Materials** come from `sim/physics/` — see the rule above.
+- **Scenes** (drop heights, blob radii, dam-break geometry) are *not* yet centralised; re-specifying them
+  per task is a known gap, and comparisons across tasks must acknowledge it.
 
 ## Presenting results to the user — brief, comparative, legible
 The user reads a **short** summary, not a wall of text. This is graded like evidence discipline:

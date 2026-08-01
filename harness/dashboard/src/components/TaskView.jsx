@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { fetchTask, fetchJSON, fetchText, fetchTraining, fetchOverview, setTaskStatus, deleteTask, proposeFollowUp } from "../api.js";
+import { fetchTask, fetchJSON, fetchText, fetchTraining, fetchOverview, setTaskStatus, deleteTask, proposeFollowUp, fetchDefinitions } from "../api.js";
 import LossChart from "./LossChart.jsx";
 import MarkdownReport from "./MarkdownReport.jsx";
 import VideoPlayer from "./VideoPlayer.jsx";
@@ -59,8 +59,50 @@ function BespokePage({ html }) {
   );
 }
 
+// ── Metric definitions on hover ────────────────────────────────────────────────────────────────────
+// The registry (spec/definitions.json) is loaded once and shared, so any table header naming a known
+// metric explains itself. Undefined metrics were a real defect: "trajectory RMSE" is neither an RMS nor a
+// centre-of-mass distance, and a wrong mechanism built on that misreading reached three artifacts.
+let _defsCache = null;
+function useDefinitions() {
+  const [defs, setDefs] = useState(_defsCache);
+  useEffect(() => {
+    if (_defsCache) return;
+    let alive = true;
+    fetchDefinitions()
+      .then((d) => { _defsCache = d || {}; if (alive) setDefs(_defsCache); })
+      .catch(() => { _defsCache = {}; });
+    return () => { alive = false; };
+  }, []);
+  return defs || {};
+}
+
+const _norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+// Match a column/label against the registry by key or display label.
+function lookupDef(defs, text) {
+  const t = _norm(text);
+  if (!t) return null;
+  for (const [k, v] of Object.entries(defs)) {
+    if (t === _norm(k) || t === _norm(v.label)) return v;
+  }
+  for (const [k, v] of Object.entries(defs)) {
+    if (t.includes(_norm(k)) || t.includes(_norm(v.label))) return v;
+  }
+  return null;
+}
+
+function DefTerm({ text, defs }) {
+  const d = lookupDef(defs, text);
+  if (!d) return <>{text}</>;
+  const tip = [d.short, d.formula && "Formula: " + d.formula, d.units && "Units: " + d.units,
+               d.caution && "⚠ " + d.caution, d.source && "Source: " + d.source]
+    .filter(Boolean).join("\n\n");
+  return <span className="defterm" title={tip}>{text}</span>;
+}
+
 // One typed result. Anything absent or unknown renders nothing (no placeholders cluttering the view).
-function Result({ r }) {
+function Result({ r, defs = {} }) {
   let body = null;
   if (r.type === "video" && r.src) {
     body = <VideoPlayer src={r.src} />;
@@ -72,7 +114,7 @@ function Result({ r }) {
     body = (
       <table className="result-table">
         {r.columns && (
-          <thead><tr>{r.columns.map((c, i) => <th key={i}>{c}</th>)}</tr></thead>
+          <thead><tr>{r.columns.map((c, i) => <th key={i}><DefTerm text={c} defs={defs} /></th>)}</tr></thead>
         )}
         <tbody>
           {r.rows.map((row, i) => <tr key={i}>{row.map((cell, j) => <td key={j}>{cell}</td>)}</tr>)}
@@ -101,6 +143,7 @@ function TaskRef({ r, onOpenRef }) {
 }
 
 export default function TaskView({ detail, reloadToken, onChange, onDeleted, onOpenRef, onOpenTraining }) {
+  const defs = useDefinitions();
   const [task, setTask] = useState(null);
   const [refs, setRefs] = useState([]);
   const [sendBack, setSendBack] = useState(false);   // reject / reopen -> back to queue with a note
@@ -362,10 +405,10 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
           <>
             {media.length > 0 && (
               <div className="results-grid">
-                {media.map((r, i) => <Result key={i} r={r} />)}
+                {media.map((r, i) => <Result key={i} r={r} defs={defs} />)}
               </div>
             )}
-            {tableResults.map((r, i) => <Result key={"t" + i} r={r} />)}
+            {tableResults.map((r, i) => <Result key={"t" + i} r={r} defs={defs} />)}
           </>
         );
         const resultsBlock = resultsBody && (

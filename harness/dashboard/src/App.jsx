@@ -6,6 +6,7 @@ import TaskView from "./components/TaskView.jsx";
 import TrainingView from "./components/TrainingView.jsx";
 import ReportsView from "./components/ReportsView.jsx";
 import InboxView from "./components/InboxView.jsx";
+import DemoView from "./components/DemoView.jsx";
 
 const SECTIONS = [
   { id: "overview", label: "Overview" },
@@ -14,6 +15,7 @@ const SECTIONS = [
   { id: "training", label: "Training" },
   { id: "reports", label: "Reports" },
   { id: "inbox", label: "Inbox" },
+  { id: "demo", label: "Demo" },
 ];
 
 // The iPad PWA reloads from scratch when resumed after even a few seconds in the background, so we
@@ -210,7 +212,39 @@ export default function App() {
       )}
       {section === "reports" && <ReportsView />}
       {section === "inbox" && <InboxView notifData={notifData} />}
+      {section === "demo" && <DemoView />}
     </main>
+  );
+
+  // The Tasks page is the ONLY page that wants a sidebar, so the sidebar belongs to it rather than to
+  // the shell (where it sat as a blank spacer on every other page).
+  const taskSidebar = (
+    <nav className="task-nav">
+      {groups.length > 1 && (
+        <select className="task-filter" value={taskFilter} onChange={(e) => setTaskFilter(e.target.value)}>
+          <option value="all">All directions</option>
+          {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+        </select>
+      )}
+      {visibleGroups.map((g) => (
+        <div className="task-group" key={g.id}>
+          <div className="side-label">{g.name}</div>
+          {g.tasks.map((t) => (
+            <button
+              key={t.key}
+              className={`runitem ${selected?.key === t.key ? "active" : ""}`}
+              onClick={() => setSelected(t)}
+            >
+              <span className="runtitle">{t.title}</span>
+              <span className={`status status-${t.status === "done" ? "done" : "active"}`}>
+                {t.status === "done" ? "Done" : "Active"}
+              </span>
+            </button>
+          ))}
+        </div>
+      ))}
+      {groups.length === 0 && <div className="muted pad">No tasks with results yet.</div>}
+    </nav>
   );
 
   if (isPhone) {
@@ -244,20 +278,19 @@ export default function App() {
     );
   }
 
+  // Shell: a fixed tab strip on top, one full-width page beneath. The shell itself never scrolls —
+  // each page scrolls its own content, and pages that shouldn't scroll (Map, Demo) simply don't.
   return (
-    <div className="app">
-      <aside className="sidebar">
-        <div className="brand">
-          <span className="dot" /> learning-taichi
-        </div>
-
-        <nav className="sections">
+    <div className="app shell">
+      <header className="tabbar">
+        <div className="brand"><span className="dot" /> learning-taichi</div>
+        <nav className="tabstrip">
           {SECTIONS.map((s) => {
             const b = sectionBadge(s.id);
             return (
               <button
                 key={s.id}
-                className={`section-tab ${s.id === section ? "active" : ""}`}
+                className={`tab-item ${s.id === section ? "active" : ""}${s.id === "demo" ? " tab-demo" : ""}`}
                 onClick={() => setSection(s.id)}
               >
                 {s.label}
@@ -266,42 +299,17 @@ export default function App() {
             );
           })}
         </nav>
+        {error && <div className="error tabbar-error">{error}</div>}
+      </header>
 
-        {error && <div className="error">{error}</div>}
-
-        {section === "tasks" && (
-          <nav className="task-nav">
-            {groups.length > 1 && (
-              <select className="task-filter" value={taskFilter} onChange={(e) => setTaskFilter(e.target.value)}>
-                <option value="all">All directions</option>
-                {groups.map((g) => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
-            )}
-            {visibleGroups.map((g) => (
-              <div className="task-group" key={g.id}>
-                <div className="side-label">{g.name}</div>
-                {g.tasks.map((t) => (
-                  <button
-                    key={t.key}
-                    className={`runitem ${selected?.key === t.key ? "active" : ""}`}
-                    onClick={() => setSelected(t)}
-                  >
-                    <span className="runtitle">{t.title}</span>
-                    <span className={`status status-${t.status === "done" ? "done" : "active"}`}>
-                      {t.status === "done" ? "Done" : "Active"}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            ))}
-            {groups.length === 0 && <div className="muted pad">No tasks with results yet.</div>}
-          </nav>
-        )}
-      </aside>
-
-      {mainContent}
+      {section === "tasks" ? (
+        <div className="page page-tasks">
+          <aside className="task-side">{taskSidebar}</aside>
+          {mainContent}
+        </div>
+      ) : (
+        <div className="page">{mainContent}</div>
+      )}
     </div>
   );
 }

@@ -16,11 +16,42 @@
 html, body, #root { height: 100%; margin: 0; }
 body { background: var(--bg); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; overflow: hidden; }
 
-/* The shell fills the viewport exactly and never scrolls as a whole; only the inner
-   panels (.sidebar, .content) scroll. 100dvh + overflow:hidden fixes the iPad PWA over-scroll. */
-.app { display: grid; grid-template-columns: 280px 1fr; height: 100dvh; overflow: hidden; }
+/* Shell: a fixed tab strip on top, one full-width page beneath. The shell itself NEVER scrolls; each
+   page scrolls its own content, and pages that shouldn't scroll (Map, Demo) simply don't. The old global
+   sidebar is gone -- only the Tasks page ever used it, so it now belongs to that page. */
+/* Base shared by both shells (desktop tabs + phone bar). .app.phone relies on this for its height and
+   overflow containment -- the 100dvh + overflow:hidden is what fixes the iPad PWA over-scroll. */
+.app { display: grid; height: 100dvh; overflow: hidden; }
+.app.shell { grid-template-rows: auto 1fr; }
 
-.sidebar { background: var(--panel-2); border-right: 1px solid var(--border); padding: 18px 14px; overflow-y: auto; padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
+.tabbar { display: flex; align-items: center; gap: 18px; padding: 0 16px; min-height: 46px;
+  background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+  border-bottom: 1px solid var(--border); box-shadow: 0 1px 0 rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.045);
+  padding-top: env(safe-area-inset-top); }
+.tabbar .brand { margin-bottom: 0; flex: 0 0 auto; font-size: 13px; }
+.tabbar-error { margin-left: auto; margin-bottom: 0; }
+
+/* Browser-style tabs: each one a solid slab that lifts when active. */
+.tabstrip { display: flex; align-items: flex-end; gap: 2px; flex: 1 1 auto; min-width: 0; overflow-x: auto;
+  scrollbar-width: none; align-self: stretch; }
+.tabstrip::-webkit-scrollbar { display: none; }
+.tab-item { position: relative; flex: 0 0 auto; background: transparent; border: 0; color: var(--muted);
+  font-family: var(--mono); font-size: 12px; letter-spacing: .04em; padding: 0 15px; height: 100%;
+  min-height: 46px; cursor: pointer; border-right: 1px solid transparent; transition: color .12s, background .12s; }
+.tab-item:hover { color: var(--text); background: rgba(255,255,255,.03); }
+.tab-item.active { color: var(--text); background: var(--bg);
+  box-shadow: inset 0 2px 0 var(--accent), inset -1px 0 0 var(--border), inset 1px 0 0 var(--border); }
+.tab-item.tab-demo { color: #9a7fd0; letter-spacing: .16em; }
+.tab-item.tab-demo.active { color: #cbb4ff; box-shadow: inset 0 2px 0 #8a5cf6, inset -1px 0 0 var(--border), inset 1px 0 0 var(--border); }
+.tab-item .tab-badge { margin-left: 6px; }
+
+/* One page, full width under the tabs. */
+.page { min-height: 0; overflow: hidden; display: flex; }
+.page > .content { flex: 1 1 auto; min-width: 0; }
+/* Tasks is the only page with a sidebar, and it owns it. */
+.page-tasks { display: grid; grid-template-columns: 280px 1fr; }
+.task-side { background: var(--panel-2); border-right: 1px solid var(--border); padding: 16px 14px;
+  overflow-y: auto; min-height: 0; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
 .brand { font-weight: 600; letter-spacing: .2px; display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }
 .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
 
@@ -34,7 +65,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
 .runitem.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .runtitle { font-size: 13px; line-height: 1.3; }
 
-.content { overflow-y: auto; padding: 28px 32px 64px; padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+.content { overflow-y: auto; min-height: 0; padding: 28px 32px 64px; padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 .runview h1 { font-size: 22px; margin: 0 0 6px; }
 .summary { color: var(--muted); margin: 0 0 14px; max-width: 70ch; }
 .meta { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; font-size: 13px; color: var(--muted); margin-bottom: 22px; }
@@ -385,6 +416,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
 
 /* ── Task graph (Map) ── */
 .content-map { overflow: hidden; padding: 0; display: flex; }
+.content:has(.demo-root) { overflow: hidden; padding: 0; position: relative; }
 .graphview { display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; }
 .graph-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px;
   border-bottom: 1px solid var(--border); background: var(--panel-2); }
@@ -420,7 +452,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
 /* ── Large monitors: scale everything up a touch (external displays, not laptops) ── */
 @media (min-width: 1920px) {
   .app:not(.phone) { grid-template-columns: 336px 1fr; }
-  .app:not(.phone) .sidebar, .app:not(.phone) .content { zoom: 1.15; }
+  .app:not(.phone) .task-side, .app:not(.phone) .content { zoom: 1.15; }
 }
 
 /* ── Effort tiers (Quick / Standard / Deep) ── */

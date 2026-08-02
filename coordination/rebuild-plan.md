@@ -59,7 +59,7 @@ So this is a promotion-and-instruction job, not a runtime build.
 Originally a cosmetic data migration. Sevan expanded it into the **whole front-end pass**, including the
 project's flagship deliverable. Design direction for all of it: **`spec/aesthetic.md`** (read it first).
 
-### B1 — Layout: tabs, not a global sidebar
+### B1 — Layout: tabs, not a global sidebar  ✅ DONE 2026-08-01
 The sidebar is dead weight — **only the Tasks page uses it**; everywhere else it sits as a blank spacer.
 - Replace it with a **browser-style tab strip across the top**. Each page then owns the full width beneath.
 - The **Tasks page keeps its own dedicated sidebar**, scoped to itself.
@@ -67,7 +67,7 @@ The sidebar is dead weight — **only the Tasks page uses it**; everywhere else 
   its own content independently, *and only where scrolling makes sense* — the Map, for one, should not
   scroll normally.
 
-### B2 — Aesthetic pass on the dashboard *(mild)*
+### B2 — Aesthetic pass on the dashboard *(mild)* — PARTIAL (tab strip only)
 Currently *"leans a little too sterilized AI design."* Apply `spec/aesthetic.md` at **low intensity** —
 character and intent, not decoration. It must stay a working tool readable on an iPad.
 
@@ -86,7 +86,7 @@ a direction is just a lineage in the follow-up graph.
 - **Keep `runs/<direction>/<task>/` paths stable** — every manifest and every training-page media URL
   points at them. Renaming them is a separate, much bigger job; do not fold it in.
 
-### B5 — The **Demo** page (new tab) — the flagship deliverable
+### B5 — The **Demo** page (new tab) — the flagship deliverable  ✅ PLACEHOLDER SHIPPED 2026-08-01
 The reason this track matters. *"This project needs to result in something I can put on my website —
 genuinely immersive and impressive and worthwhile. Right now we have no means to make one."*
 

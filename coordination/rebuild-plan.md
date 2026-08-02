@@ -13,8 +13,10 @@ The orchestrator can execute; what it cannot do is make the taste calls. So each
 **decide** (his, minutes), **execute** (the orchestrator's, unbounded), and **review** (his, minutes). The
 hour per track is *his* hour. Execution happens around it.
 
-**Priority if time runs short:** A and C are worth it. **B is the least valuable** — merging and tagging
-tasks is mostly cosmetic and can be pure execution with a 5-minute approval. Cut B first, not last.
+**Priority — revised 2026-08-01.** B *was* the one to cut when it was only a data migration. It is now the
+front-end pass and carries **B5, the Demo page**, which is the only artifact intended for an audience
+beyond Sevan. So: **B and C are the ones that matter**, and within B the Demo is the point. Track A is
+done and locked.
 
 - [x] **Track 0 — Training report** (2026-07-28: 25 pages/3,499 lines → 20/3,019; anthology → curriculum;
       the spec rule that caused the sprawl inverted). Ongoing: Sevan reads it. See "The reading loop" below —
@@ -52,21 +54,51 @@ So this is a promotion-and-instruction job, not a runtime build.
 
 ---
 
-## Track B — Task graph, tags, merges *(~30 min of his time — cut this first)*
+## Track B — Layout, aesthetic, graph/tags, and the Demo page *(re-scoped 2026-08-01 — no longer the one to cut)*
 
-Directions become **tags**; a "direction" is just a lineage in the follow-up graph. Links were made messily
-and several tasks overlap.
+Originally a cosmetic data migration. Sevan expanded it into the **whole front-end pass**, including the
+project's flagship deliverable. Design direction for all of it: **`spec/aesthetic.md`** (read it first).
 
-- **Decide (5 min, his):** approve or edit a proposed tag list. Candidates, reusing old direction names:
-  `materials`, `gradients`, `rendering`, `learned-dynamics`. Four tags, multiple per task. The test for a
-  tag is whether it would ever actually be used to *filter*.
-- **Execute:** propose the merge list from the 20 tasks, migrate storage so tags + graph links are canonical,
-  rebuild `follow_up_of` / `follow_ups` as a deliberate DAG, apply tags, add tag chips + filtering to the
-  Overview. **Keep `runs/<direction>/<task>/` paths stable** — every manifest and every training-page media
-  URL points at them; renaming is a separate, much bigger job.
-- **Review (25 min, his):** does the graph read as a real research lineage?
+### B1 — Layout: tabs, not a global sidebar
+The sidebar is dead weight — **only the Tasks page uses it**; everywhere else it sits as a blank spacer.
+- Replace it with a **browser-style tab strip across the top**. Each page then owns the full width beneath.
+- The **Tasks page keeps its own dedicated sidebar**, scoped to itself.
+- **Scrolling discipline:** the app shell never scrolls. The tab strip is always fixed. Each page scrolls
+  its own content independently, *and only where scrolling makes sense* — the Map, for one, should not
+  scroll normally.
 
-The existing Map view already exists; improving its layout is optional polish, not part of the hour.
+### B2 — Aesthetic pass on the dashboard *(mild)*
+Currently *"leans a little too sterilized AI design."* Apply `spec/aesthetic.md` at **low intensity** —
+character and intent, not decoration. It must stay a working tool readable on an iPad.
+
+### B3 — The Map page: full redesign
+*"Clunky and not very useful."* Aesthetic **and** functional redesign, not a restyle. The graph should make
+a research lineage legible at a glance and be genuinely navigable.
+
+### B4 — Tagging and task organization
+The tagging/organization system *"needs fixing"*. Directions stop being containers and become **tags**;
+a direction is just a lineage in the follow-up graph.
+- **Decide (his, minutes):** approve a short tag list. Candidates reusing old direction names:
+  `materials`, `gradients`, `rendering`, `learned-dynamics`. Multiple tags per task. The test for a tag is
+  whether it would ever actually be used to *filter*.
+- **Execute:** merge overlapping/duplicate tasks, rebuild `follow_up_of` / `follow_ups` as a deliberate
+  DAG, apply tags, add tag chips + filtering/sorting.
+- **Keep `runs/<direction>/<task>/` paths stable** — every manifest and every training-page media URL
+  points at them. Renaming them is a separate, much bigger job; do not fold it in.
+
+### B5 — The **Demo** page (new tab) — the flagship deliverable
+The reason this track matters. *"This project needs to result in something I can put on my website —
+genuinely immersive and impressive and worthwhile. Right now we have no means to make one."*
+
+- A **new top-level tab**, full-page, at **full aesthetic strength**.
+- **Transplantable**: it must lift onto his personal website **separately from the dashboard**, with no
+  dependency on the data server, the task registry, or the harness.
+- **Standalone-legible**: written for a visitor who knows nothing about MPM or this project. **No jargon.**
+  The dashboard may be offered as an optional thing to poke at; the Demo is the thing people come for.
+- **Now:** a deliberately-designed *"no demo exists yet"* placeholder. It should read as a highly polished
+  demo that happens to be empty — never as an unfinished page.
+- High-res delivery (vector/procedural, sharp at any DPI); intentionally low-poly or low-sample components
+  are welcome — see the resolution note in `spec/aesthetic.md`.
 
 ---
 

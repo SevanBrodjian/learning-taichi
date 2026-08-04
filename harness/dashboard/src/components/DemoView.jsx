@@ -13,8 +13,17 @@ import { useEffect, useRef, useState } from "react";
  *   sized to devicePixelRatio so nothing is ever blurry. Coarse thing, crisp delivery.
  * - Frutiger-era vocabulary (aqueous gradients, bloom, glass, scanlines) run at 60fps instead of the
  *   12fps slideshow the 2000s actually shipped. The joke is that it is fast.
- * - Dark, Halloweeny, with an easter egg for anyone who stays.
  * - It is a flow field, not decoration: this is a simulation project, so the motion is simulated.
+ *
+ * EASTER EGGS — per spec/aesthetic.md, the bar is that you cannot tell whether it is an egg, a bug, or
+ * normal functionality. Nothing addresses the user. There are three, none announced:
+ *   1. The field REMEMBERS where the pointer dwelt. Wells persist and decay over ~40s, so the flow near
+ *      somewhere you have been behaves differently than it did. Reads as state that shouldn't exist.
+ *   2. One particle ignores the field entirely and drifts on its own heading forever. Reads as stuck.
+ *   3. The STATUS readout very rarely resolves to something other than UNDER CONSTRUCTION for a single
+ *      half-second tick, then goes back. Reads as a glitch.
+ * A previous build shipped a timed "you stayed. that counts for something." — legible, warm, and exactly
+ * the wrong register. Removed.
  */
 
 const CSS = `
@@ -49,23 +58,19 @@ const CSS = `
 .demo-hud b{color:#7fd8f0;font-weight:600}
 .demo-badge{position:absolute;right:18px;bottom:16px;font-size:10.5px;letter-spacing:.16em;color:#3d5a68;
   border:1px solid #16303a;padding:5px 10px;border-radius:3px;background:rgba(8,16,22,.6);pointer-events:none}
-.demo-egg{position:absolute;left:50%;bottom:54px;transform:translateX(-50%);font-size:10.5px;
-  letter-spacing:.3em;color:#7a4d9c;opacity:0;transition:opacity 1.4s ease;pointer-events:none;text-transform:uppercase}
-.demo-egg.on{opacity:.85}
 @media (prefers-reduced-motion: reduce){.demo-sheen{animation:none}}
 `;
+
+// Plausible-looking system states. None of them explain themselves; all of them imply the page is a
+// surface over something that is still running.
+const OTHER_STATUS = ["RESOLVING", "LISTENING", "SOLVER IDLE", "AWAITING GEOMETRY", "STEP 0 OF ——"];
 
 export default function DemoView() {
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
   const [fps, setFps] = useState(0);
-  const [egg, setEgg] = useState(false);
-
-  // Easter egg: stay a while and the page admits something.
-  useEffect(() => {
-    const t = setTimeout(() => setEgg(true), 21000);
-    return () => clearTimeout(t);
-  }, []);
+  // Egg 3: the status readout is *usually* UNDER CONSTRUCTION.
+  const [status, setStatus] = useState("UNDER CONSTRUCTION");
 
   useEffect(() => {
     const cv = canvasRef.current;
@@ -116,12 +121,28 @@ export default function DemoView() {
     wrap.addEventListener("pointerleave", leave);
     wrap.addEventListener("touchmove", move, { passive: true });
 
+    // Egg 1: the field remembers. Dwelling deposits a well that persists and decays over ~40s, so the
+    // flow somewhere you have been is not the flow you left. Bounded ring, so it cannot grow unbounded.
+    const WELLS = 10;
+    const wx = new Float32Array(WELLS), wy = new Float32Array(WELLS), wAge = new Float32Array(WELLS);
+    let wNext = 0, dwell = 0;
+    const WELL_LIFE = 40;
+
     // A cheap curl-ish field. Not MPM — but it is a real velocity field being integrated, which is the
     // point: the motion on a simulation project's front page should actually be simulated.
     function field(x, y, t) {
       const a = Math.sin(x * 0.0042 + t * 0.30) + Math.cos(y * 0.0037 - t * 0.22);
       const b = Math.cos(x * 0.0031 - t * 0.19) + Math.sin(y * 0.0048 + t * 0.27);
-      return [b * 26, -a * 26];
+      let fx = b * 26, fy = -a * 26;
+      for (let k = 0; k < WELLS; k++) {
+        if (wAge[k] <= 0) continue;
+        const dx = x - wx[k], dy = y - wy[k];
+        const d2 = dx * dx + dy * dy;
+        if (d2 > 90000) continue;
+        const w = (wAge[k] / WELL_LIFE) * 5200 / (d2 + 2200);
+        fx += -dy * w; fy += dx * w;          // a slow residual swirl where attention was paid
+      }
+      return [fx, fy];
     }
 
     let raf = 0, last = performance.now(), acc = 0, frames = 0, t0 = performance.now();
@@ -133,7 +154,27 @@ export default function DemoView() {
       ctx.fillStyle = "rgba(5,7,11,0.17)";
       ctx.fillRect(0, 0, W, H);
 
+      // age the wells; dwelling in one spot deposits a new one
+      for (let k = 0; k < WELLS; k++) if (wAge[k] > 0) wAge[k] -= dt;
+      if (pointer.on) {
+        dwell += dt;
+        if (dwell > 0.9) {
+          dwell = 0;
+          wx[wNext] = pointer.x; wy[wNext] = pointer.y; wAge[wNext] = WELL_LIFE;
+          wNext = (wNext + 1) % WELLS;
+        }
+      } else dwell = 0;
+
       for (let i = 0; i < N; i++) {
+        // Egg 2: one particle does not participate. It holds its own heading and wraps forever.
+        if (i === 0) {
+          px[i] += 7.5 * dt; py[i] += 2.5 * dt;
+          if (px[i] > W + 4) px[i] = -4;
+          if (py[i] > H + 4) py[i] = -4;
+          ctx.fillStyle = "rgba(150,220,240,0.5)";
+          ctx.fillRect(px[i], py[i], 1.2, 1.2);
+          continue;
+        }
         const [fx, fy] = field(px[i], py[i], reduced ? 0 : t);
         vx[i] += (fx - vx[i]) * 1.6 * dt;
         vy[i] += (fy - vy[i]) * 1.6 * dt;
@@ -162,7 +203,14 @@ export default function DemoView() {
       }
 
       frames++; acc += dt;
-      if (acc >= 0.5) { setFps(Math.round(frames / acc)); frames = 0; acc = 0; }
+      if (acc >= 0.5) {
+        setFps(Math.round(frames / acc)); frames = 0; acc = 0;
+        // Egg 3: ~1 in 220 ticks (~ every 2 min) the status resolves to something else for one beat.
+        if (Math.random() < 0.0045) {
+          setStatus(OTHER_STATUS[(Math.random() * OTHER_STATUS.length) | 0]);
+          setTimeout(() => setStatus("UNDER CONSTRUCTION"), 520);
+        }
+      }
       raf = requestAnimationFrame(frame);
     }
     raf = requestAnimationFrame(frame);
@@ -198,10 +246,9 @@ export default function DemoView() {
         <span>PARTICLES <b>2600</b></span>
         <span>INTEGRATOR <b>SEMI-IMPLICIT</b></span>
         <span>FPS <b>{fps || "--"}</b></span>
-        <span>STATUS <b>UNDER CONSTRUCTION</b></span>
+        <span>STATUS <b>{status}</b></span>
       </div>
       <div className="demo-badge">v0 · PLACEHOLDER</div>
-      <div className={"demo-egg" + (egg ? " on" : "")}>you stayed. that counts for something.</div>
     </div>
   );
 }

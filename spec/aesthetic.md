@@ -48,8 +48,28 @@ choice; low *fidelity* is a bug.
 > Dark, Halloweeny, hidden-secrets, small details and easter eggs — with a weird kind of **resolute
 > optimism in darkness**, and promotion of **self-expression**.
 
-Reward attention. Things that only appear on hover, after a delay, at certain values, or on the third
-visit. Nothing critical hidden behind a secret; everything *delightful* is fair game.
+### Easter eggs — the bar (2026-08-03, after a first attempt missed it)
+
+An easter egg here is **not a reward message**. The first Demo build shipped *"you stayed. that counts for
+something."* after 21 seconds — legible, warm, and **cheesy**. Wrong register. His standard:
+
+> *"My version of easter egg is more like something that they won't even be able to tell whether it's an
+> easter egg, a bug, or normal functionality. The type of thing that alludes to greater depth than they
+> realized and makes them second guess what they thought the site really was and where it ends. And they
+> should be placed carefully, never obvious."*
+
+So the test for any hidden thing is: **could a reasonable person mistake this for a bug, or for a feature
+they simply hadn't noticed?** If it announces itself as a treat, it fails.
+
+- **Never address the user.** No congratulation, no wink, no second person. The site is not pleased with
+  you for finding it.
+- **Ambiguity is the payload.** It should be unclear whether it was intended. Something behaving *slightly
+  wrong*, or *too well*, or persisting when it shouldn't.
+- **Imply a larger system.** The impression should be that the page is a surface over something deeper,
+  and you just saw an edge of it.
+- **Sparse and placed, never sprinkled.** One or two per surface, positioned where an attentive person
+  might arrive naturally, not on a timer.
+- Nothing critical hidden behind a secret; nothing that damages the tool's usability.
 
 ## Where to apply it, and how hard
 

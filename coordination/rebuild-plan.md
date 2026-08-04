@@ -72,15 +72,68 @@ Currently *"leans a little too sterilized AI design."* Apply `spec/aesthetic.md`
 character and intent, not decoration. It must stay a working tool readable on an iPad.
 
 ### B3 — The Map page: full redesign
-*"Clunky and not very useful."* Aesthetic **and** functional redesign, not a restyle. The graph should make
-a research lineage legible at a glance and be genuinely navigable.
+*"Clunky and not very useful."* Aesthetic **and** functional redesign, not a restyle. Sevan's specifics
+(2026-08-03), captured verbatim enough to act on later:
+
+**Defects**
+- **It crashes the whole PWA when scrolling on that page, sometimes.** A hard bug, not a polish item —
+  investigate before redesigning on top of it.
+- Tasks *"aren't cleanly separated"*; the layout is *"too blocky"*; it *"feels fragile"*.
+- **Lines overlap blocks** — edges route through nodes instead of around them.
+
+**What it is missing (the real problem)**
+- *"It doesn't feel like I understand what the use case is when I open it."* The page has no stated job.
+- It should **show the lineage of the work like a good story** — the arc, not a hairball.
+- It should **surface connections he would have missed**, and **promote ideas** rather than only record them.
+- **Edge semantics:** consider *different kinds of arrows*, and *labels on arrows* — a follow-up that
+  refutes its parent is not the same edge as one that extends it, and the graph currently cannot say so.
+- Tagging *"doesn't add anything on that page"* yet — **correctly blocked on B4**, which is why B4 goes first.
 
 ### B4 — Tagging and task organization
 The tagging/organization system *"needs fixing"*. Directions stop being containers and become **tags**;
 a direction is just a lineage in the follow-up graph.
-- **Decide (his, minutes):** approve a short tag list. Candidates reusing old direction names:
-  `materials`, `gradients`, `rendering`, `learned-dynamics`. Multiple tags per task. The test for a tag is
-  whether it would ever actually be used to *filter*.
+**DECIDED 2026-08-03 — execute against this, do not re-ask.**
+
+- **Tags: exactly four**, multi-tagged per task.
+  | tag | what it means | tasks |
+  | --- | --- | --- |
+  | `gradients` | gradient health / optimizing through the rollout | 8 (incl. both proposed) |
+  | `materials` | constitutive models and material physics | 9 |
+  | `learned` | a network replaces part of the physics | 6 |
+  | `rendering` | the visual pipeline | 4 |
+  The learned-material chain carries **both** `learned` and `materials`. Rejected: a separate `control`
+  tag (only 2 tasks) and a second `kind` axis (two taxonomies to keep current).
+- **Merging: conservative.** Merge only genuine duplicates/superseded pairs — realistically just
+  `generalize-one-nn-across-viscosity-and-surface-tension` into `train-one-nn-to-mimic-viscosity-and-st`,
+  which told the same story twice. Everything else stays a distinct task and is organized by tags + graph
+  edges. **Rationale: merging tasks means touching `runs/<direction>/<task>/` paths, which every manifest
+  and every training-page media URL depends on.** Keep that risk at zero.
+
+### B4b — Linking becomes the orchestrator's job, not Sevan's *(added 2026-08-03)*
+
+> *"I'd rather not have to worry about it... I propose a new task, maybe I can reference previous tasks
+> (explicitly, with a prompt suggester or something of that nature), but then it's left up to the AI (you)
+> to slot that task into the graph so that I build a task network naturally."*
+
+The current edges are **arbitrary, with missed connections** — they record whatever was typed at creation
+time, which is why the graph does not read as a lineage. Redesign:
+
+1. **The user proposes a task and may optionally cite prior tasks.** A **suggester** in the create/propose
+   UI surfaces likely-related existing tasks as he types, so citing one is a click, never a lookup. Citing
+   is a *hint*, not the final edge set.
+2. **The orchestrator places the task in the graph.** On creation (and on review), it derives the real
+   `follow_up_of` edges from what the task actually is — the seed text, the objective, and once it has run,
+   its findings. Sevan never maintains links.
+3. **Edges carry a kind.** Pairs with B3's ask for different arrow styles and labels:
+   `extends` · `re-does` (supersedes a flawed run) · `refutes` · `applies` (borrows a method) ·
+   `prerequisite-of`. A follow-up that overturned its parent must not look identical to one that built on it.
+4. **Re-derive the whole existing graph once**, not just new tasks — that is what fixes "arbitrary and
+   missing connections" across the 21 tasks already on the board.
+5. **Every derived edge is reviewable and overridable.** The orchestrator proposes; Sevan can delete or
+   re-point any edge from the Map. Automation that cannot be corrected is worse than none.
+
+**Sequencing:** this makes B4 the substantive half of the track and confirms B4 → B3. The Map cannot be
+designed to "show lineage like a good story" until the edges *are* a lineage and carry kinds to draw.
 - **Execute:** merge overlapping/duplicate tasks, rebuild `follow_up_of` / `follow_ups` as a deliberate
   DAG, apply tags, add tag chips + filtering/sorting.
 - **Keep `runs/<direction>/<task>/` paths stable** — every manifest and every training-page media URL

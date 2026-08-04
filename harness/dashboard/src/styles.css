@@ -76,7 +76,9 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
 .status-failed { color: var(--danger); border-color: #422; background: #2a1414; }
 
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
-@media (max-width: 1080px) { .grid2 { grid-template-columns: 1fr; } .app { grid-template-columns: 220px 1fr; } }
+@media (max-width: 1080px) { .grid2 { grid-template-columns: 1fr; }
+  /* narrower task sidebar; must NOT touch .app -- the shell is a rows grid now, not columns. */
+  .page-tasks { grid-template-columns: 220px 1fr; } }
 
 .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; }
 .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin: 0 0 12px; }
@@ -563,3 +565,58 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
 .note-input:focus { outline: none; border-color: var(--accent); }
 .note-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
 .note-hint { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+/* ═══ B2 · Dashboard aesthetic pass (mild) ═══════════════════════════════════════════════════════
+   spec/aesthetic.md at LOW intensity. The brief: it "leans a little too sterilized AI design."
+   The fix is character and mechanical solidity — Factorio's buttons — not decoration. Everything here
+   must survive being read on an iPad, so: no motion that costs frames, no effect that hurts legibility. */
+
+/* Controls that feel mechanical: a real press, a real focus ring, a real disabled state. */
+.act-btn, .chip, .branch, .tab-item, .notes-tab, .section-tab {
+  transition: background .1s ease, border-color .1s ease, color .1s ease, transform .06s ease; }
+.act-btn { background: linear-gradient(180deg, #18202b, #121821); box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 1px 0 rgba(0,0,0,.4); }
+.act-btn:hover { border-color: #33465c; }
+.act-btn:hover { background: linear-gradient(180deg, #1d2632, #141b25); }
+.act-btn:active { transform: translateY(1px); box-shadow: inset 0 2px 4px rgba(0,0,0,.5); }
+.act-btn.primary { border-color: #2b6b7d; color: #bfeaff;
+  background: linear-gradient(180deg, #17323f, #102532); }
+.act-btn.primary:hover { border-color: var(--accent); background: linear-gradient(180deg, #1b3d4d, #122b3a); }
+.act-btn.danger { border-color: #4a2630; color: #ffb3ad; background: linear-gradient(180deg, #2a1519, #1d0f13); }
+.act-btn:disabled { opacity: .42; cursor: not-allowed; transform: none; }
+:where(button, select, textarea, input):focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Cards read as machined plates rather than soft bubbles: a hairline top light, a hard bottom edge. */
+.card, .board-col, .result, .task-card, .runitem, .notes-body, .xclude {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.045), 0 1px 2px rgba(0,0,0,.35); }
+.task-card { transition: border-color .1s ease, transform .06s ease; }
+.task-card:hover { border-color: #33465c; }
+.runitem:active, .task-card:active { transform: translateY(1px); }
+
+/* Column heads get a status rail — the board reads as instrumentation, not as three grey boxes. */
+.board-col { position: relative; overflow: hidden; }
+.board-col::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+  background: var(--border); }
+.col-active::before  { background: var(--accent-2); box-shadow: 0 0 10px rgba(126,231,135,.4); }
+.col-queued::before  { background: var(--accent);   box-shadow: 0 0 10px rgba(76,194,255,.35); }
+.col-proposed::before{ background: #3a4657; }
+
+/* Section headings get a faint rule so blocks separate without extra boxes. */
+.task-block > h2, .card h2 { position: relative; padding-bottom: 6px; }
+.task-block > h2::after, .card h2::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0;
+  height: 1px; background: linear-gradient(90deg, var(--border), transparent 65%); }
+
+/* Industrial scrollbars: present, thin, unmistakably a machine part. */
+.content, .task-side, .doc-body, .toc, .notes-body { scrollbar-width: thin; scrollbar-color: #2b3a4d transparent; }
+.content::-webkit-scrollbar, .task-side::-webkit-scrollbar, .doc-body::-webkit-scrollbar,
+.toc::-webkit-scrollbar { width: 10px; height: 10px; }
+.content::-webkit-scrollbar-track, .task-side::-webkit-scrollbar-track { background: rgba(0,0,0,.25); }
+.content::-webkit-scrollbar-thumb, .task-side::-webkit-scrollbar-thumb, .doc-body::-webkit-scrollbar-thumb,
+.toc::-webkit-scrollbar-thumb { background: #263443; border: 2px solid transparent; background-clip: content-box;
+  border-radius: 2px; }
+.content::-webkit-scrollbar-thumb:hover, .task-side::-webkit-scrollbar-thumb:hover { background: #35485e; background-clip: content-box; }
+
+/* One restrained Frutiger note: the brand dot actually breathes. Everything else stays still. */
+.brand .dot { animation: lt-pulse 3.4s ease-in-out infinite; }
+@keyframes lt-pulse { 0%,100% { box-shadow: 0 0 10px var(--accent); } 50% { box-shadow: 0 0 18px var(--accent); } }
+@media (prefers-reduced-motion: reduce) { .brand .dot { animation: none; } }

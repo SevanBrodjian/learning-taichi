@@ -67,11 +67,11 @@ The sidebar is dead weight — **only the Tasks page uses it**; everywhere else 
   its own content independently, *and only where scrolling makes sense* — the Map, for one, should not
   scroll normally.
 
-### B2 — Aesthetic pass on the dashboard *(mild)* — PARTIAL (tab strip only)
+### B2 — Aesthetic pass on the dashboard *(mild)*  ✅ DONE 2026-08-03
 Currently *"leans a little too sterilized AI design."* Apply `spec/aesthetic.md` at **low intensity** —
 character and intent, not decoration. It must stay a working tool readable on an iPad.
 
-### B3 — The Map page: full redesign
+### B3 — The Map page: full redesign  ✅ DONE 2026-08-03 (crash fix UNCONFIRMED — see below)
 *"Clunky and not very useful."* Aesthetic **and** functional redesign, not a restyle. Sevan's specifics
 (2026-08-03), captured verbatim enough to act on later:
 
@@ -89,7 +89,7 @@ character and intent, not decoration. It must stay a working tool readable on an
   refutes its parent is not the same edge as one that extends it, and the graph currently cannot say so.
 - Tagging *"doesn't add anything on that page"* yet — **correctly blocked on B4**, which is why B4 goes first.
 
-### B4 — Tagging and task organization
+### B4 — Tagging and task organization  ✅ DONE 2026-08-03
 The tagging/organization system *"needs fixing"*. Directions stop being containers and become **tags**;
 a direction is just a lineage in the follow-up graph.
 **DECIDED 2026-08-03 — execute against this, do not re-ask.**
@@ -109,7 +109,7 @@ a direction is just a lineage in the follow-up graph.
   edges. **Rationale: merging tasks means touching `runs/<direction>/<task>/` paths, which every manifest
   and every training-page media URL depends on.** Keep that risk at zero.
 
-### B4b — Linking becomes the orchestrator's job, not Sevan's *(added 2026-08-03)*
+### B4b — Linking becomes the orchestrator's job, not Sevan's  ✅ DONE 2026-08-03
 
 > *"I'd rather not have to worry about it... I propose a new task, maybe I can reference previous tasks
 > (explicitly, with a prompt suggester or something of that nature), but then it's left up to the AI (you)
@@ -212,3 +212,32 @@ completed task's **limitations** section, still on disk under `runs/material-var
 `runs/learned-dynamics/learned-residual/`. Re-proposing either is a one-liner.
 
 Nothing is `queued`, so `/execute` is a no-op until something is deliberately queued.
+
+
+---
+
+## Track B — closed 2026-08-03
+
+All five items shipped. Numbers, so the before/after is checkable:
+
+| | before | after |
+| --- | --- | --- |
+| edges | 11 | **24** |
+| cross-direction edges | 0 | **5** |
+| orphan tasks | 12 | **0** (3 genuine roots) |
+| edges crossing a node body | 5 | **0** (measured by path sampling) |
+| tags | 5 direction names | **4 real tags** filtering 9/10/6/4 |
+
+**Left open, deliberately:**
+- **The PWA scroll crash is fixed-but-unconfirmed.** Three real faults were found and repaired (a
+  null-deref inside a setState updater, an unguarded `setPointerCapture`, and a passive wheel handler
+  that both failed to `preventDefault` and queued a re-render per tick). None could be reproduced here —
+  it happens on Sevan's iPad. If it recurs, that is genuine new information, not a regression.
+- **No one has seen the Map rendered.** Verification was geometric and behavioural (node/edge overlap
+  sampling, event storms, filter counts), not visual.
+- **Edge kinds are derived once, by hand, in `rebuild_graph.py`.** New tasks get `extends` as a
+  placeholder until the orchestrator reviews them. Deriving kinds automatically from task content is a
+  future improvement, not a shipped one.
+
+**Next:** Track C (needs Sevan's decision on what the research report *is*), and the two minimal research
+tasks — the only remaining items that produce new learning rather than better tooling.

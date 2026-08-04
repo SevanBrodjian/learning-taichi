@@ -234,6 +234,24 @@ orchestrator to pick up the whole `queued` backlog and run it to completion (see
 4. The orchestrator **reviews, commits, and surfaces** it on the dashboard. **Done is the user's call**,
    made after discussion — never set automatically.
 
+## Linking is the orchestrator's job — the user never maintains the graph
+The user proposes a task and **may** cite prior ones (the propose form has a suggester that searches every
+task in every direction). **That citation is a hint, not the edge set.** The orchestrator derives the real
+links — when the task is created, and again when its result is reviewed, from what the task actually turned
+out to be. Sevan does not maintain links; asking him to is the failure this rule replaces (the board had 11
+arbitrary edges across 21 tasks, twelve orphans, and zero cross-direction connections).
+
+- **Edges carry a kind**, and it is drawn differently on the Map:
+  `extends` (built on the parent) · `re-does` (redid it properly; parent superseded but kept for the
+  record) · `refutes` (overturned the parent's conclusion) · `applies` (borrowed its method for another
+  question) · `prerequisite-of` (had to exist first — a capability, not a conclusion).
+- **Edges cross directions.** A direction is just a lineage in the graph; the interesting connections are
+  usually between them.
+- Storage is `follow_up_of: [{id, dir, kind}]` (legacy plain-id forms still read). `follow_ups` is derived,
+  never hand-maintained — `harness/tools/rebuild_graph.py` recomputes both and is idempotent.
+- **Every derived edge stays overridable.** The orchestrator proposes; the user can re-point or delete any
+  edge. Automation that cannot be corrected is worse than none.
+
 ## Directions are emergent — tasks form a graph
 The mental model is a **network of tasks** (a Zettelkasten), not folders. Tasks are the primary unit; the
 **follow-up links** (`follow_up_of`, now multi-parent, + `follow_ups`) make them a directed graph, and a

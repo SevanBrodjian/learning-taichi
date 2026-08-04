@@ -258,6 +258,7 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
   const [followForm, setFollowForm] = useState({ title: "", note: "" });
   const [siblings, setSiblings] = useState([]);        // other tasks in this direction (candidate extra parents)
   const [extraParents, setExtraParents] = useState([]); // ids of the additional parents the user checked
+  const [citeQuery, setCiteQuery] = useState("");       // suggester filter
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -289,20 +290,41 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
     return () => { alive = false; };
   }, [detail, reloadToken]);
 
-  // When the propose form opens, pull the other tasks in this direction as candidate extra parents so a
-  // proposal can follow up on several at once (the graph is direction-local).
+  // When the propose form opens, pull EVERY other task as a citation candidate. The graph is
+  // cross-direction now, and citing is a hint the orchestrator refines — so there is no reason to hide
+  // tasks from another direction, which is exactly how connections got missed before.
   useEffect(() => {
     if (!proposing || !task) return;
     let alive = true;
     fetchOverview()
       .then((ov) => {
-        const dir = (ov.directions || []).find((d) => d.id === task.direction);
-        const others = (dir?.tasks || []).filter((t) => t.id !== task.task_id);
+        const all = (ov.directions || []).flatMap((d) =>
+          (d.tasks || []).map((t) => ({ ...t, direction: d.id, directionName: d.name })));
+        const others = all.filter((t) => !(t.direction === task.direction && t.id === task.task_id));
         if (alive) setSiblings(others);
       })
       .catch(() => {});
     return () => { alive = false; };
   }, [proposing, task?.direction, task?.task_id]);
+
+  // Suggester ranking: already-checked first (so a citation never scrolls away), then same-direction and
+  // same-tag tasks, then the rest. Free-text filters across title, direction and tags.
+  const suggested = (() => {
+    const q = citeQuery.trim().toLowerCase();
+    const mine = new Set(task?.tags || []);
+    const scored = siblings
+      .filter((s) => !q || `${s.title} ${s.directionName} ${(s.tags || []).join(" ")}`.toLowerCase().includes(q))
+      .map((s) => {
+        let score = 0;
+        if (extraParents.includes(s.id)) score -= 100;
+        if (s.direction === task?.direction) score -= 10;
+        score -= (s.tags || []).filter((t) => mine.has(t)).length * 4;
+        if (s.status === "done") score -= 1;
+        return { s, score };
+      })
+      .sort((a, b) => a.score - b.score || a.s.title.localeCompare(b.s.title));
+    return scored.slice(0, q ? 40 : 14).map((x) => x.s);
+  })();
 
   if (!detail) return <div className="muted pad">Select a task.</div>;
   if (!task) return <div className="muted pad">Loading task…</div>;
@@ -429,19 +451,31 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
             {siblings.length > 0 && (
               <>
                 <label>Also follows up on {extraParents.length > 0 ? `(${extraParents.length + 1} tasks)` : "(optional)"}</label>
+                <input
+                  className="parent-search"
+                  placeholder="Search tasks to cite…"
+                  value={citeQuery}
+                  onChange={(e) => setCiteQuery(e.target.value)}
+                />
                 <div className="parent-picker">
                   <label className="parent-opt fixed" title="the task you are proposing from is always a parent">
                     <input type="checkbox" checked readOnly />
                     <span>{task.title}</span>
                   </label>
-                  {siblings.map((s) => (
-                    <label key={s.id} className="parent-opt">
+                  {suggested.map((s) => (
+                    <label key={`${s.direction}/${s.id}`} className="parent-opt">
                       <input type="checkbox" checked={extraParents.includes(s.id)} onChange={() => toggleParent(s.id)} />
                       <span>{s.title}</span>
+                      <span className="parent-opt-dir">{s.directionName}</span>
                       <span className={`status status-${s.status === "done" ? "done" : "active"} parent-opt-status`}>{s.status}</span>
                     </label>
                   ))}
+                  {suggested.length === 0 && <div className="muted pad">No match.</div>}
                 </div>
+                <p className="parent-hint">
+                  Citing is a <b>hint</b>, not the final graph — the orchestrator derives the real links
+                  (and their kind: extends / re-does / refutes / applies) when it reviews the task.
+                </p>
               </>
             )}
             <div className="reopen-actions">

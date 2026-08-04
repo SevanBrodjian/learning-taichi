@@ -7,7 +7,28 @@
     {
       "id": "throw-to-target",
       "title": "Throw a blob to a target by backprop",
-      "status": "done"
+      "status": "done",
+      "tags": [
+        "gradients"
+      ],
+      "follow_ups": [
+        {
+          "id": "optimizer-comparison",
+          "dir": "differentiable-control"
+        },
+        {
+          "id": "learned-residual",
+          "dir": "learned-dynamics"
+        },
+        {
+          "id": "nan-root-cause",
+          "dir": "long-rollout-pathologies"
+        },
+        {
+          "id": "resolution-memory",
+          "dir": "long-rollout-pathologies"
+        }
+      ]
     },
     {
       "id": "optimizer-comparison",
@@ -18,6 +39,16 @@
         {
           "time": 1782367039,
           "note": "We should examine the optimizer comparison across a few varied tasks to be able to make more general claims."
+        }
+      ],
+      "tags": [
+        "gradients"
+      ],
+      "follow_up_of": [
+        {
+          "id": "throw-to-target",
+          "dir": "differentiable-control",
+          "kind": "extends"
         }
       ]
     }

@@ -10,17 +10,45 @@
       "status": "done",
       "note": "Implement a non-differentiable renderer which will make our 2D simulation of a fluid look highly realistic. It doesn't need to be fast, it doesn't need to be particularly simple, the purpose of this is just to see how good of something you can make (visually). Under the hood use MPM fluid simulation, and show a few things happening like dropping a fluid ball, or a fluid tower collapse. It should look very realistic, like an actual real-life liquid. Enough to make someone double glance if it was real.",
       "follow_ups": [
-        "improve-basic-fluid-sim-realism"
+        {
+          "id": "improve-basic-fluid-sim-realism",
+          "dir": "realistic-rendering"
+        }
+      ],
+      "tags": [
+        "rendering"
       ]
     },
     {
       "id": "improve-basic-fluid-sim-realism",
       "title": "Improve basic fluid sim realism",
       "status": "done",
-      "note": "This simulation rendering looks decent. But the liquid doesn\u2019t really behave like water, it moves a bit too slowly and also the behavior is off, hard to explain exactly. The rendering looks good but there are like holes inside the continuous portions of the liquid, which doesn\u2019t seem right. See if you can push the realism even further. Goal is photorealistic.",
-      "follow_up_of": "non-differentiable-fluid-renderer",
+      "note": "This simulation rendering looks decent. But the liquid doesn’t really behave like water, it moves a bit too slowly and also the behavior is off, hard to explain exactly. The rendering looks good but there are like holes inside the continuous portions of the liquid, which doesn’t seem right. See if you can push the realism even further. Goal is photorealistic.",
+      "follow_up_of": [
+        {
+          "id": "non-differentiable-fluid-renderer",
+          "dir": "realistic-rendering",
+          "kind": "extends"
+        },
+        {
+          "id": "varying-liquid-viscosity",
+          "dir": "material-variants",
+          "kind": "applies"
+        }
+      ],
       "follow_ups": [
-        "more-realistic-basic-fluid-sims"
+        {
+          "id": "gpu-accelerate-fluid-renderer",
+          "dir": "realistic-rendering"
+        },
+        {
+          "id": "more-realistic-basic-fluid-sims",
+          "dir": "realistic-rendering"
+        }
+      ],
+      "tags": [
+        "rendering",
+        "materials"
       ]
     },
     {
@@ -28,19 +56,48 @@
       "title": "GPU-accelerate the fluid renderer",
       "status": "done",
       "note": "The screen-space fluid renderer (sim/fluid_render2.py) is pure numpy/scipy on the CPU and takes ~0.5-2 s per 1080^2 frame, so a multi-scene showcase took ~25 min while the 4090 sat idle. Port the renderer to the GPU with Taichi so it renders orders of magnitude faster (target: a few ms per frame, whole scenes in seconds) while preserving the visual quality (metaball surface, FILLED interior / no holes, depth color, refraction/Fresnel/specular, foam). Benchmark CPU vs GPU on a clean GPU. Becomes the renderer the showcase re-run uses.",
-      "follow_up_of": "improve-basic-fluid-sim-realism"
+      "follow_up_of": [
+        {
+          "id": "improve-basic-fluid-sim-realism",
+          "dir": "realistic-rendering",
+          "kind": "extends"
+        }
+      ],
+      "tags": [
+        "rendering"
+      ],
+      "follow_ups": [
+        {
+          "id": "more-realistic-basic-fluid-sims",
+          "dir": "realistic-rendering"
+        }
+      ]
     },
     {
       "id": "more-realistic-basic-fluid-sims",
       "title": "Further Realistic Basic Fluid Sims",
       "status": "done",
       "note": "These results look closer to the photorealistic target, but they are very short and limited. Generate a more diverse and extensive set of examples showcasing the capabilities, such as more starting conditions, different viscosities, even things like mixing liquids of different colors. Also, make the animations much longer, these ones are WAY too short.",
-      "follow_up_of": "improve-basic-fluid-sim-realism",
+      "follow_up_of": [
+        {
+          "id": "gpu-accelerate-fluid-renderer",
+          "dir": "realistic-rendering",
+          "kind": "applies"
+        },
+        {
+          "id": "improve-basic-fluid-sim-realism",
+          "dir": "realistic-rendering",
+          "kind": "extends"
+        }
+      ],
       "rework_history": [
         {
           "time": 1783912800,
           "note": "Deferred and to be re-run in FULL (all scenes incl. color mixing, long clips) on the new GPU renderer once gpu-accelerate-fluid-renderer is done. The first run was killed mid-render (only pour/fill/obstacle rendered) and the CPU renderer was far too slow (~25 min)."
         }
+      ],
+      "tags": [
+        "rendering"
       ]
     }
   ]

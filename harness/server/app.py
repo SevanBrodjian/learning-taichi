@@ -312,6 +312,7 @@ def overview() -> dict:
     ddir = MAIN_ROOT / "coordination" / "directions"
     arts = _v2_tasks()
     live = live_statuses()
+    _tidx = _task_index()          # built once; parent refs resolve across directions against it
     directions = []
     for f in (sorted(ddir.glob("*.json")) if ddir.is_dir() else []):
         try:
@@ -332,8 +333,10 @@ def overview() -> dict:
                 "live": live.get((did, tid)),
                 "has_artifact": has, "detail": f"/api/task/{did}/{tid}" if has else None,
                 "rework_history": t.get("rework_history", []),
-                "follow_up_of": t.get("follow_up_of"),
+                # Normalized + direction-resolved so the Map can draw cross-direction, typed edges.
+                "follow_up_of": _overview_parents(t, did, _tidx),
                 "follow_ups": t.get("follow_ups", []),
+                "notes": t.get("notes", []),
             })
         directions.append({
             "id": did, "name": d.get("name", did), "status": d.get("status", "proposed"),
@@ -344,12 +347,78 @@ def overview() -> dict:
     return {"directions": directions, "orphans": orphans}
 
 
+# Edge kinds. A follow-up that overturned its parent must not read like one that built on it.
+EDGE_KINDS = ("extends", "re-does", "refutes", "applies", "prerequisite-of")
+DEFAULT_KIND = "extends"
+
+
+def _overview_parents(t: dict, did: str, idx: dict) -> list:
+    """Parents of `t`, resolved to a concrete direction so the graph can cross direction boundaries.
+    Unresolvable refs are dropped rather than drawn as dangling edges. `idx` is built ONCE by the caller —
+    the overview is polled every few seconds, so this must not re-read the direction files per task."""
+    out = []
+    for p in _as_parent_list(t.get("follow_up_of")):
+        r = _resolve_parent(p, did, idx)
+        if r:
+            out.append({"id": r[1], "dir": r[0], "kind": p["kind"]})
+    return out
+
+
 def _as_parent_list(v) -> list:
-    """`follow_up_of` may be a single id (legacy, one parent) or a list of ids (a proposal that follows
-    up on several tasks at once). Always read it as a list so the rest of the code is uniform."""
+    """Normalize `follow_up_of` into a uniform list of {id, dir, kind} dicts.
+
+    Three historical shapes are accepted, so nothing on disk has to be migrated in lockstep:
+      "task-id"                            legacy single parent, same direction
+      ["task-id", ...]                     legacy multi-parent, same direction
+      [{"id":..,"dir":..,"kind":..}, ...]  current: cross-direction and typed
+    `dir` may be None, meaning "resolve by id across all directions"."""
     if not v:
         return []
-    return [x for x in v if x] if isinstance(v, list) else [v]
+    raw = v if isinstance(v, list) else [v]
+    out = []
+    for x in raw:
+        if not x:
+            continue
+        if isinstance(x, str):
+            out.append({"id": x, "dir": None, "kind": DEFAULT_KIND})
+        elif isinstance(x, dict) and x.get("id"):
+            out.append({"id": x["id"], "dir": x.get("dir"),
+                        "kind": x.get("kind") if x.get("kind") in EDGE_KINDS else DEFAULT_KIND})
+    return out
+
+
+def _parent_ids(v) -> list:
+    """Just the task ids, for code that only cares about identity (pruning, dedupe)."""
+    return [p["id"] for p in _as_parent_list(v)]
+
+
+def _task_index() -> dict:
+    """(direction, task_id) -> task dict, across every direction file. Lets a parent reference resolve
+    across directions, which is what makes the graph a real lineage instead of five disconnected trees."""
+    idx = {}
+    ddir = MAIN_ROOT / "coordination" / "directions"
+    if ddir.is_dir():
+        for f in sorted(ddir.glob("*.json")):
+            try:
+                d = json.loads(f.read_text("utf-8"))
+            except Exception:
+                continue
+            did = d.get("id", f.stem)
+            for t in d.get("tasks", []):
+                if t.get("id"):
+                    idx[(did, t["id"])] = t
+    return idx
+
+
+def _resolve_parent(p: dict, fallback_dir: str, idx: dict):
+    """Resolve one normalized parent ref to (direction, task) or None. An explicit `dir` wins; then the
+    referring task's own direction; then a unique match on id anywhere."""
+    if p.get("dir") and (p["dir"], p["id"]) in idx:
+        return p["dir"], p["id"]
+    if (fallback_dir, p["id"]) in idx:
+        return fallback_dir, p["id"]
+    hits = [k for k in idx if k[1] == p["id"]]
+    return hits[0] if len(hits) == 1 else None
 
 
 def task_detail(direction: str, task: str) -> dict | None:
@@ -364,14 +433,26 @@ def task_detail(direction: str, task: str) -> dict | None:
         try:
             dtasks = json.loads(f.read_text("utf-8")).get("tasks", [])
             by_id = {t.get("id"): t for t in dtasks}
+            tidx = _task_index()
 
-            def ref(tid):
-                tt = by_id.get(tid)
-                if not tt:
-                    return None
-                return {"direction": direction, "id": tid, "title": tt.get("title", tid),
-                        "status": tt.get("status", "proposed"),
-                        "has_artifact": (direction, tid) in arts}
+            def ref(tid, tdir=None, kind=None):
+                """Resolve a task reference, possibly in ANOTHER direction (the graph is cross-direction
+                now), into the shape the task page renders."""
+                d2 = tdir or direction
+                tt = tidx.get((d2, tid))
+                if tt is None and (direction, tid) in tidx:
+                    d2, tt = direction, tidx[(direction, tid)]
+                if tt is None:
+                    hits = [k for k in tidx if k[1] == tid]
+                    if len(hits) != 1:
+                        return None
+                    d2, tt = hits[0][0], tidx[hits[0]]
+                out = {"direction": d2, "id": tid, "title": tt.get("title", tid),
+                       "status": tt.get("status", "proposed"),
+                       "has_artifact": (d2, tid) in arts}
+                if kind:
+                    out["kind"] = kind
+                return out
 
             this = by_id.get(task, {})
             m["status"] = this.get("status", m.get("status"))
@@ -381,8 +462,11 @@ def task_detail(direction: str, task: str) -> dict | None:
             m["rework_history"] = this.get("rework_history", [])
             m["notes"] = this.get("notes", [])          # the user's own passive margin notes
             # follow_up_of is now a LIST of resolved refs (a proposal may follow up on several parents).
-            m["follow_up_of"] = [r for r in (ref(p) for p in _as_parent_list(this.get("follow_up_of"))) if r]
-            m["follow_ups"] = [r for r in (ref(x) for x in this.get("follow_ups", [])) if r]
+            m["follow_up_of"] = [r for r in (ref(p["id"], p.get("dir"), p.get("kind"))
+                                             for p in _as_parent_list(this.get("follow_up_of"))) if r]
+            m["follow_ups"] = [r for r in (ref(x if isinstance(x, str) else x.get("id"),
+                                               None if isinstance(x, str) else x.get("dir"))
+                                           for x in this.get("follow_ups", [])) if r]
         except Exception:
             pass
     return m
@@ -627,21 +711,40 @@ def delete_task(direction: str, task: str) -> dict:
     kept = [t for t in tasks if t.get("id") != task]
     if len(kept) == len(tasks):
         return {"ok": False, "error": "no such task"}
-    # Sever any follow-up links that referenced the deleted task, so no dangling refs remain. A child's
-    # follow_up_of may be a single id or a list of parents, so prune it in either form.
-    for t in kept:
-        parents = _as_parent_list(t.get("follow_up_of"))
-        if task in parents:
-            parents = [p for p in parents if p != task]
-            if not parents:
-                t.pop("follow_up_of", None)
-            else:
-                t["follow_up_of"] = parents[0] if len(parents) == 1 else parents
-        if task in (t.get("follow_ups") or []):
-            t["follow_ups"] = [x for x in t["follow_ups"] if x != task]
     data["tasks"] = kept
     f.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-    _git_commit(f, f"dashboard: delete task {direction}/{task}")
+
+    # Sever every reference to the deleted task so no dangling edge remains. Edges are CROSS-DIRECTION
+    # now, so this has to sweep all direction files, not just this one.
+    touched = [f]
+    for g in sorted((MAIN_ROOT / "coordination" / "directions").glob("*.json")):
+        try:
+            gd = json.loads(g.read_text("utf-8"))
+        except Exception:
+            continue
+        gdid = gd.get("id", g.stem)
+        changed = False
+        for t in gd.get("tasks", []):
+            parents = _as_parent_list(t.get("follow_up_of"))
+            keptp = [p for p in parents
+                     if not (p["id"] == task and (p.get("dir") in (None, direction) or gdid == direction))]
+            if len(keptp) != len(parents):
+                changed = True
+                if keptp:
+                    t["follow_up_of"] = keptp
+                else:
+                    t.pop("follow_up_of", None)
+            fu = t.get("follow_ups") or []
+            keptf = [x for x in fu if (x.get("id") if isinstance(x, dict) else x) != task]
+            if len(keptf) != len(fu):
+                changed = True
+                t["follow_ups"] = keptf
+        if changed:
+            g.write_text(json.dumps(gd, indent=2) + "\n", encoding="utf-8")
+            if g != f:
+                touched.append(g)
+    for g in touched:
+        _git_commit(g, f"dashboard: delete task {direction}/{task}")
     return {"ok": True}
 
 
@@ -667,8 +770,10 @@ def propose_follow_up(direction: str, parents, title: str, note: str = "") -> di
     tid, i = base, 2
     while tid in existing:
         tid, i = f"{base}-{i}", i + 1
+    # Written in the normalized {id, dir, kind} form. The kind is a PLACEHOLDER: the user's citation is a
+    # hint, and the orchestrator re-derives the real edges (and their kinds) when it reviews the task.
     tasks.append({"id": tid, "title": title, "status": "proposed", "note": note,
-                  "follow_up_of": parents[0] if len(parents) == 1 else parents})
+                  "follow_up_of": [{"id": p, "dir": direction, "kind": DEFAULT_KIND} for p in parents]})
     pset = set(parents)
     for t in tasks:
         if t.get("id") in pset:

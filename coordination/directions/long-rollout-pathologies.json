@@ -7,31 +7,108 @@
     {
       "id": "nan-root-cause",
       "title": "Root-cause and fix the long-rollout NaN",
-      "status": "done"
+      "status": "done",
+      "tags": [
+        "gradients"
+      ],
+      "follow_up_of": [
+        {
+          "id": "throw-to-target",
+          "dir": "differentiable-control",
+          "kind": "extends"
+        }
+      ],
+      "follow_ups": [
+        {
+          "id": "softened-wall",
+          "dir": "long-rollout-pathologies"
+        },
+        {
+          "id": "jacobian-norms",
+          "dir": "long-rollout-pathologies"
+        }
+      ]
     },
     {
       "id": "softened-wall",
       "title": "Softened wall contact for smooth boundary gradients",
       "status": "done",
-      "note": "The hard wall clamp is a non-smooth kink in the gradient. Replace it with a smooth ramp and measure whether gradient quality improves, independent of the (already-fixed) mass overflow. Tests the contact-differentiability hypothesis directly."
+      "note": "The hard wall clamp is a non-smooth kink in the gradient. Replace it with a smooth ramp and measure whether gradient quality improves, independent of the (already-fixed) mass overflow. Tests the contact-differentiability hypothesis directly.",
+      "tags": [
+        "gradients"
+      ],
+      "follow_up_of": [
+        {
+          "id": "nan-root-cause",
+          "dir": "long-rollout-pathologies",
+          "kind": "extends"
+        }
+      ],
+      "follow_ups": [
+        {
+          "id": "jacobian-norms",
+          "dir": "long-rollout-pathologies"
+        }
+      ]
     },
     {
       "id": "checkpointing-long-horizon",
       "title": "Gradient checkpointing for 1024+ step horizons",
       "status": "proposed",
-      "note": "Storing every intermediate state caps the horizon at memory. Implement gradient checkpointing (recompute instead of store) to reach 1024+ steps, and measure the real compute/memory trade-off on the GPU."
+      "note": "Storing every intermediate state caps the horizon at memory. Implement gradient checkpointing (recompute instead of store) to reach 1024+ steps, and measure the real compute/memory trade-off on the GPU.",
+      "tags": [
+        "gradients"
+      ],
+      "follow_up_of": [
+        {
+          "id": "resolution-memory",
+          "dir": "long-rollout-pathologies",
+          "kind": "extends"
+        }
+      ]
     },
     {
       "id": "resolution-memory",
       "title": "Gradient memory and throughput vs resolution",
       "status": "done",
-      "note": "How do grid and particle counts trade against GPU throughput and the memory of the stored backward tape? Maps the practical envelope of what is differentiable, at what cost."
+      "note": "How do grid and particle counts trade against GPU throughput and the memory of the stored backward tape? Maps the practical envelope of what is differentiable, at what cost.",
+      "tags": [
+        "gradients"
+      ],
+      "follow_up_of": [
+        {
+          "id": "throw-to-target",
+          "dir": "differentiable-control",
+          "kind": "extends"
+        }
+      ],
+      "follow_ups": [
+        {
+          "id": "checkpointing-long-horizon",
+          "dir": "long-rollout-pathologies"
+        }
+      ]
     },
     {
       "id": "jacobian-norms",
       "title": "Per-step Jacobian-norm estimation",
       "status": "proposed",
-      "note": "Estimate the per-step Jacobian norm via finite differences to see exactly where in the rollout the gradient becomes ill-conditioned. The clearest picture of the amplification, more informative than the forward-state proxy used so far."
+      "note": "Estimate the per-step Jacobian norm via finite differences to see exactly where in the rollout the gradient becomes ill-conditioned. The clearest picture of the amplification, more informative than the forward-state proxy used so far.",
+      "tags": [
+        "gradients"
+      ],
+      "follow_up_of": [
+        {
+          "id": "nan-root-cause",
+          "dir": "long-rollout-pathologies",
+          "kind": "extends"
+        },
+        {
+          "id": "softened-wall",
+          "dir": "long-rollout-pathologies",
+          "kind": "applies"
+        }
+      ]
     }
   ]
 }

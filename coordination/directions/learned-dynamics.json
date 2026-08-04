@@ -8,7 +8,24 @@
       "id": "learned-residual",
       "title": "Learn a residual correction to the grid update",
       "status": "done",
-      "note": "Keep the MLS-MPM step but add a small learned residual on the grid velocity, trained through the differentiable rollout. A minimal hybrid that tests whether gradients can train a network embedded in physics."
+      "note": "Keep the MLS-MPM step but add a small learned residual on the grid velocity, trained through the differentiable rollout. A minimal hybrid that tests whether gradients can train a network embedded in physics.",
+      "tags": [
+        "learned",
+        "gradients"
+      ],
+      "follow_up_of": [
+        {
+          "id": "throw-to-target",
+          "dir": "differentiable-control",
+          "kind": "applies"
+        }
+      ],
+      "follow_ups": [
+        {
+          "id": "train-and-interpolate-nns-to-mimic-viscous-liquids",
+          "dir": "material-variants"
+        }
+      ]
     }
   ]
 }

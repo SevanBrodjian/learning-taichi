@@ -65,7 +65,8 @@
           "dir": "long-rollout-pathologies",
           "kind": "extends"
         }
-      ]
+      ],
+      "effort": "quick"
     },
     {
       "id": "resolution-memory",

@@ -99,16 +99,6 @@
       "tags": [
         "rendering"
       ]
-    },
-    {
-      "id": "tag-routing-smoke-test",
-      "title": "Tag routing smoke test",
-      "status": "proposed",
-      "note": "delete me",
-      "effort": "standard",
-      "tags": [
-        "rendering"
-      ]
     }
   ]
 }

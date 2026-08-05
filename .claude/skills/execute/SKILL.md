@@ -81,6 +81,17 @@ When a worker finishes, **review before committing** (`CLAUDE.md`):
 - Review the **training page** it added: objective voice, standalone, short, informative visuals — and
   **verify every `[[link]]` resolves** to a real section and that the **math prerequisites** it leans on
   exist (add them if not). Fix or extend it per `spec/style_training_report.md`.
+- **Re-derive the WHOLE task graph — mandatory, every time.** A citation made when the task was proposed is
+  a guess about a run that had not happened yet. Now that the results exist, re-read what the task actually
+  turned out to be and:
+  - re-point and re-type **its own** edges, overriding the user's citation where the result says otherwise
+    (a proposed "follow-up" is very often really a **`re-does`**, and **`refutes`** is only ever knowable
+    after the fact);
+  - **re-check every other task's edges** for connections this result exposes and kinds this evidence
+    changes.
+
+  Apply by editing the `GRAPH` table in `harness/tools/rebuild_graph.py` and re-running it (idempotent),
+  then say in the commit which edges changed and why. Appending only is how the graph decayed last time.
 - Then commit the worker's files. **Leave status `active`** — *Done is the user's call*, never set
   automatically.
 

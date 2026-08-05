@@ -58,6 +58,16 @@ const parentsOf = (t) =>
     .map((p) => (typeof p === "string" ? { id: p, dir: null, kind: "extends" } : p))
     .filter((p) => p && p.id);
 
+// Per-device saved arrangement. Deliberately localStorage and not the repo: where Sevan likes his nodes
+// on the iPad is not project data, and two devices may reasonably differ.
+const LAYOUT_KEY = "lt_map_layout_v1";
+const loadLayout = () => {
+  try { return JSON.parse(localStorage.getItem(LAYOUT_KEY) || "{}") || {}; } catch { return {}; }
+};
+const saveLayout = (m) => {
+  try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(m)); } catch { /* private mode / quota */ }
+};
+
 // Deterministic per-key pseudo-random in [0,1). Same layout on every reload, no Math.random.
 function hash01(s, salt) {
   let h = 2166136261 ^ salt;
@@ -230,12 +240,37 @@ export default function GraphView({ overview, onOpenTask, onOpenRef }) {
 
     // normalize into a tidy box
     const pad = 70;
-    const minX = Math.min(...nodes.map((n) => n.x)), maxX = Math.max(...nodes.map((n) => n.x));
-    const minY = Math.min(...nodes.map((n) => n.y)), maxY = Math.max(...nodes.map((n) => n.y));
+    const minX = Math.min(...nodes.map((n) => n.x));
+    const minY = Math.min(...nodes.map((n) => n.y));
     nodes.forEach((n) => { n.x = n.x - minX + pad; n.y = n.y - minY + pad; });
-    const width = (maxX - minX) + pad * 2 + NODE_W;
-    const height = (maxY - minY) + pad * 2 + NODE_H;
-    return { nodes, edges, byKey, tags: tagList, width, height, step };
+
+    // The canonical (solver's own) arrangement, captured BEFORE any saved layout is applied. "Organize"
+    // eases every node back to exactly this.
+    const canonical = {};
+    nodes.forEach((n) => { canonical[n.key] = { x: n.x, y: n.y }; });
+    const canonicalLayout = () => canonical;
+
+    // ── saved layout (per device) ────────────────────────────────────────────────────────────────
+    // A dragged node stays where it was put, across reloads. Stored per browser, not in the repo:
+    // it is a personal arrangement, not project data, and two devices may want different ones.
+    const saved = loadLayout();
+    const placed = nodes.filter((n) => saved[n.key]);
+    placed.forEach((n) => { n.x = saved[n.key].x; n.y = saved[n.key].y; });
+
+    // A task with no saved position is NEW. Park it OUTSIDE the arrangement rather than dropping it in
+    // the middle — an unreviewed task should announce itself as unplaced, not silently rearrange the map.
+    const fresh = nodes.filter((n) => !saved[n.key]);
+    if (placed.length && fresh.length) {
+      const right = Math.max(...placed.map((n) => n.x)) + NODE_W;
+      const top = Math.min(...placed.map((n) => n.y));
+      fresh.forEach((n, i) => { n.x = right + 120; n.y = top + i * (NODE_H + 26); n.unplaced = true; });
+    }
+
+    const allX = nodes.map((n) => n.x), allY = nodes.map((n) => n.y);
+    const width = Math.max(...allX) - Math.min(...allX) + pad * 2 + NODE_W;
+    const height = Math.max(...allY) - Math.min(...allY) + pad * 2 + NODE_H;
+    return { nodes, edges, byKey, tags: tagList, width, height, step, canonicalLayout,
+             hasSaved: placed.length > 0, unplaced: fresh.length };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig]);
 
@@ -337,14 +372,64 @@ export default function GraphView({ overview, onOpenTask, onOpenRef }) {
     }
   };
 
+  // Persist the whole arrangement whenever anything is dropped, so a drag survives a reload.
+  const persist = useCallback(() => {
+    const m = {};
+    nodes.forEach((n) => { m[n.key] = { x: Math.round(n.x), y: Math.round(n.y) }; });
+    saveLayout(m);
+  }, [nodes]);
+
   const onPointerUp = (e) => {
     pointers.current.delete(e.pointerId);
     const nd = nodeDrag.current, g = gesture.current;
     if (nd && !nd.moved) setSelected((s) => (s === nd.node.key ? null : nd.node.key));
     else if (g?.pan && !g.moved && !nd) setSelected(null);
+    if (nd?.moved) {
+      nd.node.x = nd.x; nd.node.y = nd.y; nd.node.unplaced = false;
+      nodeDrag.current = null;
+      persist();
+      force((v) => v + 1);
+    }
     nodeDrag.current = null;
     if (pointers.current.size === 0) gesture.current = null;
   };
+
+  // "Organize": re-solve from scratch and ease every node to its new home. The tween is the only place
+  // the map animates for its own sake, and it is short — you should see WHERE things moved, not watch a
+  // demo. Falls back to an instant snap if rAF is unavailable, so it can never leave the map half-moved.
+  const [organizing, setOrganizing] = useState(false);
+  const organize = useCallback(() => {
+    const from = nodes.map((n) => ({ n, x: n.x, y: n.y }));
+    saveLayout({});                       // forget the saved arrangement...
+    const target = solved.canonicalLayout();   // ...and recompute the canonical one
+    const t0 = performance.now(), DUR = 620;
+    setOrganizing(true);
+    const ease = (t) => 1 - Math.pow(1 - t, 3);
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(guard);
+      from.forEach(({ n }) => { n.x = target[n.key].x; n.y = target[n.key].y; n.unplaced = false; });
+      persist(); setOrganizing(false); force((v) => v + 1); fit();
+    };
+    // Safety net: the tween is a nicety, but ARRIVING is not. If frames never come (backgrounded tab,
+    // throttled PWA) the animation must still land instead of leaving the button stuck on "Organizing…".
+    const guard = setTimeout(finish, DUR + 350);
+    const tick = () => {
+      if (done) return;
+      const t = Math.min(1, (performance.now() - t0) / DUR);
+      const e = ease(t);
+      from.forEach(({ n, x, y }) => {
+        n.x = x + (target[n.key].x - x) * e;
+        n.y = y + (target[n.key].y - y) * e;
+      });
+      force((v) => v + 1);
+      if (t < 1) requestAnimationFrame(tick); else finish();
+    };
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(tick);
+    else finish();
+  }, [nodes, solved, persist, fit]);
 
   // Wheel: attached to the live canvas (not on mount, when it may not exist yet) and rAF-coalesced.
   useEffect(() => {
@@ -429,6 +514,10 @@ export default function GraphView({ overview, onOpenTask, onOpenRef }) {
           <button className="act-btn" onClick={() => setView((v) => ({ ...v, k: Math.max(0.18, v.k / 1.2) }))}>−</button>
           <button className="act-btn" onClick={() => setView((v) => ({ ...v, k: Math.min(2.4, v.k * 1.2) }))}>+</button>
           <button className="act-btn" onClick={fit}>Fit</button>
+          <button className="act-btn" onClick={organize} disabled={organizing}
+                  title="Re-solve the arrangement and ease everything into place">
+            {organizing ? "Organizing…" : "Organize"}
+          </button>
         </span>
       </div>
 

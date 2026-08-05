@@ -252,6 +252,29 @@ arbitrary edges across 21 tasks, twelve orphans, and zero cross-direction connec
 - **Every derived edge stays overridable.** The orchestrator proposes; the user can re-point or delete any
   edge. Automation that cannot be corrected is worse than none.
 
+### Re-derive the WHOLE graph after every task completes — not just the new task's edges
+**This is mandatory, and it is the step that keeps the Map worth having.** A citation made at propose time
+is a guess about a task that has not run yet. You cannot know the right edge until the results exist:
+
+- `refutes` is only knowable **after** the result contradicts the parent. Nobody proposes a task saying
+  "this will overturn its parent".
+- A task the user proposed as a plain follow-up often turns out to be a **`re-does`** — it redid the parent
+  properly because the parent was flawed.
+- A finished task frequently reveals a connection to work in a **different lineage** that was invisible
+  when it was proposed.
+
+So, as part of reviewing every finished worker (see the review duties above), the orchestrator **re-runs
+the derivation across the entire board**, not only the task that just landed:
+1. Re-read what the new task actually turned out to be — its findings, not its brief.
+2. Re-point and re-type its own edges, **overriding the user's citation where the result says otherwise.**
+3. **Re-check every other task's edges** for connections the new result exposes, and for kinds that the new
+   evidence changes (a parent that has now been refuted, a chain that is really a re-do).
+4. Apply with `harness/tools/rebuild_graph.py`, which is idempotent — edit its `GRAPH` table and re-run.
+5. Say in the commit what edges changed and why.
+
+A graph that is only appended to decays into the arbitrary mess this rule replaced. **Treat every completed
+task as a reason to re-read the whole lineage.**
+
 ## Directions are emergent — tasks form a graph
 The mental model is a **network of tasks** (a Zettelkasten), not folders. Tasks are the primary unit; the
 **follow-up links** (`follow_up_of`, now multi-parent, + `follow_ups`) make them a directed graph, and a

@@ -23,7 +23,7 @@
       "id": "improve-basic-fluid-sim-realism",
       "title": "Improve basic fluid sim realism",
       "status": "done",
-      "note": "This simulation rendering looks decent. But the liquid doesn’t really behave like water, it moves a bit too slowly and also the behavior is off, hard to explain exactly. The rendering looks good but there are like holes inside the continuous portions of the liquid, which doesn’t seem right. See if you can push the realism even further. Goal is photorealistic.",
+      "note": "This simulation rendering looks decent. But the liquid doesn\u2019t really behave like water, it moves a bit too slowly and also the behavior is off, hard to explain exactly. The rendering looks good but there are like holes inside the continuous portions of the liquid, which doesn\u2019t seem right. See if you can push the realism even further. Goal is photorealistic.",
       "follow_up_of": [
         {
           "id": "non-differentiable-fluid-renderer",
@@ -96,6 +96,16 @@
           "note": "Deferred and to be re-run in FULL (all scenes incl. color mixing, long clips) on the new GPU renderer once gpu-accelerate-fluid-renderer is done. The first run was killed mid-render (only pour/fill/obstacle rendered) and the CPU renderer was far too slow (~25 min)."
         }
       ],
+      "tags": [
+        "rendering"
+      ]
+    },
+    {
+      "id": "tag-routing-smoke-test",
+      "title": "Tag routing smoke test",
+      "status": "proposed",
+      "note": "delete me",
+      "effort": "standard",
       "tags": [
         "rendering"
       ]

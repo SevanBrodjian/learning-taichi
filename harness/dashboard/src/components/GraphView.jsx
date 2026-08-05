@@ -1,43 +1,37 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 /**
- * The Map — the research lineage, not a hairball.
+ * The Map — a relaxation-solved task graph.
  *
- * Rebuilt for B3. What was wrong with the old one (all visible in one screenshot): twelve orphan tasks
- * stacked in a dead left column, 11 links for 21 tasks, long edges routed straight THROUGH other nodes,
- * titles truncated to unreadability, half the canvas empty, and "tags" that were really direction names
- * and filtered nothing useful.
+ * WHY THIS SHAPE. The previous version was a layered DAG: columns by depth, left to right. With 21 tasks
+ * at depth 7 it smeared into a ~2000px strip four rows tall — an aspect ratio no screen wants, unrelated
+ * tasks forced into the same column, and long edges that had to be routed through whatever gaps were
+ * left. Sevan: "one long horizontal stretch does not visualize well ... the arrows are all crazy
+ * overlapping ... tasks should be less fixed and gridlocked -- maybe they can move fluidly and adapt to
+ * use space effectively."
  *
- * What changed:
- *  - EDGES HAVE KINDS (extends / re-does / refutes / applies / prerequisite-of), drawn differently and
- *    labelled on hover. A follow-up that overturned its parent no longer looks like one that built on it.
- *  - ORTHOGONAL ROUTING with per-edge lanes, so an edge spanning several columns travels in the gutter
- *    between them instead of crossing node bodies.
- *  - LANE-PACKED LAYOUT: nodes are placed by depth, then packed so a column only uses the rows it needs;
- *    the canvas is sized to content instead of leaving two-thirds empty.
- *  - WIDER NODES + two-line titles, so a task is readable without hovering.
- *  - TAGS FILTER FOR REAL, and the four canonical tags carry fixed colours.
- *  - A STORY RAIL: hovering any node lights its full ancestry and descent, and the header names the
- *    lineage you are looking at.
+ * So the layout is a small force solve. Nodes repel, edges pull, tasks sharing a tag attract, and a weak
+ * gravity keeps it centred. Related work clusters on its own, the graph fills two dimensions instead of
+ * one, and edges become short straight lines between well-separated nodes — which reads far better than
+ * orthogonal routing through a dense grid.
  *
- * CRASH FIX (Sevan: "it crashes the whole PWA when I scroll on that page sometimes"):
- *  - onPointerMove read `drag.current.ox` INSIDE a setState updater. React can run that updater after
- *    pointerup/pointerleave has already set `drag.current = null`, throwing a TypeError from inside
- *    render — which on an iPad PWA takes the whole web view down. The drag origin is now captured into
- *    locals before the updater, and the updater touches no refs.
- *  - setPointerCapture is wrapped: it throws if the pointer was already released.
- *  - The wheel handler is attached natively with {passive:false} instead of via React's onWheel, which
- *    is registered passive — so preventDefault() actually works instead of throwing and letting the
- *    gesture fall through to the shell.
- *  - Wheel zoom is rAF-coalesced, so a trackpad/touch flick cannot queue hundreds of re-renders.
+ * RELIABLE AND FAST, NOT A TOY. The solve is deterministic (positions seed from a hash of the task id)
+ * and runs to completion SYNCHRONOUSLY before first paint — a fixed iteration budget, then frozen. It
+ * does not jitter, does not spin the CPU, and looks identical on every reload. rAF is used only to relax
+ * the graph while a node is being dragged, and it stops as soon as the energy decays.
+ *
+ * TOUCH IS A FIRST-CLASS TARGET (it is an iPad PWA):
+ *  - SELECTION, not hover, drives the lineage highlight. Tapping a node pins its story; hover is a
+ *    desktop-only convenience layered on top. There is no hover on an iPad.
+ *  - Pinch-to-zoom and one-finger pan via pointer events, with `touch-action: none` so the browser does
+ *    not steal the gesture. Panning previously fought the browser and felt broken.
+ *  - The wheel listener is attached once the canvas actually exists. The old one was registered in a
+ *    mount-only effect that ran while the component was still rendering its "Loading…" branch, so the
+ *    ref was null, it bailed, and it never re-ran — which is why scroll-zoom silently stopped working.
  */
 
-const NODE_W = 210;
-const NODE_H = 52;
-const COL_W = 290;          // node + gutter; the gutter is where edges are allowed to travel
-const ROW_H = 74;
-const MARGIN = 56;
-const GUTTER = COL_W - NODE_W;
+const NODE_W = 172;
+const NODE_H = 46;
 
 const STATUS = {
   proposed: { fill: "#141b25", stroke: "#3a4658", text: "#9fb0c0", label: "Proposed" },
@@ -47,19 +41,15 @@ const STATUS = {
 };
 const st = (s) => STATUS[s] || STATUS.proposed;
 
-// The four canonical tags (spec: gradients / materials / learned / rendering) get stable colours.
-const TAG_COLORS = {
-  gradients: "#4cc2ff", materials: "#ffb037", learned: "#c98bff", rendering: "#5ee0c8",
-};
+const TAG_COLORS = { gradients: "#4cc2ff", materials: "#ffb037", learned: "#c98bff", rendering: "#5ee0c8" };
 const FALLBACK = ["#7ee787", "#ff7b9c", "#8fa8ff", "#e6a23c"];
 
-// How each edge kind draws. `dash` null = solid. These are semantic, not decorative.
 const KIND = {
-  "extends":         { color: "#3f5468", label: "extends" },
-  "re-does":         { color: "#ffb037", dash: "7 4", label: "re-does" },
-  "refutes":         { color: "#ff7b9c", dash: "2 4", label: "refutes" },
-  "applies":         { color: "#5ee0c8", dash: "1 5", label: "applies" },
-  "prerequisite-of": { color: "#8fa8ff", dash: "10 4", label: "prerequisite of" },
+  "extends":         { color: "#4a6076", label: "extends" },
+  "re-does":         { color: "#ffb037", dash: "7 5", label: "re-does" },
+  "refutes":         { color: "#ff7b9c", dash: "2 5", label: "refutes" },
+  "applies":         { color: "#5ee0c8", dash: "1 6", label: "applies" },
+  "prerequisite-of": { color: "#8fa8ff", dash: "10 5", label: "prerequisite of" },
 };
 const kindOf = (k) => KIND[k] || KIND["extends"];
 
@@ -68,10 +58,16 @@ const parentsOf = (t) =>
     .map((p) => (typeof p === "string" ? { id: p, dir: null, kind: "extends" } : p))
     .filter((p) => p && p.id);
 
+// Deterministic per-key pseudo-random in [0,1). Same layout on every reload, no Math.random.
+function hash01(s, salt) {
+  let h = 2166136261 ^ salt;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return ((h >>> 0) % 100000) / 100000;
+}
+
 export default function GraphView({ overview, onOpenTask, onOpenRef }) {
   const dirs = overview?.directions || [];
 
-  // Stable signature so the 4s board poll doesn't relayout and make the map twitch.
   const sig = dirs.map((d) =>
     d.tasks.map((t) =>
       `${d.id}/${t.id}:${t.status}:${t.has_artifact ? 1 : 0}:` +
@@ -80,7 +76,8 @@ export default function GraphView({ overview, onOpenTask, onOpenRef }) {
     ).join("|")
   ).join("||");
 
-  const { nodes, edges, tags, width, height, byKey } = useMemo(() => {
+  // ── build + solve ──────────────────────────────────────────────────────────────────────────────
+  const solved = useMemo(() => {
     const nodes = [];
     const byKey = new Map();
     const byId = new Map();
@@ -90,217 +87,330 @@ export default function GraphView({ overview, onOpenTask, onOpenRef }) {
         const n = {
           key, id: t.id, direction: d.id, directionName: d.name, title: t.title,
           status: t.status, has: t.has_artifact, detail: t.detail,
-          tags: t.tags && t.tags.length ? t.tags : [d.id],
-          rawParents: parentsOf(t),
+          tags: (t.tags && t.tags.length ? t.tags : [d.id]),
+          raw: parentsOf(t),
         };
         nodes.push(n); byKey.set(key, n);
         if (!byId.has(t.id)) byId.set(t.id, key);
       }
     }
-    // Resolve parents across directions.
+    const resolve = (p) => (p.dir && byKey.has(`${p.dir}/${p.id}`) ? `${p.dir}/${p.id}` : byId.get(p.id));
     for (const n of nodes) {
-      n.parents = n.rawParents
-        .map((p) => (p.dir && byKey.has(`${p.dir}/${p.id}`) ? `${p.dir}/${p.id}` : byId.get(p.id)))
-        .filter((k) => k && k !== n.key);
-      n.parentKind = {};
-      n.rawParents.forEach((p) => {
-        const k = p.dir && byKey.has(`${p.dir}/${p.id}`) ? `${p.dir}/${p.id}` : byId.get(p.id);
-        if (k) n.parentKind[k] = p.kind || "extends";
-      });
+      n.parents = n.raw.map(resolve).filter((k) => k && k !== n.key);
+      n.kindOfParent = {};
+      n.raw.forEach((p) => { const k = resolve(p); if (k) n.kindOfParent[k] = p.kind || "extends"; });
+    }
+    const edges = [];
+    for (const n of nodes) {
+      for (const pk of n.parents) {
+        const p = byKey.get(pk);
+        if (p) edges.push({ from: p, to: n, key: `${pk}->${n.key}`, kind: n.kindOfParent[pk] || "extends" });
+      }
     }
 
-    // depth = longest ancestor chain (cycle-safe)
+    // generation = longest ancestor chain; used only as a gentle left-to-right bias so the story still
+    // reads in reading order without the layout being locked to a grid.
     const memo = new Map();
-    const depth = (key, stack = new Set()) => {
-      if (memo.has(key)) return memo.get(key);
-      if (stack.has(key)) return 0;
-      stack.add(key);
-      const n = byKey.get(key);
-      const ps = (n?.parents || []).filter((k) => byKey.has(k));
-      const v = ps.length ? 1 + Math.max(...ps.map((k) => depth(k, stack))) : 0;
-      stack.delete(key);
-      memo.set(key, v);
+    const gen = (k, stack = new Set()) => {
+      if (memo.has(k)) return memo.get(k);
+      if (stack.has(k)) return 0;
+      stack.add(k);
+      const ps = (byKey.get(k)?.parents || []).filter((x) => byKey.has(x));
+      const v = ps.length ? 1 + Math.max(...ps.map((x) => gen(x, stack))) : 0;
+      stack.delete(k); memo.set(k, v);
       return v;
     };
-    nodes.forEach((n) => (n.depth = depth(n.key)));
+    nodes.forEach((n) => (n.gen = gen(n.key)));
+    const maxGen = Math.max(1, ...nodes.map((n) => n.gen));
 
-    // Column packing: order each column by its parents' mean row to reduce crossings.
-    const cols = new Map();
-    nodes.forEach((n) => { if (!cols.has(n.depth)) cols.set(n.depth, []); cols.get(n.depth).push(n); });
-    const depths = [...cols.keys()].sort((a, b) => a - b);
-    const rowOf = new Map();
-    for (const d of depths) {
-      const col = cols.get(d);
-      col.sort((a, b) => {
-        const ra = a.parents.length ? a.parents.reduce((s, k) => s + (rowOf.get(k) ?? 0), 0) / a.parents.length : 1e6;
-        const rb = b.parents.length ? b.parents.reduce((s, k) => s + (rowOf.get(k) ?? 0), 0) / b.parents.length : 1e6;
-        if (ra !== rb) return ra - rb;
-        return a.title.localeCompare(b.title);
-      });
-      col.forEach((n, i) => {
-        n.x = MARGIN + d * COL_W;
-        n.y = MARGIN + i * ROW_H;
-        rowOf.set(n.key, i);
-      });
-    }
+    // deterministic seed: spread on a spiral, nudged right by generation
+    const W = 1180, H = 720;
+    nodes.forEach((n, i) => {
+      const a = hash01(n.key, 1) * Math.PI * 2;
+      const r = 120 + hash01(n.key, 2) * 260;
+      n.x = W / 2 + Math.cos(a) * r + (n.gen / maxGen - 0.5) * 420;
+      n.y = H / 2 + Math.sin(a) * r;
+      n.vx = 0; n.vy = 0;
+    });
 
-    // Edges, with a lane per edge so long spans don't stack on the same gutter line.
-    const edges = [];
-    const laneUse = new Map();
-    nodes.forEach((n) => n.parents.forEach((pk) => {
-      const p = byKey.get(pk);
-      if (!p) return;
-      const span = n.depth - p.depth;
-      const gk = p.depth;                            // gutter immediately right of the parent column
-      const used = laneUse.get(gk) || 0;
-      laneUse.set(gk, used + 1);
-      edges.push({
-        from: p, to: n, key: `${pk}->${n.key}`,
-        kind: n.parentKind[pk] || "extends",
-        span, lane: used,
-      });
-    }));
+    // tag centroids give same-tag work a place to gather
+    const tagList = [...new Set(nodes.flatMap((n) => n.tags))].sort();
+    const tagAnchor = new Map();
+    tagList.forEach((t, i) => {
+      const a = (i / Math.max(1, tagList.length)) * Math.PI * 2 - Math.PI / 2;
+      tagAnchor.set(t, { x: W / 2 + Math.cos(a) * 300, y: H / 2 + Math.sin(a) * 190 });
+    });
 
-    const tagSet = [...new Set(nodes.flatMap((n) => n.tags))].sort();
-    const maxRows = Math.max(1, ...depths.map((d) => cols.get(d).length));
-    const width = MARGIN * 2 + (Math.max(0, ...nodes.map((n) => n.depth)) + 1) * COL_W;
-    const height = MARGIN * 2 + maxRows * ROW_H;
-    return { nodes, edges, tags: tagSet, width, height, byKey };
+    const LINK_LEN = 232, LINK_K = 0.05;
+    const REPEL = 44000, DAMP = 0.82;
+    const step = (iter) => {
+      const cool = Math.max(0.12, 1 - iter / 640);
+      for (const n of nodes) { n.fx = 0; n.fy = 0; }
+      // repulsion (21 nodes -> 210 pairs; no quadtree needed)
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i], b = nodes[j];
+          let dx = a.x - b.x, dy = (a.y - b.y) * 1.35;   // vertical bias: keep rows readable
+          let d2 = dx * dx + dy * dy;
+          if (d2 < 1) { dx = (hash01(a.key, 3) - 0.5) || 0.1; dy = (hash01(b.key, 4) - 0.5) || 0.1; d2 = 1; }
+          const f = Math.min(REPEL / d2, 24);
+          const d = Math.sqrt(d2);
+          a.fx += (dx / d) * f; a.fy += (dy / d) * f;
+          b.fx -= (dx / d) * f; b.fy -= (dy / d) * f;
+        }
+      }
+      // link springs
+      for (const e of edges) {
+        const dx = e.to.x - e.from.x, dy = e.to.y - e.from.y;
+        const d = Math.max(1, Math.hypot(dx, dy));
+        const f = (d - LINK_LEN) * LINK_K;
+        e.from.fx += (dx / d) * f; e.from.fy += (dy / d) * f;
+        e.to.fx -= (dx / d) * f; e.to.fy -= (dy / d) * f;
+      }
+      // tag cohesion + centre gravity + generational left-to-right bias
+      for (const n of nodes) {
+        for (const t of n.tags) {
+          const a = tagAnchor.get(t);
+          if (a) { n.fx += (a.x - n.x) * 0.0055; n.fy += (a.y - n.y) * 0.0055; }
+        }
+        n.fx += (W / 2 - n.x) * 0.004;
+        n.fy += (H / 2 - n.y) * 0.006;
+        const targetX = 150 + (n.gen / maxGen) * (W - 300);
+        n.fx += (targetX - n.x) * 0.010;
+      }
+      // EDGE CLEARANCE. A force layout draws straight edges, and in a dense field those cut straight
+      // through unrelated boxes — the same "lines overlap blocks" complaint in a new form. So once the
+      // graph has roughly settled, push any node that is sitting on top of an edge off to the side.
+      // Cheap: 24 edges x 21 nodes.
+      if (iter > 260) {
+        for (const e of edges) {
+          const ax = e.from.x + NODE_W / 2, ay = e.from.y + NODE_H / 2;
+          const bx = e.to.x + NODE_W / 2, by = e.to.y + NODE_H / 2;
+          const ex = bx - ax, ey = by - ay;
+          const len2 = ex * ex + ey * ey;
+          if (len2 < 1) continue;
+          for (const n of nodes) {
+            if (n === e.from || n === e.to) continue;
+            const cx = n.x + NODE_W / 2, cy = n.y + NODE_H / 2;
+            let t = ((cx - ax) * ex + (cy - ay) * ey) / len2;
+            if (t <= 0.02 || t >= 0.98) continue;          // only the middle of the span matters
+            const px = ax + ex * t, py = ay + ey * t;
+            // scale the offset into node-space so a wide box needs more horizontal clearance
+            const dx = (cx - px) / (NODE_W / 2 + 16), dy = (cy - py) / (NODE_H / 2 + 14);
+            const d = Math.hypot(dx, dy);
+            if (d >= 1) continue;                          // already clear
+            const push = (1 - d) * 11 * cool;
+            const nx = d > 0.01 ? dx / d : (hash01(n.key, 5) - 0.5);
+            const ny = d > 0.01 ? dy / d : 1;
+            n.fx += nx * push; n.fy += ny * push * 1.4;
+          }
+        }
+      }
+
+      // rectangle separation so labels never overlap
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i], b = nodes[j];
+          const ox = (NODE_W + 30) - Math.abs(a.x - b.x);
+          const oy = (NODE_H + 30) - Math.abs(a.y - b.y);
+          if (ox > 0 && oy > 0) {
+            if (ox < oy) { const s = (a.x < b.x ? -1 : 1) * ox * 0.5; a.x += s; b.x -= s; }
+            else { const s = (a.y < b.y ? -1 : 1) * oy * 0.5; a.y += s; b.y -= s; }
+          }
+        }
+      }
+      for (const n of nodes) {
+        n.vx = (n.vx + n.fx) * DAMP; n.vy = (n.vy + n.fy) * DAMP;
+        const sp = Math.hypot(n.vx, n.vy), cap = 26 * cool;
+        if (sp > cap) { n.vx = (n.vx / sp) * cap; n.vy = (n.vy / sp) * cap; }
+        n.x += n.vx; n.y += n.vy;
+      }
+    };
+    for (let i = 0; i < 700; i++) step(i);          // solved before first paint, then frozen
+
+    // normalize into a tidy box
+    const pad = 70;
+    const minX = Math.min(...nodes.map((n) => n.x)), maxX = Math.max(...nodes.map((n) => n.x));
+    const minY = Math.min(...nodes.map((n) => n.y)), maxY = Math.max(...nodes.map((n) => n.y));
+    nodes.forEach((n) => { n.x = n.x - minX + pad; n.y = n.y - minY + pad; });
+    const width = (maxX - minX) + pad * 2 + NODE_W;
+    const height = (maxY - minY) + pad * 2 + NODE_H;
+    return { nodes, edges, byKey, tags: tagList, width, height, step };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig]);
 
-  const wrapRef = useRef(null);
-  const [view, setView] = useState({ x: 20, y: 20, k: 0.9 });
-  const drag = useRef(null);
-  const [activeTag, setActiveTag] = useState(null);
-  const [hover, setHover] = useState(null);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { const t = setTimeout(() => setMounted(true), 30); return () => clearTimeout(t); }, []);
+  const { nodes, edges, byKey, tags, width, height } = solved;
 
-  const fit = () => {
+  // ── view + interaction ─────────────────────────────────────────────────────────────────────────
+  const wrapRef = useRef(null);
+  const [view, setView] = useState({ x: 0, y: 0, k: 0.85 });
+  const [selected, setSelected] = useState(null);
+  const [hover, setHover] = useState(null);
+  const [activeTag, setActiveTag] = useState(null);
+  const [, force] = useState(0);
+  const pointers = useRef(new Map());
+  const gesture = useRef(null);
+  const nodeDrag = useRef(null);
+  const relaxRaf = useRef(0);
+
+  const fit = useCallback(() => {
     const el = wrapRef.current;
-    if (!el) return;
-    const k = Math.min(1, Math.max(0.25, Math.min(el.clientWidth / width, el.clientHeight / height) * 0.94));
-    setView({ x: Math.max(12, (el.clientWidth - width * k) / 2), y: 20, k });
+    if (!el || !width || !height) return;
+    const k = Math.min(1.1, Math.max(0.2, Math.min(el.clientWidth / width, el.clientHeight / height) * 0.92));
+    setView({ x: (el.clientWidth - width * k) / 2, y: (el.clientHeight - height * k) / 2, k });
+  }, [width, height]);
+  useEffect(() => { fit(); }, [fit]);
+
+  const toWorld = (cx, cy) => {
+    const r = wrapRef.current.getBoundingClientRect();
+    return { x: (cx - r.left - view.x) / view.k, y: (cy - r.top - view.y) / view.k };
   };
-  useEffect(() => { fit(); /* eslint-disable-next-line */ }, [width, height]);
+
+  // Relax the graph for a short while after a node is dragged, then stop. This is the only animation.
+  const relax = useCallback(() => {
+    if (relaxRaf.current) return;
+    let n = 0;
+    const tick = () => {
+      for (let i = 0; i < 2; i++) solved.step(300);
+      if (nodeDrag.current) {
+        const nd = nodeDrag.current;
+        nd.node.x = nd.x; nd.node.y = nd.y; nd.node.vx = 0; nd.node.vy = 0;
+      }
+      force((v) => v + 1);
+      n++;
+      relaxRaf.current = n < 90 || nodeDrag.current ? requestAnimationFrame(tick) : 0;
+    };
+    relaxRaf.current = requestAnimationFrame(tick);
+  }, [solved]);
+  useEffect(() => () => { if (relaxRaf.current) cancelAnimationFrame(relaxRaf.current); }, []);
 
   const onPointerDown = (e) => {
-    if (e.target.closest(".gnode")) return;
-    drag.current = { sx: e.clientX, sy: e.clientY, ox: view.x, oy: view.y, moved: false };
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* already released */ }
-  };
-  const onPointerMove = (e) => {
-    const d = drag.current;
-    if (!d) return;
-    const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
-    if (Math.abs(dx) + Math.abs(dy) > 3) d.moved = true;
-    // CRASH FIX: capture the origin into locals. The updater must not dereference drag.current, which
-    // can be nulled by pointerup/pointerleave before React runs it.
-    const nx = d.ox + dx, ny = d.oy + dy;
-    setView((v) => ({ ...v, x: nx, y: ny }));
-  };
-  const onPointerUp = () => { drag.current = null; };
-
-  const zoom = (factor, cx, cy) => setView((v) => {
-    const k = Math.min(2.2, Math.max(0.2, v.k * factor));
     const el = wrapRef.current;
-    const px = cx ?? (el ? el.clientWidth / 2 : 0), py = cy ?? (el ? el.clientHeight / 2 : 0);
-    return { k, x: px - (px - v.x) * (k / v.k), y: py - (py - v.y) * (k / v.k) };
-  });
+    // Must not throw: setPointerCapture rejects ids that are not an active pointer, and an exception here
+    // aborts the handler before any gesture state is set — which silently kills tap-to-select.
+    try { el.setPointerCapture?.(e.pointerId); } catch { /* not capturable; gestures still work */ }
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const hitKey = e.target.closest?.(".gnode")?.dataset?.key;
+    if (pointers.current.size === 2) {
+      const [a, b] = [...pointers.current.values()];
+      gesture.current = { d: Math.hypot(a.x - b.x, a.y - b.y), k: view.k,
+                          cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, x: view.x, y: view.y };
+      nodeDrag.current = null;
+      return;
+    }
+    if (hitKey) {
+      const n = byKey.get(hitKey);
+      const w = toWorld(e.clientX, e.clientY);
+      nodeDrag.current = { node: n, x: n.x, y: n.y, ox: w.x - n.x, oy: w.y - n.y, moved: false };
+    } else {
+      gesture.current = { pan: true, sx: e.clientX, sy: e.clientY, x: view.x, y: view.y, moved: false };
+    }
+  };
 
-  // Native non-passive wheel + rAF coalescing. React's onWheel is passive, so preventDefault() there
-  // does nothing and the gesture escapes to the shell; and an uncoalesced handler queues a re-render
-  // per wheel tick, which is the other half of the scroll-crash story.
+  const onPointerMove = (e) => {
+    if (!pointers.current.has(e.pointerId)) return;
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (pointers.current.size === 2 && gesture.current && !gesture.current.pan) {
+      const g = gesture.current;
+      const [a, b] = [...pointers.current.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      const k = Math.min(2.4, Math.max(0.18, g.k * (d / Math.max(1, g.d))));
+      const r = wrapRef.current.getBoundingClientRect();
+      const px = g.cx - r.left, py = g.cy - r.top;
+      setView({ k, x: px - (px - g.x) * (k / g.k), y: py - (py - g.y) * (k / g.k) });
+      return;
+    }
+    const nd = nodeDrag.current;
+    if (nd) {
+      const w = toWorld(e.clientX, e.clientY);
+      nd.x = w.x - nd.ox; nd.y = w.y - nd.oy; nd.moved = true;
+      force((v) => v + 1);   // repaint on the event itself, so dragging still works if rAF is throttled
+      relax();               // rAF only settles the NEIGHBOURS; it is never load-bearing for the drag
+      return;
+    }
+    const g = gesture.current;
+    if (g?.pan) {
+      const dx = e.clientX - g.sx, dy = e.clientY - g.sy;
+      if (Math.abs(dx) + Math.abs(dy) > 3) g.moved = true;
+      setView((v) => ({ ...v, x: g.x + dx, y: g.y + dy }));
+    }
+  };
+
+  const onPointerUp = (e) => {
+    pointers.current.delete(e.pointerId);
+    const nd = nodeDrag.current, g = gesture.current;
+    if (nd && !nd.moved) setSelected((s) => (s === nd.node.key ? null : nd.node.key));
+    else if (g?.pan && !g.moved && !nd) setSelected(null);
+    nodeDrag.current = null;
+    if (pointers.current.size === 0) gesture.current = null;
+  };
+
+  // Wheel: attached to the live canvas (not on mount, when it may not exist yet) and rAF-coalesced.
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    let pending = null, raf = 0;
-    const flush = () => {
-      raf = 0;
-      if (!pending) return;
-      const { dy, x, y } = pending; pending = null;
-      zoom(dy < 0 ? 1.1 : 1 / 1.1, x, y);
-    };
-    const onWheel = (e) => {
-      e.preventDefault();
+    // Throttle by CLOCK, not by rAF. An rAF-coalesced handler latches: the first event schedules a frame,
+    // and if that frame never arrives (backgrounded tab, throttled PWA, low-power mode) the pending flag
+    // is never cleared and every later wheel event is swallowed — zoom silently dies until reload.
+    // A timestamp gate degrades to "applies every event" instead of "applies none".
+    let last = 0, accum = 0;
+    const onWheel = (ev) => {
+      ev.preventDefault();
+      accum += ev.deltaY;
+      const now = ev.timeStamp || Date.now();
+      if (now - last < 16) return;
+      last = now;
+      const dy = accum; accum = 0;
+      if (!dy) return;
       const r = el.getBoundingClientRect();
-      pending = { dy: e.deltaY, x: e.clientX - r.left, y: e.clientY - r.top };
-      if (!raf) raf = requestAnimationFrame(flush);
+      const px = ev.clientX - r.left, py = ev.clientY - r.top;
+      setView((v) => {
+        const k = Math.min(2.4, Math.max(0.18, v.k * (dy < 0 ? 1.12 : 1 / 1.12)));
+        return { k, x: px - (px - v.x) * (k / v.k), y: py - (py - v.y) * (k / v.k) };
+      });
     };
     el.addEventListener("wheel", onWheel, { passive: false });
-    return () => { el.removeEventListener("wheel", onWheel); if (raf) cancelAnimationFrame(raf); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [nodes.length]);   // re-attach once the canvas actually exists
 
-  // Lineage: the hovered node plus its whole ancestry and descent — the "story" of that task.
+  const focusKey = selected || hover;
   const lineage = useMemo(() => {
-    if (!hover) return null;
-    const set = new Set([hover]);
+    if (!focusKey) return null;
+    const set = new Set([focusKey]);
     const up = (k) => (byKey.get(k)?.parents || []).forEach((p) => { if (!set.has(p)) { set.add(p); up(p); } });
     const down = (k) => edges.forEach((e) => { if (e.from.key === k && !set.has(e.to.key)) { set.add(e.to.key); down(e.to.key); } });
-    up(hover); down(hover);
+    up(focusKey); down(focusKey);
     return set;
-  }, [hover, edges, byKey]);
+  }, [focusKey, edges, byKey]);
 
   const dim = (n) => (activeTag && !n.tags.includes(activeTag)) || (lineage && !lineage.has(n.key));
-  const edgeDim = (e) => dim(e.from) || dim(e.to);
-  const tagColor = (t) => TAG_COLORS[t] || FALLBACK[[...tags].indexOf(t) % FALLBACK.length];
-
-  const openNode = (n) => {
-    if (drag.current?.moved) return;
-    if (n.has) onOpenTask?.({ ...n, key: n.key });
-    else onOpenRef?.(n.direction, n.id, false);
-  };
-
-  // Orthogonal routing that never crosses a node body.
-  //
-  // The only node-free space is (a) the vertical gutters between columns and (b) the horizontal band
-  // between two rows: nodes occupy ROW_H*r .. ROW_H*r + NODE_H, leaving ROW_H - NODE_H clear all the way
-  // across every column. So a long edge drops into its parent's gutter, crosses in an inter-row CHANNEL,
-  // climbs the gutter immediately left of its target, and steps in. An adjacent-column edge needs only
-  // the single gutter between them and can stay a simple S.
-  const rowIdx = (n) => Math.round((n.y - MARGIN) / ROW_H);
-  const corner = (x, y, dx, dy, r) => `Q${x},${y} ${x + dx * r},${y + dy * r}`;
-
-  const path = (e) => {
-    const x1 = e.from.x + NODE_W, y1 = e.from.y + NODE_H / 2;
-    const x2 = e.to.x, y2 = e.to.y + NODE_H / 2;
-    const r = 8;
-
-    if (Math.abs(y1 - y2) < 1 && e.span <= 1) return `M${x1},${y1} L${x2},${y2}`;
-
-    const exitX = x1 + 12 + (e.lane % 4) * ((GUTTER - 30) / 4);
-
-    if (e.span <= 1) {
-      // one gutter, nothing in between to hit
-      const d = y2 > y1 ? 1 : -1;
-      return [`M${x1},${y1}`, `L${exitX - r},${y1}`, corner(exitX, y1, 0, d, r),
-              `L${exitX},${y2 - r * d}`, corner(exitX, y2, 1, 0, r), `L${x2},${y2}`].join(" ");
-    }
-
-    // Long span: cross in the clear band under the upper of the two rows.
-    const band = Math.min(rowIdx(e.from), rowIdx(e.to));
-    const gap = ROW_H - NODE_H;
-    const chY = MARGIN + band * ROW_H + NODE_H + gap / 2 + ((e.lane % 3) - 1) * (gap / 5);
-    const entryX = x2 - 16 - (e.lane % 3) * 5;
-    const d1 = chY > y1 ? 1 : -1;
-    const d2 = y2 > chY ? 1 : -1;
-    return [
-      `M${x1},${y1}`,
-      `L${exitX - r},${y1}`, corner(exitX, y1, 0, d1, r),
-      `L${exitX},${chY - r * d1}`, corner(exitX, chY, 1, 0, r),
-      `L${entryX - r},${chY}`, corner(entryX, chY, 0, d2, r),
-      `L${entryX},${y2 - r * d2}`, corner(entryX, y2, 1, 0, r),
-      `L${x2},${y2}`,
-    ].join(" ");
-  };
+  const tagColor = (t) => TAG_COLORS[t] || FALLBACK[tags.indexOf(t) % FALLBACK.length];
 
   if (!overview) return <div className="muted pad">Loading…</div>;
-  if (nodes.length === 0) return <div className="muted pad">No tasks yet — the graph fills in as you add them.</div>;
+  if (!nodes.length) return <div className="muted pad">No tasks yet — the graph fills in as you add them.</div>;
 
-  const hoverNode = hover ? byKey.get(hover) : null;
+  // Trim an edge to the node borders so the arrowhead lands on the edge of the box, not under it.
+  const seg = (e) => {
+    const p = nodeDrag.current?.node === e.from ? nodeDrag.current : null;
+    const q = nodeDrag.current?.node === e.to ? nodeDrag.current : null;
+    const ax = (p ? p.x : e.from.x) + NODE_W / 2, ay = (p ? p.y : e.from.y) + NODE_H / 2;
+    const bx = (q ? q.x : e.to.x) + NODE_W / 2, by = (q ? q.y : e.to.y) + NODE_H / 2;
+    const clip = (cx, cy, tx, ty) => {
+      const dx = tx - cx, dy = ty - cy;
+      if (!dx && !dy) return [cx, cy];
+      const sx = (NODE_W / 2 + 6) / Math.abs(dx || 1e-6), sy = (NODE_H / 2 + 6) / Math.abs(dy || 1e-6);
+      const s = Math.min(sx, sy, 1e6);
+      return [cx + dx * Math.min(s, 1), cy + dy * Math.min(s, 1)];
+    };
+    const [x1, y1] = clip(ax, ay, bx, by);
+    const [x2, y2] = clip(bx, by, ax, ay);
+    return { x1, y1, x2, y2 };
+  };
+
+  const sel = focusKey ? byKey.get(focusKey) : null;
   const usedKinds = [...new Set(edges.map((e) => e.kind))];
+  const pos = (n) => (nodeDrag.current?.node === n ? nodeDrag.current : n);
 
   return (
     <div className="graphview">
@@ -316,72 +426,73 @@ export default function GraphView({ overview, onOpenTask, onOpenRef }) {
           ))}
         </span>
         <span className="graph-zoom">
-          <button className="act-btn" onClick={() => zoom(1 / 1.2)} aria-label="zoom out">−</button>
-          <button className="act-btn" onClick={() => zoom(1.2)} aria-label="zoom in">+</button>
+          <button className="act-btn" onClick={() => setView((v) => ({ ...v, k: Math.max(0.18, v.k / 1.2) }))}>−</button>
+          <button className="act-btn" onClick={() => setView((v) => ({ ...v, k: Math.min(2.4, v.k * 1.2) }))}>+</button>
           <button className="act-btn" onClick={fit}>Fit</button>
         </span>
       </div>
 
       <div className="graph-canvas" ref={wrapRef}
            onPointerDown={onPointerDown} onPointerMove={onPointerMove}
-           onPointerUp={onPointerUp} onPointerLeave={onPointerUp}>
+           onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
         <svg className="graph-svg" width="100%" height="100%">
           <defs>
             {Object.entries(KIND).map(([k, v]) => (
-              <marker key={k} id={`ar-${k}`} markerWidth="8" markerHeight="8" refX="6.5" refY="3"
+              <marker key={k} id={`ar-${k}`} markerWidth="7" markerHeight="7" refX="6" refY="2.5"
                       orient="auto" markerUnits="strokeWidth">
-                <path d="M0,0 L6.5,3 L0,6 Z" fill={v.color} />
+                <path d="M0,0 L6,2.5 L0,5 Z" fill={v.color} />
               </marker>
             ))}
           </defs>
-          <g transform={`translate(${view.x},${view.y}) scale(${view.k})`}
-             style={{ opacity: mounted ? 1 : 0, transition: "opacity .45s ease" }}>
+          <g transform={`translate(${view.x},${view.y}) scale(${view.k})`}>
             {edges.map((e) => {
               const kv = kindOf(e.kind);
               const lit = lineage && lineage.has(e.from.key) && lineage.has(e.to.key);
+              const d = dim(e.from) || dim(e.to);
+              const s = seg(e);
               return (
-                <path key={e.key} className="gedge" d={path(e)} fill="none"
+                <line key={e.key} className="gedge" x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2}
                       stroke={kv.color} strokeDasharray={kv.dash || undefined}
-                      strokeWidth={lit ? 2.2 : 1.4}
-                      opacity={edgeDim(e) ? 0.08 : lit ? 1 : 0.45}
+                      strokeWidth={lit ? 2.6 : 1.2} opacity={d ? 0.05 : lit ? 1 : focusKey ? 0.05 : 0.19}
                       markerEnd={`url(#ar-${e.kind in KIND ? e.kind : "extends"})`} />
               );
             })}
-            {nodes.map((n, i) => {
+            {nodes.map((n) => {
               const c = st(n.status);
-              const d = dim(n);
+              const p = pos(n);
+              const isSel = selected === n.key;
               return (
-                <g key={n.key} className="gnode" transform={`translate(${n.x},${n.y})`}
-                   style={{ cursor: "pointer", opacity: d ? 0.16 : 1,
-                            transition: "opacity .28s ease",
-                            transitionDelay: mounted ? "0s" : `${Math.min(i * 10, 320)}ms` }}
+                <g key={n.key} className="gnode" data-key={n.key}
+                   transform={`translate(${p.x},${p.y})`}
+                   style={{ cursor: "pointer", opacity: dim(n) ? 0.13 : 1 }}
                    onMouseEnter={() => setHover(n.key)} onMouseLeave={() => setHover(null)}
-                   onClick={() => openNode(n)}>
-                  <rect width={NODE_W} height={NODE_H} rx={4} fill={c.fill} stroke={c.stroke}
-                        strokeWidth={hover === n.key ? 2 : 1.2} />
-                  {n.tags.slice(0, 3).map((tg, j) => (
-                    <rect key={tg} x={0} y={j * (NODE_H / Math.min(n.tags.length, 3))}
-                          width={3.5} height={NODE_H / Math.min(n.tags.length, 3)}
-                          fill={tagColor(tg)} opacity={0.95} />
+                   onDoubleClick={() => (n.has ? onOpenTask?.({ ...n, key: n.key }) : onOpenRef?.(n.direction, n.id, false))}>
+                  <rect width={NODE_W} height={NODE_H} rx={4} fill={c.fill} stroke={isSel ? "#dfe6ee" : c.stroke}
+                        strokeWidth={isSel ? 2 : 1.2} />
+                  {n.tags.slice(0, 3).map((tg, j, arr) => (
+                    <rect key={tg} x={0} y={(j * NODE_H) / arr.length} width={3} height={NODE_H / arr.length}
+                          fill={tagColor(tg)} />
                   ))}
-                  {wrap(n.title, 30, 2).map((line, li) => (
-                    <text key={li} x={13} y={19 + li * 13} className="gnode-title" fill={c.text}>{line}</text>
+                  {wrap(n.title, 26, 2).map((line, li) => (
+                    <text key={li} x={11} y={18 + li * 13} className="gnode-title" fill={c.text}>{line}</text>
                   ))}
-                  {n.has && <circle cx={NODE_W - 11} cy={NODE_H - 11} r={2.6} fill={c.stroke} opacity={0.8} />}
-                  {n.status === "active" && <circle cx={NODE_W - 11} cy={12} r={3.5} fill="#7ee787" className="gpulse" />}
+                  {n.has && <circle cx={NODE_W - 9} cy={NODE_H - 9} r={2.4} fill={c.stroke} opacity={0.85} />}
+                  {n.status === "active" && <circle cx={NODE_W - 9} cy={10} r={3.2} fill="#7ee787" className="gpulse" />}
                 </g>
               );
             })}
           </g>
         </svg>
 
-        {hoverNode && (
-          <div className="graph-tip">
-            <b>{hoverNode.title}</b>
-            <span className="gt-meta">{hoverNode.directionName} · {st(hoverNode.status).label}</span>
-            {hoverNode.parents.length > 0 && (
+        {sel && (
+          <div className="graph-card">
+            <b>{sel.title}</b>
+            <span className="gt-meta">{sel.directionName} · {st(sel.status).label}
+              {sel.tags.map((t) => <i key={t} style={{ background: tagColor(t) }} />)}
+            </span>
+            {sel.raw.length > 0 && (
               <span className="gt-rel">
-                {hoverNode.rawParents.map((p) => {
+                {sel.raw.map((p) => {
                   const k = p.dir && byKey.has(`${p.dir}/${p.id}`) ? `${p.dir}/${p.id}` : null;
                   const pn = k ? byKey.get(k) : nodes.find((x) => x.id === p.id);
                   return pn ? (
@@ -392,6 +503,10 @@ export default function GraphView({ overview, onOpenTask, onOpenRef }) {
                 })}
               </span>
             )}
+            {sel.has && (
+              <button className="act-btn primary gt-open"
+                      onClick={() => onOpenTask?.({ ...sel, key: sel.key })}>Open task →</button>
+            )}
           </div>
         )}
       </div>
@@ -399,33 +514,27 @@ export default function GraphView({ overview, onOpenTask, onOpenRef }) {
       <div className="graph-legend">
         {usedKinds.map((k) => (
           <span key={k} className="glegend">
-            <svg width="26" height="8" style={{ overflow: "visible" }}>
-              <line x1="0" y1="4" x2="22" y2="4" stroke={kindOf(k).color} strokeWidth="1.8"
-                    strokeDasharray={kindOf(k).dash || undefined} />
-            </svg>
+            <svg width="24" height="7"><line x1="0" y1="3.5" x2="20" y2="3.5" stroke={kindOf(k).color}
+                  strokeWidth="1.8" strokeDasharray={kindOf(k).dash || undefined} /></svg>
             {kindOf(k).label}
           </span>
         ))}
-        <span className="muted">drag to pan · scroll or ± to zoom · hover for the lineage · click to open</span>
+        <span className="muted glegend-hint">tap a task for its lineage · drag to pan · pinch or scroll to zoom · double-tap to open</span>
       </div>
     </div>
   );
 }
 
-// Wrap a title into at most `max` lines of ~`n` chars, so tasks are readable without hovering.
 function wrap(s, n, max) {
   const words = String(s).split(/\s+/);
-  const lines = [];
-  let cur = "";
+  const lines = []; let cur = "";
   for (const w of words) {
-    if (!cur.length) cur = w;
+    if (!cur) cur = w;
     else if ((cur + " " + w).length <= n) cur += " " + w;
     else { lines.push(cur); cur = w; if (lines.length === max) break; }
   }
   if (lines.length < max && cur) lines.push(cur);
-  if (lines.length === max) {
-    const consumed = lines.join(" ").length;
-    if (consumed < String(s).length - 1) lines[max - 1] = lines[max - 1].replace(/.{0,2}$/, "…");
-  }
+  if (lines.length === max && lines.join(" ").length < String(s).length - 1)
+    lines[max - 1] = lines[max - 1].replace(/.{0,1}$/, "…");
   return lines;
 }

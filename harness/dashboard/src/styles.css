@@ -442,11 +442,6 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
 .gnode:hover .gnode-title { fill: #fff; }
 .gpulse { animation: gpulse 1.8s ease-out infinite; transform-origin: center; }
 @keyframes gpulse { 0% { opacity: 1; r: 3.5px; } 70% { opacity: .3; r: 5.5px; } 100% { opacity: 1; r: 3.5px; } }
-.graph-tip { position: absolute; left: 16px; bottom: 16px; max-width: 62ch; display: flex; flex-direction: column;
-  gap: 5px; background: var(--panel); border: 1px solid #2b3a4d; border-left: 2px solid var(--accent);
-  border-radius: 4px; padding: 10px 13px; font-size: 12.5px; pointer-events: none;
-  box-shadow: 0 8px 26px rgba(0,0,0,.55); }
-.graph-tip b { font-size: 13px; }
 .gt-meta { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
 .gt-rel { display: flex; flex-direction: column; gap: 2px; margin-top: 3px; font-size: 12px; color: #9fb0c4; }
 .gt-edge em { font-style: normal; font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em;
@@ -645,3 +640,36 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
   color: #5d6b7d; margin-left: auto; padding-right: 8px; white-space: nowrap; }
 .parent-hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; line-height: 1.5; }
 .parent-hint b { color: #9fb0c4; }
+
+
+/* ── Map: relaxation-solved graph ─────────────────────────────────────────────────────────────── */
+.graph-canvas { touch-action: none; }        /* the canvas owns pan/pinch; the browser must not steal it */
+.gedge { pointer-events: none; }
+.gnode-title { font-size: 11.5px; font-weight: 600; font-family: var(--sans); }
+.gnode:hover .gnode-title { fill: #fff; }
+
+/* Selection card. Inset well clear of the rounded display corners — the old tooltip sat at 16px and was
+   clipped by the iPad's corner radius. */
+.graph-card { position: absolute; left: 20px; bottom: 20px; max-width: min(64ch, calc(100% - 40px));
+  display: flex; flex-direction: column; gap: 6px; background: rgba(18,24,33,.97);
+  border: 1px solid #2b3a4d; border-left: 2px solid var(--accent); border-radius: 5px;
+  padding: 12px 15px; font-size: 13px; box-shadow: 0 10px 30px rgba(0,0,0,.6);
+  margin-bottom: env(safe-area-inset-bottom); }
+.graph-card b { font-size: 13.5px; }
+.gt-meta { display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 10.5px;
+  text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.gt-meta i { width: 16px; height: 3px; border-radius: 2px; display: inline-block; }
+.gt-rel { display: flex; flex-direction: column; gap: 3px; margin-top: 2px; color: #9fb0c4; font-size: 12.5px; }
+.gt-edge em { font-style: normal; font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em;
+  text-transform: uppercase; margin-right: 7px; }
+.gt-open { align-self: flex-start; margin-top: 6px; }
+
+/* Legend: a real bar with real padding, wrapping instead of hiding in the corner. */
+.graph-legend { display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  padding: 10px 20px calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border); background: var(--panel-2);
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .05em; color: var(--muted); }
+.graph-legend .glegend { display: flex; align-items: center; gap: 7px; }
+.graph-legend .glegend svg { display: block; overflow: visible; }
+.glegend-hint { margin-left: auto; }
+@media (max-width: 900px) { .glegend-hint { margin-left: 0; flex-basis: 100%; } }

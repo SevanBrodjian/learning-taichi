@@ -673,3 +673,14 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
 .graph-legend .glegend svg { display: block; overflow: visible; }
 .glegend-hint { margin-left: auto; }
 @media (max-width: 900px) { .glegend-hint { margin-left: 0; flex-basis: 100%; } }
+
+/* Tag picker — replaces the direction dropdown everywhere a task is authored. */
+.tagpick { display: flex; flex-wrap: wrap; gap: 6px; }
+.tagpick-opt { background: var(--panel); border: 1px solid var(--border); color: var(--muted);
+  border-radius: 4px; padding: 6px 12px; font-family: var(--mono); font-size: 12px; cursor: pointer;
+  transition: color .1s, border-color .1s, background .1s; }
+.tagpick-opt:hover { color: var(--text); border-color: #33465c; }
+.tagpick-opt.on { color: var(--bg); background: var(--tc); border-color: var(--tc); font-weight: 600; }
+.author-hint { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 4px 0 0; }
+/* Board filter chips now carry the tag colour when active. */
+.chip.tagchip.active { color: var(--bg); background: var(--tc); border-color: var(--tc); }

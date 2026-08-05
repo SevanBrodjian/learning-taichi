@@ -71,8 +71,10 @@ export const saveFile = (url, content) => {
 };
 
 // Overview authoring: add/edit tasks and create directions, all committed server-side.
-export const createTask = (direction, title, note, status) =>
-  post("/api/task-create", { direction, title, note, status });
+// A task is created with TAGS, not a direction. The server picks the storage direction itself — that
+// file is an implementation detail behind the graph, not something the user should have to think about.
+export const createTask = (title, note, status, tags) =>
+  post("/api/task-create", { title, note, status, tags });
 export const editTask = (direction, task, title, note) =>
   post("/api/task-edit", { direction, task, title, note });
 export const createDirection = (name, summary) =>
@@ -84,8 +86,8 @@ export const deleteTask = (direction, task) =>
 
 // Spin a completed task into a linked, proposed follow-up (both sides record the link). `parents` is an
 // array of parent task ids in the same direction — a proposal can follow up on several tasks at once.
-export const proposeFollowUp = (direction, parents, title, note) =>
-  post("/api/task-follow-up", { direction, parents, title, note });
+export const proposeFollowUp = (direction, parents, title, note, tags) =>
+  post("/api/task-follow-up", { direction, parents, title, note, tags });
 
 // ntfy notification feed (the server holds the secret topic; it never reaches the browser).
 export const fetchNotifications = () => get("/api/notifications", "json");

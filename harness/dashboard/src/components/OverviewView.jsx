@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { setTaskStatus, setTaskEffort, setTaskBudget, createTask, editTask, createDirection, deleteTask } from "../api.js";
+import { setTaskStatus, setTaskEffort, setTaskBudget, createTask, editTask, deleteTask } from "../api.js";
 import { EFFORTS, effortMeta } from "../effort.js";
 import LiveLine from "./LiveLine.jsx";
 
@@ -135,21 +135,22 @@ function TaskModal({ task, onClose, onChanged }) {
   );
 }
 
-// New-task / new-direction authoring. Local draft state, same reasoning as TaskModal.
-function AuthorModal({ mode, dirs, defaultDirection, onClose, onChanged }) {
-  const [form, setForm] = useState({ direction: defaultDirection, title: "", note: "", name: "", summary: "" });
+// New-task authoring. Directions are gone from the UI entirely — a task is described by its TAGS and its
+// place in the graph, and the storage direction is chosen server-side as an implementation detail.
+const TAGS = ["gradients", "materials", "learned", "rendering"];
+const TAG_COLORS = { gradients: "#4cc2ff", materials: "#ffb037", learned: "#c98bff", rendering: "#5ee0c8" };
+
+function AuthorModal({ onClose, onChanged }) {
+  const [form, setForm] = useState({ title: "", note: "", tags: [] });
   const [busy, setBusy] = useState(false);
+  const toggle = (t) =>
+    setForm((f) => ({ ...f, tags: f.tags.includes(t) ? f.tags.filter((x) => x !== t) : [...f.tags, t] }));
 
   const submit = async () => {
+    if (!form.title.trim()) return;
     setBusy(true);
     try {
-      if (mode === "task") {
-        if (!form.direction || !form.title.trim()) return;
-        await createTask(form.direction, form.title.trim(), form.note.trim(), "queued");
-      } else {
-        if (!form.name.trim()) return;
-        await createDirection(form.name.trim(), form.summary.trim());
-      }
+      await createTask(form.title.trim(), form.note.trim(), "queued", form.tags);
       onChanged();
       onClose();
     } finally { setBusy(false); }
@@ -159,39 +160,32 @@ function AuthorModal({ mode, dirs, defaultDirection, onClose, onChanged }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose} aria-label="close">×</button>
-        {mode === "task" ? (
-          <>
-            <h3>New task</h3>
-            <div className="author-form">
-              <label>Direction</label>
-              <select value={form.direction} onChange={(e) => setForm({ ...form, direction: e.target.value })}>
-                {dirs.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select>
-              <label>Title</label>
-              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="What the task should accomplish" />
-              <label>Note (seed for the worker brief)</label>
-              <textarea rows={5} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="A sentence or two; the orchestrator expands this into a full brief." />
-              <div className="modal-actions">
-                <button className="act-btn" onClick={onClose}>Cancel</button>
-                <button className="act-btn primary" onClick={submit} disabled={busy || !form.direction || !form.title.trim()}>Add to Queued</button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <h3>New direction</h3>
-            <div className="author-form">
-              <label>Name</label>
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Material variants" />
-              <label>Summary</label>
-              <textarea rows={4} value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} placeholder="The organizing question for this research axis." />
-              <div className="modal-actions">
-                <button className="act-btn" onClick={onClose}>Cancel</button>
-                <button className="act-btn primary" onClick={submit} disabled={busy || !form.name.trim()}>Create</button>
-              </div>
-            </div>
-          </>
-        )}
+        <h3>New task</h3>
+        <div className="author-form">
+          <label>Title</label>
+          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+                 placeholder="What the task should accomplish" />
+          <label>Tags</label>
+          <div className="tagpick">
+            {TAGS.map((t) => (
+              <button key={t} type="button"
+                      className={`tagpick-opt ${form.tags.includes(t) ? "on" : ""}`}
+                      style={{ "--tc": TAG_COLORS[t] }}
+                      onClick={() => toggle(t)}>{t}</button>
+            ))}
+          </div>
+          <label>Note (seed for the worker brief)</label>
+          <textarea rows={5} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
+                    placeholder="A sentence or two; the orchestrator expands this into a full brief." />
+          <p className="author-hint">
+            The orchestrator places this in the task graph and derives its links — and re-checks the whole
+            graph after it runs, when the result shows what it really was.
+          </p>
+          <div className="modal-actions">
+            <button className="act-btn" onClick={onClose}>Cancel</button>
+            <button className="act-btn primary" onClick={submit} disabled={busy || !form.title.trim()}>Add to Queued</button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -203,7 +197,7 @@ export default function OverviewView({ overview, onOpenTask, onChange, focus, on
   const [modal, setModal] = useState(null);
   const [drag, setDrag] = useState(null);
   const [over, setOver] = useState(null);
-  const [author, setAuthor] = useState(null); // { mode: "task" | "direction" }
+  const [author, setAuthor] = useState(null); // truthy while the New-task modal is open
 
   const dirs = overview?.directions || [];
 
@@ -222,9 +216,11 @@ export default function OverviewView({ overview, onOpenTask, onChange, focus, on
 
   if (!overview) return <div className="muted pad">Loading…</div>;
 
+  // Tasks are filtered by TAG now. `direction` still rides along because it is the storage key the
+  // status/edit endpoints need — it is no longer anything the user sees or chooses.
   const tasks = dirs
-    .filter((d) => filter === "all" || d.id === filter)
-    .flatMap((d) => d.tasks.map((t) => ({ ...t, direction: d.id, directionName: d.name })));
+    .flatMap((d) => d.tasks.map((t) => ({ ...t, direction: d.id, directionName: d.name })))
+    .filter((t) => filter === "all" || (t.tags || []).includes(filter));
 
   const done = tasks.filter((t) => t.status === "done");
   const columns = COLUMNS.map((c) => ({ ...c, items: tasks.filter((t) => t.status === c.id) }));
@@ -240,20 +236,19 @@ export default function OverviewView({ overview, onOpenTask, onChange, focus, on
     setOver(null);
   };
 
-  const openAuthor = (mode) => setAuthor({ mode, defaultDirection: filter !== "all" ? filter : dirs[0]?.id || "" });
 
   return (
     <div className="overview">
       <div className="dir-filter">
         <button className={`chip ${filter === "all" ? "active" : ""}`} onClick={() => setFilter("all")}>All</button>
-        {dirs.map((d) => (
-          <button key={d.id} className={`chip ${filter === d.id ? "active" : ""}`} title={d.summary} onClick={() => setFilter(d.id)}>
-            {d.name}
+        {TAGS.map((t) => (
+          <button key={t} className={`chip tagchip ${filter === t ? "active" : ""}`}
+                  style={{ "--tc": TAG_COLORS[t] }} onClick={() => setFilter(t)}>
+            {t}
           </button>
         ))}
         <span className="dir-filter-spacer" />
-        <button className="chip add" onClick={() => openAuthor("task")} disabled={dirs.length === 0}>+ Task</button>
-        <button className="chip add" onClick={() => openAuthor("direction")}>+ Direction</button>
+        <button className="chip add" onClick={() => setAuthor(true)}>+ Task</button>
       </div>
 
       <div className="board3">
@@ -320,13 +315,7 @@ export default function OverviewView({ overview, onOpenTask, onChange, focus, on
       )}
 
       {author && (
-        <AuthorModal
-          mode={author.mode}
-          dirs={dirs}
-          defaultDirection={author.defaultDirection}
-          onClose={() => setAuthor(null)}
-          onChanged={refresh}
-        />
+        <AuthorModal onClose={() => setAuthor(null)} onChanged={refresh} />
       )}
     </div>
   );

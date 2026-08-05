@@ -5,6 +5,10 @@ import MarkdownReport from "./MarkdownReport.jsx";
 import VideoPlayer from "./VideoPlayer.jsx";
 import LiveLine from "./LiveLine.jsx";
 
+// The four canonical tags (spec/registry). Directions are no longer user-facing anywhere.
+const GRAPH_TAGS = ["gradients", "materials", "learned", "rendering"];
+const GRAPH_TAG_COLORS = { gradients: "#4cc2ff", materials: "#ffb037", learned: "#c98bff", rendering: "#5ee0c8" };
+
 // A loss plot whose series is fetched from a referenced metrics.json.
 function LossResult({ series, log }) {
   const [data, setData] = useState(null);
@@ -259,6 +263,7 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
   const [siblings, setSiblings] = useState([]);        // other tasks in this direction (candidate extra parents)
   const [extraParents, setExtraParents] = useState([]); // ids of the additional parents the user checked
   const [citeQuery, setCiteQuery] = useState("");       // suggester filter
+  const [followTags, setFollowTags] = useState([]);     // tags for the proposal (directions are gone)
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -267,7 +272,7 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
     setTask(null);
     setRefs([]);
     setSendBack(false); setSendNote(""); setConfirmDelete(false); setProposing(false);
-    setExtraParents([]); setSiblings([]);
+    setExtraParents([]); setSiblings([]); setFollowTags([]); setCiteQuery("");
     fetchTask(detail)
       .then((t) => {
         if (!alive) return;
@@ -352,7 +357,7 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
     try {
       // This task is always a parent; any checked siblings are additional parents.
       const parents = [task.task_id, ...extraParents];
-      const r = await proposeFollowUp(task.direction, parents, followForm.title.trim(), followForm.note.trim());
+      const r = await proposeFollowUp(task.direction, parents, followForm.title.trim(), followForm.note.trim(), followTags);
       if (r && r.ok) {
         setProposing(false);
         setFollowForm({ title: "", note: "" });
@@ -451,9 +456,21 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
             {siblings.length > 0 && (
               <>
                 <label>Also follows up on {extraParents.length > 0 ? `(${extraParents.length + 1} tasks)` : "(optional)"}</label>
+                <label>Tags</label>
+                <div className="tagpick">
+                  {GRAPH_TAGS.map((t) => (
+                    <button key={t} type="button"
+                            className={`tagpick-opt ${followTags.includes(t) ? "on" : ""}`}
+                            style={{ "--tc": GRAPH_TAG_COLORS[t] }}
+                            onClick={() => setFollowTags((v) => v.includes(t) ? v.filter((x) => x !== t) : [...v, t])}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                <label>Cite related tasks (optional)</label>
                 <input
                   className="parent-search"
-                  placeholder="Search tasks to cite…"
+                  placeholder="Search every task…"
                   value={citeQuery}
                   onChange={(e) => setCiteQuery(e.target.value)}
                 />

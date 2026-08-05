@@ -644,23 +644,56 @@ def write_file(rid: str, path: str, content: str) -> dict:
     return {"ok": True}
 
 
-def create_task(direction: str, title: str, note: str = "",
-                status: str = "proposed", task_id: str | None = None,
-                effort: str = "standard") -> dict:
-    """Add a task to an existing direction (Overview authoring)."""
+# Tags are the user-facing axis. A direction file is only where a task is STORED (and it fixes the run
+# path runs/<direction>/<task>/), so the server picks it rather than asking. Preferred tag -> file.
+TAG_HOME = {
+    "gradients": "long-rollout-pathologies",
+    "materials": "material-variants",
+    "learned":   "learned-dynamics",
+    "rendering": "realistic-rendering",
+}
+FALLBACK_HOME = "material-variants"
+
+
+def _home_for(tags: list) -> str:
+    """Which direction file a new task lives in, derived from its tags. Never surfaced in the UI."""
+    for t in tags or []:
+        if t in TAG_HOME and (MAIN_ROOT / "coordination" / "directions" / f"{TAG_HOME[t]}.json").is_file():
+            return TAG_HOME[t]
+    ddir = MAIN_ROOT / "coordination" / "directions"
+    if (ddir / f"{FALLBACK_HOME}.json").is_file():
+        return FALLBACK_HOME
+    files = sorted(ddir.glob("*.json"))
+    return files[0].stem if files else FALLBACK_HOME
+
+
+def create_task(title: str, note: str = "", status: str = "proposed", task_id: str | None = None,
+                effort: str = "standard", tags: list | None = None, direction: str | None = None) -> dict:
+    """Create a task from TITLE + TAGS. `direction` is accepted only as an internal override; the UI no
+    longer asks for one, because directions are not the user's mental model any more — tags and the task
+    graph are. The task is created with NO links: the orchestrator derives those, and re-derives the whole
+    graph once the task has run and its result shows what it actually was (CLAUDE.md)."""
+    tags = [t for t in (tags or []) if isinstance(t, str) and t.strip()]
+    direction = direction or _home_for(tags)
     f = MAIN_ROOT / "coordination" / "directions" / f"{direction}.json"
     if not f.is_file():
-        return {"ok": False, "error": "no such direction"}
+        return {"ok": False, "error": "no storage direction available"}
     data = json.loads(f.read_text("utf-8"))
     tid = task_id or _slug(title)
-    if any(t.get("id") == tid for t in data.get("tasks", [])):
-        return {"ok": False, "error": "a task with that id already exists"}
+    # ids must be unique across the WHOLE board, not just this file — the graph resolves parents by id.
+    existing = {k[1] for k in _task_index()}
+    if tid in existing:
+        base, i = tid, 2
+        while tid in existing:
+            tid, i = f"{base}-{i}", i + 1
     effort = effort if effort in EFFORTS else "standard"
-    data.setdefault("tasks", []).append(
-        {"id": tid, "title": title, "status": status, "note": note, "effort": effort})
+    entry = {"id": tid, "title": title, "status": status, "note": note, "effort": effort}
+    if tags:
+        entry["tags"] = tags
+    data.setdefault("tasks", []).append(entry)
     f.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-    _git_commit(f, f"dashboard: add task {direction}/{tid}")
-    return {"ok": True, "id": tid}
+    _git_commit(f, f"dashboard: add task {tid} [{', '.join(tags) or 'untagged'}]")
+    return {"ok": True, "id": tid, "direction": direction, "tags": tags}
 
 
 def edit_task(direction: str, task: str, title: str | None = None, note: str | None = None) -> dict:
@@ -748,11 +781,12 @@ def delete_task(direction: str, task: str) -> dict:
     return {"ok": True}
 
 
-def propose_follow_up(direction: str, parents, title: str, note: str = "") -> dict:
+def propose_follow_up(direction: str, parents, title: str, note: str = "", tags: list | None = None) -> dict:
     """Create a proposed follow-up to one OR MORE existing tasks in the same direction, linked both ways:
     every parent gains the new id in its `follow_ups`, and the child records `follow_up_of` = the parent
     id (a single string) or the list of parent ids when there are several. `parents` accepts a single id
-    or a list of ids. Lives in the parents' direction (the graph is direction-local)."""
+    or a list of ids. The cited parents are a HINT: the orchestrator derives the real edges and their
+    kinds, and re-derives the whole graph after the task runs (CLAUDE.md)."""
     f = MAIN_ROOT / "coordination" / "directions" / f"{direction}.json"
     if not f.is_file():
         return {"ok": False, "error": "no such direction"}
@@ -772,8 +806,12 @@ def propose_follow_up(direction: str, parents, title: str, note: str = "") -> di
         tid, i = f"{base}-{i}", i + 1
     # Written in the normalized {id, dir, kind} form. The kind is a PLACEHOLDER: the user's citation is a
     # hint, and the orchestrator re-derives the real edges (and their kinds) when it reviews the task.
-    tasks.append({"id": tid, "title": title, "status": "proposed", "note": note,
-                  "follow_up_of": [{"id": p, "dir": direction, "kind": DEFAULT_KIND} for p in parents]})
+    entry = {"id": tid, "title": title, "status": "proposed", "note": note,
+             "follow_up_of": [{"id": p, "dir": direction, "kind": DEFAULT_KIND} for p in parents]}
+    tags = [t for t in (tags or []) if isinstance(t, str) and t.strip()]
+    if tags:
+        entry["tags"] = tags
+    tasks.append(entry)
     pset = set(parents)
     for t in tasks:
         if t.get("id") in pset:
@@ -954,12 +992,12 @@ def _build_app():
 
     @app.post("/api/task-create")
     def api_task_create(payload: dict):
-        d, title = payload.get("direction"), payload.get("title")
-        if not (d and title):
-            raise HTTPException(400, "direction, title required")
-        return create_task(d, title, payload.get("note", ""),
-                           payload.get("status", "proposed"), payload.get("id"),
-                           payload.get("effort", "standard"))
+        title = payload.get("title")
+        if not title:
+            raise HTTPException(400, "title required")
+        return create_task(title, payload.get("note", ""), payload.get("status", "proposed"),
+                           payload.get("id"), payload.get("effort", "standard"),
+                           payload.get("tags"), payload.get("direction"))
 
     @app.post("/api/task-effort")
     def api_task_effort(payload: dict):
@@ -1031,7 +1069,7 @@ def _build_app():
             parents = [payload.get("parent")]
         if not (d and parents and title):
             raise HTTPException(400, "direction, parent(s), title required")
-        return propose_follow_up(d, parents, title, payload.get("note", ""))
+        return propose_follow_up(d, parents, title, payload.get("note", ""), payload.get("tags"))
 
     @app.get("/api/notifications")
     def api_notifications():

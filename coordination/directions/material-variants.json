@@ -238,7 +238,7 @@
     {
       "id": "interactive-simulation-of-one-material",
       "title": "Interactive Simulation of One Material",
-      "status": "queued",
+      "status": "active",
       "note": "The purpose of this task is to start shifting attention on the demo. To start, let's  make an interactive simulation, small scale, for a single material (maybe elastic solid, like stiff rubber). It's not obvious to me whether making it interactive will be easier using the standard equations, or using a NN that learns the grid update. But in the end we would like to be able to ship actual interactive simulations running in real time on the web, including ones with small learned nets. The purpose of this task is to get just a single small interactive demo showing a conversion of the Taichi setup to something suitable for this format, which should be the centerpoint of the final task page for this. It needs to be efficient, and smooth, real-time, but it can be still just a simple 2D grid. The task should be clear about how this was achieved.",
       "effort": "standard"
     }

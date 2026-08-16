@@ -43,3 +43,6 @@ and say so.
 - **Not** differentiable, and **not** a training run.
 - **Not** wired into the Demo tab. That page stays the placeholder until you have seen this work.
 - **Not** a promise that a learned grid-update ships — only a measured judgement on whether it could.
+
+
+**Resolution: APPROVED**

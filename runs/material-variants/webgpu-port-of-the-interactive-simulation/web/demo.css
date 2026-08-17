@@ -1,0 +1,40 @@
+/* demo.css -- styling for the interactive WebGPU MPM demo. Self-contained, dark, no webfonts. */
+.mpmd { --bg:#0a0e14; --panel:#0e141d; --line:#1e2733; --fg:#dfe6ee; --muted:#7f8ea3;
+        --accent:#6fd3ee; --warm:#ff9d5c;
+        font:13px/1.45 ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+        color:var(--fg); }
+.mpmd-stage { position:relative; width:100%; aspect-ratio:1/1; max-height:min(70vh,620px);
+              border:1px solid var(--line); border-radius:10px; overflow:hidden;
+              background:#070a0f; cursor:crosshair; }
+.mpmd-canvas { display:block; width:100%; height:100%; }
+.mpmd-hud { position:absolute; top:9px; left:9px; background:rgba(8,12,18,.74);
+            border:1px solid var(--line); border-radius:7px; padding:6px 9px;
+            font:11px/1.5 ui-monospace,Menlo,Consolas,monospace; pointer-events:none;
+            backdrop-filter:blur(3px); }
+.mpmd-hrow { display:flex; gap:9px; justify-content:space-between; }
+.mpmd-hk { color:var(--muted); }
+.mpmd-hv { color:var(--fg); font-variant-numeric:tabular-nums; }
+.mpmd-badge { position:absolute; bottom:11px; left:0; right:0; text-align:center;
+              color:var(--muted); font-size:12px; pointer-events:none; transition:opacity .5s; }
+.mpmd-fail { padding:22px; color:var(--muted); font-size:13px; line-height:1.6; }
+.mpmd-fail b { color:var(--fg); }
+.mpmd-controls { display:flex; flex-wrap:wrap; gap:12px 20px; margin-top:11px; align-items:flex-end; }
+.mpmd-g { display:flex; flex-direction:column; gap:4px; }
+.mpmd-lab { color:var(--muted); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; }
+.mpmd-row { display:flex; align-items:center; gap:8px; }
+.mpmd-row input[type=range] { width:132px; accent-color:var(--accent); }
+.mpmd-read { color:var(--fg); font:11px ui-monospace,Menlo,Consolas,monospace;
+             min-width:52px; font-variant-numeric:tabular-nums; }
+.mpmd-seg { display:flex; gap:5px; flex-wrap:wrap; }
+.mpmd-sb { background:var(--panel); color:var(--muted); border:1px solid var(--line);
+           border-radius:6px; padding:5px 10px; font:11.5px inherit; cursor:pointer; }
+.mpmd-sb:hover { border-color:#31414f; color:var(--fg); }
+.mpmd-sb.on { background:#132430; color:var(--accent); border-color:#2c5566; }
+.mpmd-note { margin-top:10px; color:var(--muted); font-size:11.5px; line-height:1.55; }
+.mpmd-note b { color:var(--fg); font-weight:600; }
+.mpmd-note code { color:var(--accent); font-family:ui-monospace,Menlo,Consolas,monospace;
+                  font-size:11px; }
+@media (max-width:560px) {
+  .mpmd-row input[type=range] { width:104px; }
+  .mpmd-controls { gap:10px 14px; }
+}

@@ -1,0 +1,174 @@
+{
+  "device": {
+    "vendor": "nvidia",
+    "architecture": "lovelace",
+    "device": "",
+    "description": "",
+    "timestampQuery": true,
+    "limits": {
+      "maxStorageBuffersPerShaderStage": 8,
+      "maxStorageBufferBindingSize": 134217728,
+      "maxBufferSize": 268435456,
+      "maxComputeWorkgroupsPerDimension": 65535,
+      "maxComputeInvocationsPerWorkgroup": 256
+    }
+  },
+  "substeps_per_frame": 167,
+  "occupancy": [
+    {
+      "n": 1000,
+      "side": 0.3,
+      "particles_per_cell": 0.6781684027777778,
+      "max_node_mass_pm": 3.3473689556121826,
+      "max_node_mom_pm": 8.502264976501465,
+      "mass_per_ppc": 4.9358963671875
+    },
+    {
+      "n": 2000,
+      "side": 0.3,
+      "particles_per_cell": 1.3563368055555556,
+      "max_node_mass_pm": 5.36301326751709,
+      "max_node_mom_pm": 11.349599838256836,
+      "mass_per_ppc": 3.954042421875
+    },
+    {
+      "n": 4000,
+      "side": 0.3,
+      "particles_per_cell": 2.712673611111111,
+      "max_node_mass_pm": 7.888879776000977,
+      "max_node_mom_pm": 17.682411193847656,
+      "mass_per_ppc": 2.908156640625
+    },
+    {
+      "n": 8000,
+      "side": 0.3,
+      "particles_per_cell": 5.425347222222222,
+      "max_node_mass_pm": 14.042919158935547,
+      "max_node_mom_pm": 27.406368255615234,
+      "mass_per_ppc": 2.588390859375
+    },
+    {
+      "n": 16000,
+      "side": 0.3,
+      "particles_per_cell": 10.850694444444445,
+      "max_node_mass_pm": 25.1153564453125,
+      "max_node_mom_pm": 49.126708984375,
+      "mass_per_ppc": 2.31463125
+    },
+    {
+      "n": 32000,
+      "side": 0.3,
+      "particles_per_cell": 21.70138888888889,
+      "max_node_mass_pm": 43.10751724243164,
+      "max_node_mom_pm": 86.37105560302734,
+      "mass_per_ppc": 1.9863943945312499
+    },
+    {
+      "n": 64000,
+      "side": 0.3,
+      "particles_per_cell": 43.40277777777778,
+      "max_node_mass_pm": 81.3689956665039,
+      "max_node_mom_pm": 160.72689819335938,
+      "mass_per_ppc": 1.8747416601562499
+    }
+  ],
+  "overflow": [
+    {
+      "tag": "fixed_k30",
+      "atomics": "fixed",
+      "kM": 30,
+      "kV": 28,
+      "n": 32000,
+      "particles_per_cell": 21.70138888888889,
+      "mass_ceiling_pm": 4,
+      "n_nonfinite": 0,
+      "mean_radius": 0.40367263729931807,
+      "com": [
+        0.7178242472023704,
+        0.41430114073154983
+      ],
+      "_x": [],
+      "positions_file": "over_fixed_k30.f32",
+      "dist_from_exact_f32": 0.46612879633903503,
+      "overflows": true
+    },
+    {
+      "tag": "fixed_k26",
+      "atomics": "fixed",
+      "kM": 26,
+      "kV": 24,
+      "n": 32000,
+      "particles_per_cell": 21.70138888888889,
+      "mass_ceiling_pm": 64,
+      "n_nonfinite": 0,
+      "mean_radius": 0.11452497604335533,
+      "com": [
+        0.5008870445368812,
+        0.34400029575871305
+      ],
+      "_x": [],
+      "positions_file": "over_fixed_k26.f32",
+      "dist_from_exact_f32": 1.2034103065161617e-06,
+      "overflows": false
+    },
+    {
+      "tag": "fixed_k24",
+      "atomics": "fixed",
+      "kM": 24,
+      "kV": 22,
+      "n": 32000,
+      "particles_per_cell": 21.70138888888889,
+      "mass_ceiling_pm": 256,
+      "n_nonfinite": 0,
+      "mean_radius": 0.1145249618846683,
+      "com": [
+        0.5008873443119228,
+        0.3439998752321117
+      ],
+      "_x": [],
+      "positions_file": "over_fixed_k24.f32",
+      "dist_from_exact_f32": 1.0513348343010875e-06,
+      "overflows": false
+    },
+    {
+      "tag": "fixed_k22",
+      "atomics": "fixed",
+      "kM": 22,
+      "kV": 20,
+      "n": 32000,
+      "particles_per_cell": 21.70138888888889,
+      "mass_ceiling_pm": 1024,
+      "n_nonfinite": 0,
+      "mean_radius": 0.11452500859195401,
+      "com": [
+        0.5008875553589314,
+        0.3439983597234823
+      ],
+      "_x": [],
+      "positions_file": "over_fixed_k22.f32",
+      "dist_from_exact_f32": 1.8856025008062716e-06,
+      "overflows": false
+    },
+    {
+      "tag": "casf32_k24",
+      "atomics": "casf32",
+      "kM": 24,
+      "kV": 22,
+      "n": 32000,
+      "particles_per_cell": 21.70138888888889,
+      "mass_ceiling_pm": 256,
+      "n_nonfinite": 0,
+      "mean_radius": 0.11452553703039589,
+      "com": [
+        0.5008877141224221,
+        0.3440001802728511
+      ],
+      "_x": [],
+      "positions_file": "over_casf32_k24.f32",
+      "dist_from_exact_f32": 0.0,
+      "overflows": false
+    }
+  ],
+  "webgpu_errors": [],
+  "max_node_mass_measured": 43.10751724243164
+}

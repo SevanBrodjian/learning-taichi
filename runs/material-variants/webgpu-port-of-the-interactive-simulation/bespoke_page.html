@@ -1,0 +1,1620 @@
+<style>
+:root{--bg:#0a0e14;--panel:#0e141d;--line:#1e2733;--fg:#dfe6ee;--muted:#7f8ea3;
+      --accent:#6fd3ee;--warm:#ff9d5c;--bad:#ff7a7a;--good:#8fd9b6;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+     font:14px/1.62 ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+.wrap{max-width:960px;margin:0 auto;padding:4px 2px 30px}
+h2{font-size:17px;margin:34px 0 4px;letter-spacing:-.01em}
+h3{font-size:13px;margin:20px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;font-weight:600}
+p{margin:8px 0}
+.sub{color:var(--muted);font-size:13px;margin:2px 0 14px}
+.verdict{background:linear-gradient(180deg,#101a24,#0d141c);border:1px solid #23343f;
+         border-left:3px solid var(--accent);border-radius:10px;padding:14px 16px;margin:6px 0 4px}
+.verdict b{color:#fff}
+.warnline{color:var(--warm)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:10px;margin:16px 0 4px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:11px 13px}
+.kpi .v{font:600 21px/1.15 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);
+        font-variant-numeric:tabular-nums}
+.kpi .v.warm{color:var(--warm)} .kpi .v.bad{color:var(--bad)}
+.kpi .k{color:var(--muted);font-size:11px;margin-top:4px;line-height:1.35}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:15px 16px;margin:12px 0}
+.toggle{display:inline-flex;gap:5px;background:#0b1119;border:1px solid var(--line);
+        border-radius:8px;padding:4px;margin:4px 0 10px;flex-wrap:wrap}
+.toggle button{background:transparent;color:var(--muted);border:0;border-radius:6px;
+               padding:6px 12px;font:12.5px inherit;cursor:pointer}
+.toggle button.on{background:#14313f;color:var(--accent)}
+.toggle button:hover{color:var(--fg)}
+svg{display:block;width:100%;height:auto;overflow:visible}
+.legend{display:flex;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:8px}
+.legend i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:6px;
+          vertical-align:middle}
+table{border-collapse:collapse;width:100%;font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace}
+th,td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+th:first-child,td:first-child{text-align:left}
+td.bad{color:var(--bad)} td.good{color:var(--good)} td.warm{color:var(--warm)}
+.def{border-bottom:1px dotted #3a4a5a;cursor:help}
+video{width:100%;border-radius:9px;border:1px solid var(--line);background:#070a0f;display:block}
+img.fig{width:100%;border-radius:9px;border:1px solid var(--line);display:block}
+.cap{color:var(--muted);font-size:12px;margin-top:7px;line-height:1.5}
+.scope{border:1px dashed #3a4a5a;border-radius:9px;padding:12px 14px;color:var(--muted);
+       font-size:12.5px;margin:14px 0}
+.scope b{color:var(--fg)}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:var(--accent)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:700px){.two{grid-template-columns:1fr}}
+
+/* demo.css -- styling for the interactive WebGPU MPM demo. Self-contained, dark, no webfonts. */
+.mpmd { --bg:#0a0e14; --panel:#0e141d; --line:#1e2733; --fg:#dfe6ee; --muted:#7f8ea3;
+        --accent:#6fd3ee; --warm:#ff9d5c;
+        font:13px/1.45 ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+        color:var(--fg); }
+.mpmd-stage { position:relative; width:100%; aspect-ratio:1/1; max-height:min(70vh,620px);
+              border:1px solid var(--line); border-radius:10px; overflow:hidden;
+              background:#070a0f; cursor:crosshair; }
+.mpmd-canvas { display:block; width:100%; height:100%; }
+.mpmd-hud { position:absolute; top:9px; left:9px; background:rgba(8,12,18,.74);
+            border:1px solid var(--line); border-radius:7px; padding:6px 9px;
+            font:11px/1.5 ui-monospace,Menlo,Consolas,monospace; pointer-events:none;
+            backdrop-filter:blur(3px); }
+.mpmd-hrow { display:flex; gap:9px; justify-content:space-between; }
+.mpmd-hk { color:var(--muted); }
+.mpmd-hv { color:var(--fg); font-variant-numeric:tabular-nums; }
+.mpmd-badge { position:absolute; bottom:11px; left:0; right:0; text-align:center;
+              color:var(--muted); font-size:12px; pointer-events:none; transition:opacity .5s; }
+.mpmd-fail { padding:22px; color:var(--muted); font-size:13px; line-height:1.6; }
+.mpmd-fail b { color:var(--fg); }
+.mpmd-controls { display:flex; flex-wrap:wrap; gap:12px 20px; margin-top:11px; align-items:flex-end; }
+.mpmd-g { display:flex; flex-direction:column; gap:4px; }
+.mpmd-lab { color:var(--muted); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; }
+.mpmd-row { display:flex; align-items:center; gap:8px; }
+.mpmd-row input[type=range] { width:132px; accent-color:var(--accent); }
+.mpmd-read { color:var(--fg); font:11px ui-monospace,Menlo,Consolas,monospace;
+             min-width:52px; font-variant-numeric:tabular-nums; }
+.mpmd-seg { display:flex; gap:5px; flex-wrap:wrap; }
+.mpmd-sb { background:var(--panel); color:var(--muted); border:1px solid var(--line);
+           border-radius:6px; padding:5px 10px; font:11.5px inherit; cursor:pointer; }
+.mpmd-sb:hover { border-color:#31414f; color:var(--fg); }
+.mpmd-sb.on { background:#132430; color:var(--accent); border-color:#2c5566; }
+.mpmd-note { margin-top:10px; color:var(--muted); font-size:11.5px; line-height:1.55; }
+.mpmd-note b { color:var(--fg); font-weight:600; }
+.mpmd-note code { color:var(--accent); font-family:ui-monospace,Menlo,Consolas,monospace;
+                  font-size:11px; }
+@media (max-width:560px) {
+  .mpmd-row input[type=range] { width:104px; }
+  .mpmd-controls { gap:10px 14px; }
+}
+</style>
+<div class="wrap">
+
+<div class="verdict">
+<b>Recording every substep into one command buffer is the whole difference.</b>
+The same 128&times;128 elastic step that costs <b>345&nbsp;&micro;s per substep</b> in canonical
+Taichi/CUDA &mdash; flat in particle count, because Python pays a ~56&nbsp;&micro;s kernel launch
+167 times a frame &mdash; costs <b>7.1&nbsp;&micro;s</b> in WebGPU,
+and the 60&nbsp;fps particle budget goes from <b>1,229</b> (one JavaScript
+thread) and <b>zero</b> (Taichi/CUDA from Python never reaches 60&nbsp;fps at any particle count) to
+<b>~172,578</b>.
+<span class="warnline">What did not come free: WGSL has no atomic float add, and the obvious
+fixed-point scale is wrong. At 2<sup>20</sup> quanta per particle mass the port lands
+79&times; outside canonical's own noise band on a bouncing disk &mdash;
+visibly displaced, with nothing to warn you. 2<sup>24</sup> lands inside it.</span>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><div class="v">7.1 &micro;s</div>
+    <div class="k">per substep, WebGPU, 2048 particles<br>(Taichi/CUDA: 378 &micro;s)</div></div>
+  <div class="kpi"><div class="v">1.11 &micro;s</div>
+    <div class="k">empty dispatch inside a recorded buffer<br>(empty CUDA launch from Python: 55.6 &micro;s)</div></div>
+  <div class="kpi"><div class="v">~172,578</div>
+    <div class="k">particles at 60&nbsp;fps, real time<br>(JS port: 1,229 &middot; Taichi/CUDA: none)</div></div>
+  <div class="kpi"><div class="v warm">79&times;</div>
+    <div class="k">how far <span class="def" data-def="traj_rmse">traj_rmse</span> at
+      2<sup>20</sup> sits outside the noise band<br>(at 2<sup>24</sup>: 1.1&times;)</div></div>
+</div>
+
+<h2>The thing itself</h2>
+<p class="sub">Canonical elastic (<code>E=400</code>, <code>dt=1e-4</code>) on a
+128&times;128 grid, 167 substeps per frame,
+501 compute dispatches recorded into <b>one</b> command buffer and
+submitted once. Drag inside the box. The <i>grid mass</i> and <i>grid speed</i> views show the
+background grid the solver actually solves on; the accumulator buttons switch between the two
+fixed-point scales and the exact-f32 compare-and-swap path.</p>
+<div class="card"><div id="demo"></div></div>
+
+<h2>Where the 345 &micro;s went</h2>
+<p class="sub">Nothing about the arithmetic changed. The 4090 was idle, waiting to be told what to
+do, 668 times a frame. Both bars are an <b>empty</b> kernel &mdash; no work at all &mdash; measured
+on this machine in this session.</p>
+<div class="card"><div id="floorChart"></div></div>
+
+<h2>Three implementations, one machine, one scene family</h2>
+<p class="sub">Frame time for a real-time 60&nbsp;fps frame
+(<span class="def" data-def="substeps_per_frame">167 substeps</span>) against
+particle count, all seeded into the same constant-density box. Press the toggle: the second view is
+the same data read as "how many particles fits in the budget".</p>
+<div class="card">
+  <div class="toggle" id="costToggle">
+    <button data-v="time" class="on">frame time vs particles</button>
+    <button data-v="budget">particle budget at 60 fps</button>
+  </div>
+  <div id="costChart"></div>
+  <div class="legend">
+    <span><i style="background:#6fd3ee"></i>WebGPU compute</span>
+    <span><i style="background:#ff9d5c"></i>JavaScript, one thread</span>
+    <span><i style="background:#b58cf0"></i>Taichi / CUDA from Python</span>
+    <span><i style="background:#4a5c6b"></i>60 fps budget (16.7 ms)</span>
+  </div>
+  <p class="cap">Taichi/CUDA is a horizontal line because its cost is launch overhead, not
+  arithmetic &mdash; it is measuring an API usage pattern, not the device. Driven from a compiled
+  host or through CUDA graphs the same kernels would look like the WebGPU curve; that is a
+  <b>conjecture this task did not test</b>. The Taichi curve also stops at 16384 particles because
+  that is <code>sim.physics.MAX_P</code>.</p>
+</div>
+
+<h2>What WGSL forced: no atomic float add</h2>
+<p class="sub"><code>atomic&lt;f32&gt;</code> does not compile
+(<i>"'atomic' only supports 'i32', 'u32' or 'vec2u'"</i>), and P2G scatters mass and momentum as
+floats. Two routes were implemented and both were run against canonical ground truth on identical
+initial conditions. <b>Flip the scene toggle</b> &mdash; the gentle drop scene forgives a coarse
+scale and the bouncing disk does not.</p>
+<div class="card">
+  <div class="toggle" id="sceneToggle">
+    <button data-v="drop" class="on">drop &mdash; released from rest</button>
+    <button data-v="launch">launch &mdash; bounces and rolls</button>
+  </div>
+  <div id="accChart"></div>
+  <div class="legend">
+    <span><i style="background:#6fd3ee"></i>fixed point, 2<sup>k</sup> quanta per particle mass</span>
+    <span><i style="background:#ff9d5c"></i>exact f32 via compare-and-swap</span>
+    <span><i style="background:#2a3a4a"></i>canonical's own noise band</span>
+  </div>
+  <p class="cap">The band is what the canonical simulator does to <i>itself</i>: its lower edge is
+  the same code re-run (GPU atomics reorder between runs) and its upper edge is the same code with
+  the initial positions nudged by one f32 rounding unit. Anything inside is indistinguishable from
+  chaos. <b>Note the exact-f32 point sits inside the band on both scenes but is not at zero</b> --
+  a port that quantises nothing still diverges from canonical, because it dispatches in a different
+  order and uses a closed-form polar decomposition instead of <code>ti.svd</code>.</p>
+  <div id="accTable"></div>
+</div>
+
+<h3>The same thing as motion, with ground truth beside it</h3>
+<div class="two">
+  <div>
+    <video controls loop muted playsinline preload="metadata" src="/api/data/learning-taichi/runs/material-variants/webgpu-port-of-the-interactive-simulation/launch_compare.mp4"></video>
+    <p class="cap"><b>Launch scene.</b> Canonical, then WebGPU at 2<sup>20</sup>, then at
+    2<sup>24</sup>. Canonical is ghosted in blue under each WebGPU panel and the divergence is
+    plotted underneath as it happens. 2<sup>20</sup> separates from the ghost; 2<sup>24</sup> rides
+    the noise band.</p>
+  </div>
+  <div>
+    <video controls loop muted playsinline preload="metadata" src="/api/data/learning-taichi/runs/material-variants/webgpu-port-of-the-interactive-simulation/drop_compare.mp4"></video>
+    <p class="cap"><b>Drop scene.</b> Same construction, with 2<sup>16</sup> as the coarse case
+    &mdash; on this gentler scene 2<sup>20</sup> is already almost inside the band, which is exactly
+    why testing one scene would have given the wrong answer.</p>
+  </div>
+</div>
+<img class="fig" style="margin-top:14px" src="/api/data/learning-taichi/runs/material-variants/webgpu-port-of-the-interactive-simulation/launch_final_frames.png"
+     alt="final frame of the launch scene at five fixed-point scales, canonical ghosted">
+<p class="cap">Final frame of the launch scene at every scale tested, canonical ghosted in blue.
+The displacement is a whole disk diameter at 2<sup>12</sup> and still plainly visible at
+2<sup>20</sup>.</p>
+
+<h2>The other half of the trade: range</h2>
+<p class="sub">32 bits have to cover both the resolution the physics needs and the largest value a
+node ever holds. Buying resolution spends range, and a saturating <code>u32</code> does not raise
+an error &mdash; it wraps.</p>
+<div class="card">
+  <div id="occChart"></div>
+  <p class="cap">Measured with the exact-f32 path so the measurement cannot itself saturate. The
+  heaviest node carries roughly <b>2&times; the
+  <span class="def" data-def="particles_per_cell">particles per cell</span></b>, in units of one
+  particle mass. Read together with the accuracy result, that is the whole design rule:
+  <b>k &ge; 22 for accuracy, 2<sup>32-k</sup> &gt; 2 &times; particles-per-cell for range.</b> The
+  default shipped here is k=24, good to about 120 particles per cell.</p>
+</div>
+<img class="fig" src="/api/data/learning-taichi/runs/material-variants/webgpu-port-of-the-interactive-simulation/fixed_point_overflow.png"
+     alt="deliberate fixed-point overflow: 2^30 wraps and the block explodes">
+<p class="cap">Driving it over the ceiling on purpose. At 2<sup>30</sup> the accumulator holds only
+4 particle masses per node while the scene needs 43; it wraps, and the block detonates. No NaN, no
+error, no warning &mdash; just wrong physics. 2<sup>26</sup>, 2<sup>24</sup> and 2<sup>22</sup> all
+land on the exact-f32 result to within 2e-6.</p>
+
+<h2>Where the frame time actually goes</h2>
+<div class="card">
+  <div class="toggle" id="phaseToggle">
+    <button data-v="abs" class="on">milliseconds</button>
+    <button data-v="rel">share of the frame</button>
+  </div>
+  <div id="phaseChart"></div>
+  <p class="cap">The grid sweep is <b>flat at ~0.27&nbsp;ms</b> for every particle count: 167
+  dispatches over 16384 cells, almost entirely dispatch overhead. P2G &mdash; the atomic scatter
+  &mdash; is the only part that grows, and it is what eventually ends the frame budget. CPU-side
+  recording of all 501 dispatches costs
+  0.013&ndash;0.079&nbsp;ms,
+  i.e. the CPU is no longer anywhere near the critical path.</p>
+</div>
+
+<div class="scope">
+<b>Scope.</b> One material (elastic), one grid resolution (128&times;128), one
+adapter (nvidia / lovelace), one browser, two scenes.
+The accuracy conclusion is a statement about <i>these two scenes</i>: the coarse scale is fine on
+one and clearly wrong on the other, which is itself the reason not to trust a single-scene check.
+Nothing here was tested on the iPad or the M4, on snow/sand/fluid, or at any grid size but 128.
+The 60&nbsp;fps particle budget is interpolated between two measured points and is measured with
+<b>rendering excluded</b> &mdash; it is a compute budget, not a full frame budget. Timing came from
+<code>timestamp-query</code> (quantum measured at 64&nbsp;ns on this
+adapter) and from wall-clock totals over &ge;30 frames, never from a single
+<code>performance.now()</code> interval.
+</div>
+
+</div>
+<script>window.PAGE = {"media": "/api/data/learning-taichi/runs/material-variants/webgpu-port-of-the-interactive-simulation/", "device": {"vendor": "nvidia", "architecture": "lovelace", "device": "", "description": "", "timestampQuery": true, "limits": {"maxStorageBuffersPerShaderStage": 8, "maxStorageBufferBindingSize": 134217728, "maxBufferSize": 268435456, "maxComputeWorkgroupsPerDimension": 65535, "maxComputeInvocationsPerWorkgroup": 256}}, "spf": 167, "nGrid": 128, "physics": "phys-bebeaafbe73e", "tsQuantumNs": 64, "threeWay": [{"impl": "webgpu", "n": 500, "frame_ms": 0.9783333333830039, "us_per_substep": 5.85828343343116, "particles_per_cell": 3.288325270493705}, {"impl": "webgpu", "n": 1000, "frame_ms": 1.0283333333830038, "us_per_substep": 6.15768463103595, "particles_per_cell": 3.288325270493705}, {"impl": "webgpu", "n": 2048, "frame_ms": 1.1799999999503294, "us_per_substep": 7.065868263175626, "particles_per_cell": 3.2883252704937047}, {"impl": "webgpu", "n": 4096, "frame_ms": 1.3949999998013178, "us_per_substep": 8.35329341198394, "particles_per_cell": 3.288325270493705}, {"impl": "webgpu", "n": 8192, "frame_ms": 1.7883333332836628, "us_per_substep": 10.708582834033908, "particles_per_cell": 3.2883252704937047}, {"impl": "webgpu", "n": 16384, "frame_ms": 2.4766666665673256, "us_per_substep": 14.830339320762429, "particles_per_cell": 3.288325270493705}, {"impl": "webgpu", "n": 32768, "frame_ms": 4.497500000149012, "us_per_substep": 26.931137725443183, "particles_per_cell": 3.2883252704937047}, {"impl": "webgpu", "n": 49152, "frame_ms": 5.094999999925494, "us_per_substep": 30.508982035482003, "particles_per_cell": 3.7037037037037033}, {"impl": "webgpu", "n": 65536, "frame_ms": 6.773333333432674, "us_per_substep": 40.5588822361238, "particles_per_cell": 4.938271604938271}, {"impl": "webgpu", "n": 98304, "frame_ms": 9.933333332960805, "us_per_substep": 59.481037921920986, "particles_per_cell": 7.4074074074074066}, {"impl": "webgpu", "n": 131072, "frame_ms": 12.55, "us_per_substep": 75.1497005988024, "particles_per_cell": 9.876543209876543}, {"impl": "webgpu", "n": 196608, "frame_ms": 19.050000000212872, "us_per_substep": 114.07185628869983, "particles_per_cell": 14.814814814814813}, {"impl": "webgpu", "n": 262144, "frame_ms": 23.691666666418314, "us_per_substep": 141.86626746358272, "particles_per_cell": 19.753086419753085}, {"impl": "javascript", "n": 500, "frame_ms": 7.474619400000001, "us_per_substep": 44.7582, "particles_per_cell": 3.288325270493705}, {"impl": "javascript", "n": 1000, "frame_ms": 13.7932648, "us_per_substep": 82.5944, "particles_per_cell": 3.288325270493705}, {"impl": "javascript", "n": 2048, "frame_ms": 26.950022415557825, "us_per_substep": 161.3773797338792, "particles_per_cell": 3.2883252704937047}, {"impl": "javascript", "n": 4096, "frame_ms": 57.6712256147541, "us_per_substep": 345.33668032786886, "particles_per_cell": 3.288325270493705}, {"impl": "javascript", "n": 8192, "frame_ms": 109.88832704918033, "us_per_substep": 658.0139344262295, "particles_per_cell": 3.2883252704937047}, {"impl": "javascript", "n": 16384, "frame_ms": 222.57993799999997, "us_per_substep": 1332.8139999999999, "particles_per_cell": 3.288325270493705}, {"impl": "javascript", "n": 32768, "frame_ms": 442.44245200000006, "us_per_substep": 2649.356, "particles_per_cell": 3.2883252704937047}, {"impl": "javascript", "n": 49152, "frame_ms": 672.198213, "us_per_substep": 4025.1389999999997, "particles_per_cell": 3.7037037037037033}, {"impl": "javascript", "n": 65536, "frame_ms": 882.474927, "us_per_substep": 5284.281, "particles_per_cell": 4.938271604938271}, {"impl": "taichi_cuda", "n": 500, "frame_ms": 59.73001325142832, "us_per_substep": 357.6647500085528, "particles_per_cell": 3.288325270493705}, {"impl": "taichi_cuda", "n": 1000, "frame_ms": 58.871132248641516, "us_per_substep": 352.52174999186536, "particles_per_cell": 3.288325270493705}, {"impl": "taichi_cuda", "n": 2048, "frame_ms": 63.07665150405228, "us_per_substep": 377.70450002426514, "particles_per_cell": 3.2883252704937047}, {"impl": "taichi_cuda", "n": 4096, "frame_ms": 55.98720925168891, "us_per_substep": 335.25275001011323, "particles_per_cell": 3.288325270493705}, {"impl": "taichi_cuda", "n": 8192, "frame_ms": 57.87689774802857, "us_per_substep": 346.568249988195, "particles_per_cell": 3.2883252704937047}, {"impl": "taichi_cuda", "n": 16384, "frame_ms": 54.91740725283307, "us_per_substep": 328.8467500169645, "particles_per_cell": 3.288325270493705}], "budget": {"webgpu": 172578.13333197404, "javascript": 1228.8804920070722, "taichi_cuda": null}, "floor": {"taichi_cuda_empty_kernel_from_python": 55.640624996158294, "webgpu_empty_dispatch_in_recorded_buffer": 1.108311377245509, "ratio": 50.203062188572105}, "phases": [{"n": 500, "grid": 0.273408, "p2g": 0.37171200000000004, "g2p": 0.315392, "encode": 0.01999999980131785, "sustained": 0.9783333333830039, "ppc": 3.288325270493705}, {"n": 1000, "grid": 0.264192, "p2g": 0.406528, "g2p": 0.3440639999999999, "encode": 0.025, "sustained": 1.0283333333830038, "ppc": 3.288325270493705}, {"n": 2048, "grid": 0.27136, "p2g": 0.512, "g2p": 0.4116480000000001, "encode": 0.015000000099341075, "sustained": 1.1799999999503294, "ppc": 3.2883252704937047}, {"n": 4096, "grid": 0.268288, "p2g": 0.7198720000000001, "g2p": 0.39116800000000007, "encode": 0.03166666676600774, "sustained": 1.3949999998013178, "ppc": 3.288325270493705}, {"n": 8192, "grid": 0.265216, "p2g": 1.1130879999999999, "g2p": 0.42803199999999997, "encode": 0.34333333348234496, "sustained": 1.7883333332836628, "ppc": 3.2883252704937047}, {"n": 16384, "grid": 0.26624, "p2g": 1.608704, "g2p": 0.5847040000000001, "encode": 0.013333333283662796, "sustained": 2.4766666665673256, "ppc": 3.288325270493705}, {"n": 32768, "grid": 0.26624, "p2g": 2.9337600000000004, "g2p": 0.7208959999999998, "encode": 0.019999999925494193, "sustained": 4.497500000149012, "ppc": 3.2883252704937047}, {"n": 49152, "grid": 0.268288, "p2g": 3.748864, "g2p": 0.9482239999999997, "encode": 0.02250000014901161, "sustained": 5.094999999925494, "ppc": 3.7037037037037033}, {"n": 65536, "grid": 0.265216, "p2g": 5.1630080000000005, "g2p": 1.1274239999999995, "encode": 0.03000000019868215, "sustained": 6.773333333432674, "ppc": 4.938271604938271}, {"n": 98304, "grid": 0.270336, "p2g": 7.863296, "g2p": 1.7111039999999988, "encode": 0.07916666691501935, "sustained": 9.933333332960805, "ppc": 7.4074074074074066}, {"n": 131072, "grid": 0.265216, "p2g": 9.835519999999999, "g2p": 2.160640000000001, "encode": 0.020000000298023225, "sustained": 12.55, "ppc": 9.876543209876543}, {"n": 196608, "grid": 0.272384, "p2g": 15.736831999999998, "g2p": 2.752512000000003, "encode": 0.014285714498588018, "sustained": 19.050000000212872, "ppc": 14.814814814814813}, {"n": 262144, "grid": 0.268288, "p2g": 19.643392000000002, "g2p": 3.678207999999998, "encode": 0.016666666915019352, "sustained": 23.691666666418314, "ppc": 19.753086419753085}], "substepSweep": [{"n": 16384, "substeps": 1, "sustained_ms": 0.14000000059604645, "gpu_ms": 0.01536, "fps": 7142.85711244661}, {"n": 16384, "substeps": 10, "sustained_ms": 0.275, "gpu_ms": 0.134144, "fps": 3636.363636363636}, {"n": 16384, "substeps": 42, "sustained_ms": 0.6799999997019768, "gpu_ms": 0.581632, "fps": 1470.5882359386314}, {"n": 16384, "substeps": 84, "sustained_ms": 1.3549999997019768, "gpu_ms": 1.173504, "fps": 738.0073802361205}, {"n": 16384, "substeps": 139, "sustained_ms": 2.175, "gpu_ms": 2.010112, "fps": 459.7701149425288}, {"n": 16384, "substeps": 167, "sustained_ms": 2.575, "gpu_ms": 2.44224, "fps": 388.34951456310677}, {"n": 16384, "substeps": 333, "sustained_ms": 5.195000000298023, "gpu_ms": 5.040128, "fps": 192.49278150965017}, {"n": 16384, "substeps": 500, "sustained_ms": 7.754999999701977, "gpu_ms": 7.481344, "fps": 128.94906512423336}], "atomics": [{"n": 2048, "particles_per_cell": 3.2883252704937047, "fixed_gpu_ms": 1.0752, "fixed_p2g_grid_ms": 0.8192, "casf32_gpu_ms": 4.432896, "casf32_p2g_grid_ms": 4.10624, "slowdown_total": 4.122857142857144, "slowdown_p2g_grid": 5.012499999999999}, {"n": 16384, "particles_per_cell": 3.288325270493705, "fixed_gpu_ms": 2.475008, "fixed_p2g_grid_ms": 2.141184, "casf32_gpu_ms": 4.773888, "casf32_p2g_grid_ms": 4.307968, "slowdown_total": 1.9288374017376917, "slowdown_p2g_grid": 2.01195600191296}, {"n": 49152, "particles_per_cell": 3.7037037037037033, "fixed_gpu_ms": 5.10976, "fixed_p2g_grid_ms": 4.173824, "casf32_gpu_ms": 11.046912, "casf32_p2g_grid_ms": 9.962496, "slowdown_total": 2.161923847695391, "slowdown_p2g_grid": 2.3868989205103044}], "accuracy": {"drop": {"desc": "drop (disk r=0.11 at (0.5,0.52), released from rest)", "band": {"self_noise": 8.855803571350407e-06, "perturbed_ic_1e-7": 8.160050128935836e-06}, "variants": [{"variant": "fixed_k12", "atomics": "fixed", "kM": 12, "kV": 10, "traj_rmse": 0.030407465994358063, "vs_self_noise": 3433.620195995526, "vs_perturbed_ic": 3726.3822542623943, "final_frame_dist": 0.029136674478650093, "mass_ceiling": 1048576.0}, {"variant": "fixed_k16", "atomics": "fixed", "kM": 16, "kV": 14, "traj_rmse": 0.0015313929179683328, "vs_self_noise": 172.9253484034553, "vs_perturbed_ic": 187.66954783009942, "final_frame_dist": 0.006818430498242378, "mass_ceiling": 65536.0}, {"variant": "fixed_k20", "atomics": "fixed", "kM": 20, "kV": 18, "traj_rmse": 4.025765156256966e-05, "vs_self_noise": 4.545906109842818, "vs_perturbed_ic": 4.933505422940303, "final_frame_dist": 0.0001817623560782522, "mass_ceiling": 4096.0}, {"variant": "fixed_k22", "atomics": "fixed", "kM": 22, "kV": 20, "traj_rmse": 1.8927652490674518e-05, "vs_self_noise": 2.137316206053594, "vs_perturbed_ic": 2.3195510066238896, "final_frame_dist": 2.413806396361906e-05, "mass_ceiling": 1024.0}, {"variant": "fixed_k24", "atomics": "fixed", "kM": 24, "kV": 22, "traj_rmse": 6.939666491234675e-06, "vs_self_noise": 0.7836292252106103, "vs_perturbed_ic": 0.8504441004138399, "final_frame_dist": 1.6781483282102272e-05, "mass_ceiling": 256.0}, {"variant": "fixed_k26", "atomics": "fixed", "kM": 26, "kV": 24, "traj_rmse": 7.797144462529104e-06, "vs_self_noise": 0.8804558953581364, "vs_perturbed_ic": 0.9555265395833961, "final_frame_dist": 2.2038653696654364e-05, "mass_ceiling": 64.0}, {"variant": "casf32", "atomics": "casf32", "kM": 20, "kV": 18, "traj_rmse": 5.766159119957592e-06, "vs_self_noise": 0.6511164202661194, "vs_perturbed_ic": 0.7066328060302695, "final_frame_dist": 3.007364102813881e-05, "mass_ceiling": 4096.0}], "times": [0.016699999570846558, 0.06679999828338623, 0.1168999969959259, 0.16699999570846558, 0.21709999442100525, 0.2671999931335449, 0.3172999918460846, 0.36739999055862427, 0.41749998927116394, 0.4675999879837036, 0.5177000164985657, 0.567799985408783, 0.617900013923645, 0.6679999828338623, 0.7181000113487244, 0.7681999802589417, 0.8183000087738037, 0.868399977684021, 0.9185000061988831, 0.9685999751091003, 1.0187000036239624, 1.0687999725341797, 1.118899941444397, 1.1690000295639038, 1.219099998474121, 1.2691999673843384, 1.3193000555038452, 1.3694000244140625, 1.4194999933242798, 1.469599962234497, 1.519700050354004, 1.5698000192642212, 1.6198999881744385, 1.6699999570846558, 1.7201000452041626, 1.7702000141143799, 1.8202999830245972, 1.8703999519348145, 1.9205000400543213, 1.9706000089645386, 2.020699977874756, 2.0708000659942627, 2.1208999156951904, 2.1710000038146973, 2.221100091934204, 2.271199941635132, 2.3213000297546387, 2.3714001178741455, 2.4214999675750732, 2.47160005569458], "curves": {"fixed_k12": [0.00047728512436151505, 0.004547053948044777, 0.010787912644445896, 0.01857655867934227, 0.027503997087478638, 0.03731238469481468, 0.023114722222089767, 0.024038732051849365, 0.01958199217915535, 0.016634637489914894, 0.015539562329649925, 0.013495956547558308, 0.009741201065480709, 0.005716077052056789, 0.0056581394746899605, 0.008824411779642105, 0.015595347620546818, 0.025094691663980484, 0.03507600724697113, 0.043930839747190475, 0.0509958416223526, 0.04625353217124939, 0.02805502340197563, 0.027008336037397385, 0.04415848106145859, 0.05806988477706909, 0.032497137784957886, 0.028417415916919708, 0.04007367044687271, 0.06201424077153206, 0.02492513507604599, 0.024775715544819832, 0.02870066463947296, 0.03462936729192734, 0.044687289744615555, 0.0533611923456192, 0.059402719140052795, 0.0644746646285057, 0.06266756355762482, 0.05989869683980942, 0.05357527732849121, 0.041958849877119064, 0.030502531677484512, 0.018317589536309242, 0.008311823010444641, 0.017069697380065918, 0.025424562394618988, 0.03156619891524315, 0.03432133421301842, 0.03225591033697128], "fixed_k16": [8.083748980425298e-06, 7.87805620348081e-05, 0.00019081501523032784, 0.00033192517003044486, 0.0004943901440128684, 0.000672362104523927, 0.0004937474150210619, 0.00040593594894744456, 0.0003414353705011308, 0.0003059486043639481, 0.0003093055565841496, 0.0003025172627530992, 0.00026559369871392846, 0.0002256286097690463, 0.00021345054847188294, 0.00026443827664479613, 0.00035426055546849966, 0.0005265375366434455, 0.0007653369684703648, 0.001021887524984777, 0.0012997218873351812, 0.0015669288113713264, 0.0014570667408406734, 0.0013401173055171967, 0.0012979286257177591, 0.0013319267891347408, 0.0013145746197551489, 0.0010774185648187995, 0.00033428342430852354, 0.0005655285203829408, 0.0013532896991819143, 0.0014537305105477571, 0.0008951079798862338, 0.0008973865769803524, 0.0018326288554817438, 0.002590803662315011, 0.0025961101055145264, 0.0025041713379323483, 0.002524447627365589, 0.0027823850978165865, 0.0032383580692112446, 0.0036936101969331503, 0.0034682215191423893, 0.0028662343975156546, 0.0022072982974350452, 0.0018287424463778734, 0.0027796041686087847, 0.003928214777261019, 0.005402835551649332, 0.006367197260260582], "fixed_k20": [1.383305061608553e-07, 1.5068362699821591e-06, 3.544133505783975e-06, 5.966896424070001e-06, 8.607967174611986e-06, 1.1410187653382309e-05, 4.352328687673435e-06, 2.101161953760311e-06, 2.2218318918021396e-06, 3.295107489975635e-06, 4.362951585790142e-06, 5.916406735195778e-06, 8.238887858169619e-06, 1.1107915270258673e-05, 4.802522198588122e-06, 6.077531452319818e-06, 9.434963430976495e-06, 1.4637580534326844e-05, 2.1060586732346565e-05, 2.8575763280969113e-05, 3.6995035770814866e-05, 3.871921944664791e-05, 3.3574786357348785e-05, 2.9568476747954264e-05, 2.7282674636808224e-05, 2.7781003154814243e-05, 3.135047882096842e-05, 1.4243471014196984e-05, 4.581760094879428e-06, 1.8223227016278543e-05, 3.3689495467115194e-05, 3.8140962715260684e-05, 3.219612699467689e-05, 2.9100128813297488e-05, 5.325132224243134e-05, 5.774344754172489e-05, 5.8320496464148164e-05, 6.640986248385161e-05, 9.711150050861761e-05, 8.07123287813738e-05, 7.498124614357948e-05, 0.00010323702008463442, 7.935189205454662e-05, 6.906297494424507e-05, 4.5875756768509746e-05, 6.0962222050875425e-05, 9.64654391282238e-05, 0.00011040795652661473, 0.0001491686562076211, 0.0001700861903373152], "fixed_k22": [3.486638888716698e-08, 3.486056812107563e-07, 8.333881851285696e-07, 1.045467797666788e-06, 1.3898752513341606e-06, 1.7594447854207829e-06, 4.152895598963369e-06, 5.482006599777378e-06, 6.904174369992688e-06, 8.351862561539747e-06, 9.70904147834517e-06, 1.1118831025669351e-05, 1.2599937690538354e-05, 1.4051919606572483e-05, 5.7540464695193805e-06, 4.6183904487406835e-06, 3.485505430944613e-06, 6.47107299300842e-06, 1.082713879441144e-05, 1.5442416042787954e-05, 2.018145823967643e-05, 1.1319744771753903e-05, 3.7286520182533422e-06, 7.485195965273306e-06, 1.6739897546358407e-05, 2.625342494866345e-05, 3.257161006331444e-05, 1.563071782584302e-05, 3.4553347632027e-06, 1.3384868907451164e-05, 2.7566195058170706e-05, 1.617525049368851e-05, 1.9314004020998254e-05, 1.7763943105819635e-05, 3.665342228487134e-05, 2.3819820853532292e-05, 2.186705569329206e-05, 2.2941521820030175e-05, 5.254790448816493e-05, 4.035499659948982e-05, 1.4054920939088333e-05, 5.033509660279378e-05, 3.1419145670952275e-05, 4.174111381871626e-05, 3.409680357435718e-05, 3.697548891068436e-05, 4.273446393199265e-05, 3.410057252040133e-05, 3.53210634784773e-05, 3.252069291193038e-05], "fixed_k24": [2.4156179279088974e-09, 2.9060174711048603e-08, 5.145557224750519e-08, 1.5797559171915054e-07, 4.100147634744644e-07, 8.413553587161005e-07, 1.0440948017276241e-06, 1.5733660347905243e-06, 2.3804941520211287e-06, 3.2820628348417813e-06, 4.20475953433197e-06, 5.132073511049384e-06, 6.058284725440899e-06, 6.978503279242432e-06, 7.3411179073445965e-06, 5.191600848775124e-06, 2.866895101760747e-06, 2.1947250843368238e-06, 4.103372702957131e-06, 6.54550785839092e-06, 9.098836017074063e-06, 1.0191337423748337e-05, 9.599889381206594e-06, 9.303777915192768e-06, 9.419939487997908e-06, 1.0057702638732735e-05, 1.0154769370274153e-05, 6.572908205271233e-06, 3.6910259950673208e-06, 4.656691089621745e-06, 8.143315426423214e-06, 5.612424502032809e-06, 6.254079380596522e-06, 4.616985279426444e-06, 1.0895447303482797e-05, 9.231556759914383e-06, 9.59150474955095e-06, 5.683334165951237e-06, 1.3224454050941858e-05, 9.998289897339419e-06, 8.575024367019068e-06, 1.4388189811143093e-05, 1.2965628229721915e-05, 1.2296914064791054e-05, 9.78796470008092e-06, 8.406406777794473e-06, 9.70160272117937e-06, 6.444447535614017e-06, 1.1686006473610178e-05, 1.4632234524469823e-05], "fixed_k26": [0.0, 2.0489096641540527e-08, 8.752977009862661e-08, 2.427113940939307e-07, 5.543770384974778e-07, 1.0342337191104889e-06, 9.427844815945718e-07, 1.5935858073135023e-06, 2.4358155314985197e-06, 3.3536834962433204e-06, 4.2909960029646754e-06, 5.232312560110586e-06, 6.15570706941071e-06, 7.058994015096687e-06, 6.8459817157418e-06, 4.816774890059605e-06, 2.648816462169634e-06, 2.5512063075439073e-06, 4.57878059023642e-06, 7.005578481766861e-06, 9.513332770438865e-06, 9.991230399464257e-06, 9.482077075517736e-06, 9.631531611375976e-06, 1.0521338481339626e-05, 1.2102838809369132e-05, 1.2828499166062102e-05, 1.0245488738291897e-05, 6.437026968342252e-06, 5.544144187297206e-06, 8.539755071979016e-06, 4.583745976560749e-06, 6.723098522343207e-06, 3.0612700356869027e-06, 8.61202170199249e-06, 7.61661067372188e-06, 7.168378488131566e-06, 3.5973898775409907e-06, 1.1281185834377538e-05, 1.0532759006309789e-05, 1.360739679512335e-05, 1.897775655379519e-05, 2.0380572095746174e-05, 1.9234799765399657e-05, 1.7498718079878017e-05, 1.4764924344490282e-05, 1.2022919690934941e-05, 5.1255078687972855e-06, 8.679771781316958e-06, 1.669452467467636e-05], "casf32": [0.0, 1.5177647583186626e-08, 4.300090949982405e-08, 1.1645897757261992e-07, 2.404703991487622e-07, 4.07677362090908e-07, 4.163890707786777e-07, 5.45593081824336e-07, 7.106206680873584e-07, 9.049869618138473e-07, 1.112299059968791e-06, 1.3245897889646585e-06, 1.5245019540088833e-06, 1.7065982547137537e-06, 8.906481525627896e-07, 1.5322377748816507e-06, 2.2624271878157742e-06, 3.1599174690200016e-06, 4.119683126191376e-06, 5.0914745770569425e-06, 6.0843249229947105e-06, 6.550112630065996e-06, 6.036348167981487e-06, 5.871134362678276e-06, 6.14823829891975e-06, 6.821138867962873e-06, 7.084907338139601e-06, 5.378566129365936e-06, 2.749362920440035e-06, 3.6350802474771626e-06, 6.762343218724709e-06, 7.940991054056212e-06, 4.855242423218442e-06, 3.2055647807283094e-06, 4.659101705328794e-06, 6.829189260315616e-06, 6.496322839666391e-06, 6.501059488073224e-06, 6.595785634999629e-06, 6.739127911714604e-06, 7.057609764160588e-06, 8.88428166945232e-06, 7.649055987712927e-06, 6.6471079662733246e-06, 7.2297616497962736e-06, 1.026930294756312e-05, 1.5513352991547436e-05, 1.905323370010592e-05, 2.4401490009040572e-05, 2.800880974973552e-05]}, "self_noise_curve": [0.0, 8.09086486697197e-09, 1.30385160446167e-08, 3.1082890927791595e-08, 5.10990503244102e-08, 7.038215699139982e-08, 1.9705507270373346e-07, 5.458120995172067e-07, 9.031258514369256e-07, 1.2538332612166414e-06, 1.6099917274914333e-06, 1.9655051346489927e-06, 2.3232355488289613e-06, 2.6744010028778575e-06, 2.6397669898869935e-06, 9.430248724129342e-07, 1.334104467787256e-06, 3.351666236994788e-06, 5.407307980931364e-06, 7.457562787749339e-06, 9.525648238195572e-06, 1.072489976650104e-05, 1.0027999451267533e-05, 9.42614769883221e-06, 8.991471986519173e-06, 8.792079825070687e-06, 8.73344197316328e-06, 7.25661493561347e-06, 6.090902388677932e-06, 6.509826562250964e-06, 7.814716809662059e-06, 8.510765837854706e-06, 7.698159606661648e-06, 5.602378223557025e-06, 8.219055416702759e-06, 8.470295142615214e-06, 9.017647244036198e-06, 1.1194934813829605e-05, 1.8020957213593647e-05, 1.537792013550643e-05, 1.4679517335025594e-05, 2.1859224943909794e-05, 1.856124436017126e-05, 1.6024594515329227e-05, 1.1958683899138123e-05, 1.0518464478082024e-05, 1.7706846847431734e-05, 2.1112506146891974e-05, 3.1734060030430555e-05, 3.9382732211379334e-05]}, "launch": {"desc": "launch (disk r=0.11 at (0.30,0.55), v0=(0.75,0)) -- bounces and rolls", "band": {"self_noise": 4.30825020885095e-05, "perturbed_ic_1e-7": 9.619932825444266e-05}, "variants": [{"variant": "fixed_k12", "atomics": "fixed", "kM": 12, "kV": 10, "traj_rmse": 0.1656275987625122, "vs_self_noise": 3844.4284972642436, "vs_perturbed_ic": 1721.7126332154323, "final_frame_dist": 0.11073008179664612, "mass_ceiling": 1048576.0}, {"variant": "fixed_k16", "atomics": "fixed", "kM": 16, "kV": 14, "traj_rmse": 0.04958696663379669, "vs_self_noise": 1150.9769449305497, "vs_perturbed_ic": 515.4606329749156, "final_frame_dist": 0.02288133278489113, "mass_ceiling": 65536.0}, {"variant": "fixed_k20", "atomics": "fixed", "kM": 20, "kV": 18, "traj_rmse": 0.00760019151493907, "vs_self_noise": 176.41016994150186, "vs_perturbed_ic": 79.00462147549433, "final_frame_dist": 0.038355834782123566, "mass_ceiling": 4096.0}, {"variant": "fixed_k22", "atomics": "fixed", "kM": 22, "kV": 20, "traj_rmse": 0.0002759279450401664, "vs_self_noise": 6.404640669970719, "vs_perturbed_ic": 2.8682938856948152, "final_frame_dist": 0.0009991496335715055, "mass_ceiling": 1024.0}, {"variant": "fixed_k24", "atomics": "fixed", "kM": 24, "kV": 22, "traj_rmse": 0.00010978351201629266, "vs_self_noise": 2.548215788181275, "vs_perturbed_ic": 1.1412087174446839, "final_frame_dist": 0.00048090668860822916, "mass_ceiling": 256.0}, {"variant": "fixed_k26", "atomics": "fixed", "kM": 26, "kV": 24, "traj_rmse": 0.0003485898196231574, "vs_self_noise": 8.09121575406665, "vs_perturbed_ic": 3.623620101599398, "final_frame_dist": 0.0014515132643282413, "mass_ceiling": 64.0}, {"variant": "casf32", "atomics": "casf32", "kM": 20, "kV": 18, "traj_rmse": 0.00021165293583180755, "vs_self_noise": 4.912735462693968, "vs_perturbed_ic": 2.200149831316863, "final_frame_dist": 0.0008108860347419977, "mass_ceiling": 4096.0}], "times": [0.016699999570846558, 0.06679999828338623, 0.1168999969959259, 0.16699999570846558, 0.21709999442100525, 0.2671999931335449, 0.3172999918460846, 0.36739999055862427, 0.41749998927116394, 0.4675999879837036, 0.5177000164985657, 0.567799985408783, 0.617900013923645, 0.6679999828338623, 0.7181000113487244, 0.7681999802589417, 0.8183000087738037, 0.868399977684021, 0.9185000061988831, 0.9685999751091003, 1.0187000036239624, 1.0687999725341797, 1.118899941444397, 1.1690000295639038, 1.219099998474121, 1.2691999673843384, 1.3193000555038452, 1.3694000244140625, 1.4194999933242798, 1.469599962234497, 1.519700050354004, 1.5698000192642212, 1.6198999881744385, 1.6699999570846558, 1.7201000452041626, 1.7702000141143799, 1.8202999830245972, 1.8703999519348145, 1.9205000400543213, 1.9706000089645386, 2.020699977874756, 2.0708000659942627, 2.1208999156951904, 2.1710000038146973, 2.221100091934204, 2.271199941635132, 2.3213000297546387, 2.3714001178741455, 2.4214999675750732, 2.47160005569458], "curves": {"fixed_k12": [0.0004609561583492905, 0.004432517569512129, 0.011089038103818893, 0.019993465393781662, 0.03093005158007145, 0.04380403459072113, 0.033139195293188095, 0.04655543714761734, 0.05108986049890518, 0.05864908918738365, 0.0688135027885437, 0.08110731840133667, 0.09485778212547302, 0.11007638275623322, 0.1267220675945282, 0.14470532536506653, 0.17073610424995422, 0.19512270390987396, 0.21856433153152466, 0.2415275275707245, 0.2641370892524719, 0.2847115695476532, 0.3040250539779663, 0.3191028833389282, 0.33277326822280884, 0.3455801010131836, 0.35417377948760986, 0.34260520339012146, 0.3273397386074066, 0.31125006079673767, 0.29471850395202637, 0.2788342833518982, 0.2625884413719177, 0.2455679178237915, 0.22906862199306488, 0.21193861961364746, 0.19197401404380798, 0.17279931902885437, 0.15685652196407318, 0.14168258011341095, 0.13147683441638947, 0.12201253324747086, 0.11558850854635239, 0.10990593582391739, 0.1066717728972435, 0.10398253798484802, 0.10336893051862717, 0.10337486863136292, 0.1051701009273529, 0.10789721459150314], "fixed_k16": [9.01075873116497e-06, 8.617580169811845e-05, 0.00021557726722676307, 0.00038748164661228657, 0.0005947786848992109, 0.0008346420363523066, 0.0006714111659675837, 0.0008123134030029178, 0.000841863511595875, 0.0009274404728785157, 0.001073738094419241, 0.001272390829399228, 0.0014912711922079325, 0.0017336008604615927, 0.001998828025534749, 0.0021952036768198013, 0.002423361875116825, 0.0026831957511603832, 0.0030290642753243446, 0.003463903209194541, 0.003956046886742115, 0.00419078441336751, 0.00512704998254776, 0.006128767505288124, 0.007294184528291225, 0.008551087230443954, 0.0066130878403782845, 0.02036239393055439, 0.048347242176532745, 0.07437502592802048, 0.09639032185077667, 0.1199662908911705, 0.1312142014503479, 0.13545159995555878, 0.1385936737060547, 0.1415795385837555, 0.14557689428329468, 0.14912211894989014, 0.15051698684692383, 0.150267094373703, 0.14520029723644257, 0.13661083579063416, 0.12595349550247192, 0.1146755963563919, 0.10273972898721695, 0.08878610283136368, 0.07228738814592361, 0.05362153425812721, 0.03693673759698868, 0.025531122460961342], "fixed_k20": [1.383167642643457e-07, 1.4700690371682867e-06, 6.2660660660185385e-06, 1.709089701762423e-05, 2.94423516606912e-05, 3.941885370295495e-05, 4.329538205638528e-05, 4.871475539403036e-05, 5.973086808808148e-05, 7.576972711831331e-05, 9.355846123071387e-05, 0.00011290045222267509, 0.00013333847164176404, 0.00015483793686144054, 0.00017685437342152, 0.00016211647016461939, 0.00013825559290125966, 0.00011911106412298977, 0.00011303028441034257, 0.00012512032117228955, 0.00015322444960474968, 0.00018872710643336177, 0.00022264789731707424, 0.0002699647448025644, 0.00032054883195087314, 0.0003733734483830631, 0.0005896799848414958, 0.0020325963851064444, 0.0042047263123095036, 0.005276587791740894, 0.006716832984238863, 0.00928631890565157, 0.010024181567132473, 0.011027731001377106, 0.014115084894001484, 0.015863528475165367, 0.018550656735897064, 0.017679693177342415, 0.016304070129990578, 0.015264463610947132, 0.01490197516977787, 0.015334025956690311, 0.01588660106062889, 0.017213057726621628, 0.018663402646780014, 0.020851299166679382, 0.023447422310709953, 0.026658929884433746, 0.03047393634915352, 0.034990519285202026], "fixed_k22": [3.1082890927791595e-08, 3.761815605685115e-07, 7.254284923874366e-07, 1.088687668016064e-06, 1.4594339745599427e-06, 1.7639472389419097e-06, 3.7919176065770444e-06, 5.185646841709968e-06, 6.936585123185068e-06, 8.85664667293895e-06, 1.0792202374432236e-05, 1.2677081031142734e-05, 1.4567126527254004e-05, 1.6471914932481013e-05, 1.832824455050286e-05, 1.3461736671160907e-05, 1.017107570078224e-05, 6.679817943222588e-06, 5.783645065093879e-06, 7.635389920324087e-06, 1.099646215152461e-05, 1.3598313671536744e-05, 1.4643357644672506e-05, 2.118265547323972e-05, 2.8988322810619138e-05, 3.736867074621841e-05, 1.3803968613501638e-05, 7.66219018260017e-05, 0.0001742590102367103, 0.0002316473692189902, 0.0002762110671028495, 0.0003832307702396065, 0.00041104608681052923, 0.0004667250032071024, 0.0006085739005357027, 0.0006770175532437861, 0.0007628649473190308, 0.0007920482894405723, 0.0006979423924349248, 0.0006424759631045163, 0.0005951464991085231, 0.0005922816344536841, 0.00058803177671507, 0.0006120443576946855, 0.0006245517870411277, 0.0006681160302832723, 0.0007081320509314537, 0.0007758568972349167, 0.0008445887942798436, 0.0009395858505740762], "fixed_k24": [2.6775524020195007e-09, 3.092281986027956e-08, 4.557659849524498e-08, 1.2964301276952028e-07, 3.621316864155233e-07, 7.279013516381383e-07, 7.723765520495363e-07, 9.212869827024406e-07, 1.087560121959541e-06, 1.427497636541375e-06, 1.8507859067540267e-06, 2.311280695721507e-06, 2.779012675091508e-06, 3.2571279007242993e-06, 3.755661282411893e-06, 4.084175088792108e-06, 4.211532996123424e-06, 4.303550667827949e-06, 4.4287462515058e-06, 4.5478168431145605e-06, 4.700135832536034e-06, 4.840333531319629e-06, 5.321333446772769e-06, 5.989429155306425e-06, 6.723682872689096e-06, 7.4739341471286025e-06, 8.14470877230633e-06, 3.1129788112593815e-05, 6.57057244097814e-05, 8.583557064412162e-05, 0.00010278268746333197, 0.0001396331936120987, 0.00014736654702574015, 0.00016763489111326635, 0.00022239479585550725, 0.0002469560131430626, 0.0002811483573168516, 0.0002933629439212382, 0.0002576973056420684, 0.0002406774292467162, 0.00022397504653781652, 0.00022732766228727996, 0.00023004348622635007, 0.00024569572997279465, 0.00025758519768714905, 0.0002833335311152041, 0.00030886384774930775, 0.00034839066211134195, 0.0003896363778039813, 0.0004434990114532411], "fixed_k26": [0.0, 2.2657332010567188e-08, 7.772177923470736e-08, 2.1618325263261795e-07, 4.745161277242005e-07, 9.334617061540484e-07, 7.08025538642687e-07, 1.0456858490215382e-06, 1.2339728527877014e-06, 1.5388274050565087e-06, 1.9112767404294573e-06, 2.3282439087779494e-06, 2.7473970476421528e-06, 3.1406839298142586e-06, 3.506145503706648e-06, 3.4039078400383005e-06, 4.049654307891615e-06, 4.870719749305863e-06, 5.929293365625199e-06, 7.1284312070929445e-06, 8.442455509793945e-06, 9.20656748348847e-06, 1.0995978300343268e-05, 1.3624737221107353e-05, 1.6925034287851304e-05, 2.054855394817423e-05, 2.4525290427845903e-05, 9.671530278865248e-05, 0.0002056493831332773, 0.00027389792376197875, 0.0003355707158334553, 0.00045796894119121134, 0.0004918037448078394, 0.0005616382695734501, 0.0007324193720705807, 0.0008199120056815445, 0.0009326430154033005, 0.0009670278523117304, 0.0008463768754154444, 0.0007810532115399837, 0.0007316573755815625, 0.0007350869127549231, 0.0007423069328069687, 0.0007872068090364337, 0.0008183677564375103, 0.0008909686584956944, 0.0009631727007217705, 0.0010729950154200196, 0.001192460535094142, 0.0013457295717671514], "casf32": [0.0, 1.363514456897974e-08, 3.8664438761770725e-08, 8.489587344229221e-08, 2.084343577735126e-07, 3.5526682040654123e-07, 3.083522983615694e-07, 4.385703107345762e-07, 6.11404971095908e-07, 8.456985369775794e-07, 1.1095405625383137e-06, 1.3926115798312821e-06, 1.6764945485192584e-06, 1.9627677829703316e-06, 2.268651769554708e-06, 2.5758365609362954e-06, 3.091859753112658e-06, 3.681200269056717e-06, 4.312934379413491e-06, 4.981466645403998e-06, 5.694598712580046e-06, 6.150826266093645e-06, 7.599263881274965e-06, 9.323412086814642e-06, 1.136210084951017e-05, 1.3548107745009474e-05, 1.6232248526648618e-05, 6.417237455025315e-05, 0.0001359968155156821, 0.00018019365961663425, 0.00021717711933888495, 0.0002946126915048808, 0.00031398795545101166, 0.0003563025966286659, 0.00046575290616601706, 0.0005184413748793304, 0.0005873502232134342, 0.000608311325777322, 0.0005292660207487643, 0.0004859339678660035, 0.0004515848122537136, 0.00045133387902751565, 0.00045076804235577583, 0.0004739311116281897, 0.00048588772187940776, 0.000523442286066711, 0.0005583384190686047, 0.0006164747755974531, 0.0006768875755369663, 0.000756645284127444]}, "self_noise_curve": [0.0, 1.225271262228489e-08, 2.7852365747094154e-08, 4.1851308196783066e-08, 8.389906724914908e-08, 1.3580938684754074e-07, 3.5559560274123214e-07, 4.0400533407591865e-07, 4.839504299525288e-07, 5.883833296138619e-07, 7.08678157934628e-07, 8.389389449803275e-07, 9.736356787470868e-07, 1.1092181466665352e-06, 1.2462063523344113e-06, 1.2874177173216594e-06, 1.5575428733427543e-06, 1.8463019841874484e-06, 2.1547743926930707e-06, 2.4702626433281694e-06, 2.7977694116998464e-06, 2.9820266718161292e-06, 2.9680159059353173e-06, 2.9365162390604382e-06, 3.0046585379750468e-06, 3.1503259378951043e-06, 3.824512987193884e-06, 1.289116517000366e-05, 2.6437201086082496e-05, 3.4402219171170145e-05, 4.106287451577373e-05, 5.5716693168506026e-05, 5.8626879763323814e-05, 6.639343337155879e-05, 8.777566836215556e-05, 9.69034299487248e-05, 0.00011054443166358396, 0.00011497003288241103, 0.00010268909682054073, 9.66963852988556e-05, 8.81831583683379e-05, 8.876671927282587e-05, 8.82783206179738e-05, 9.344843419967219e-05, 9.767664596438408e-05, 0.00010800233576446772, 0.00011816908954642713, 0.0001352233812212944, 0.0001524350664112717, 0.00017637097334954888]}}, "occupancy": [{"n": 1000, "side": 0.3, "particles_per_cell": 0.6781684027777778, "max_node_mass_pm": 3.3473689556121826, "max_node_mom_pm": 8.502264976501465, "mass_per_ppc": 4.9358963671875}, {"n": 2000, "side": 0.3, "particles_per_cell": 1.3563368055555556, "max_node_mass_pm": 5.36301326751709, "max_node_mom_pm": 11.349599838256836, "mass_per_ppc": 3.954042421875}, {"n": 4000, "side": 0.3, "particles_per_cell": 2.712673611111111, "max_node_mass_pm": 7.888879776000977, "max_node_mom_pm": 17.682411193847656, "mass_per_ppc": 2.908156640625}, {"n": 8000, "side": 0.3, "particles_per_cell": 5.425347222222222, "max_node_mass_pm": 14.042919158935547, "max_node_mom_pm": 27.406368255615234, "mass_per_ppc": 2.588390859375}, {"n": 16000, "side": 0.3, "particles_per_cell": 10.850694444444445, "max_node_mass_pm": 25.1153564453125, "max_node_mom_pm": 49.126708984375, "mass_per_ppc": 2.31463125}, {"n": 32000, "side": 0.3, "particles_per_cell": 21.70138888888889, "max_node_mass_pm": 43.10751724243164, "max_node_mom_pm": 86.37105560302734, "mass_per_ppc": 1.9863943945312499}, {"n": 64000, "side": 0.3, "particles_per_cell": 43.40277777777778, "max_node_mass_pm": 81.3689956665039, "max_node_mom_pm": 160.72689819335938, "mass_per_ppc": 1.8747416601562499}], "overflow": [{"tag": "fixed_k30", "atomics": "fixed", "kM": 30, "kV": 28, "n": 32000, "particles_per_cell": 21.70138888888889, "mass_ceiling_pm": 4, "n_nonfinite": 0, "mean_radius": 0.40367263729931807, "com": [0.7178242472023704, 0.41430114073154983], "_x": [], "positions_file": "over_fixed_k30.f32", "dist_from_exact_f32": 0.46612879633903503, "overflows": true}, {"tag": "fixed_k26", "atomics": "fixed", "kM": 26, "kV": 24, "n": 32000, "particles_per_cell": 21.70138888888889, "mass_ceiling_pm": 64, "n_nonfinite": 0, "mean_radius": 0.11452497604335533, "com": [0.5008870445368812, 0.34400029575871305], "_x": [], "positions_file": "over_fixed_k26.f32", "dist_from_exact_f32": 1.2034103065161617e-06, "overflows": false}, {"tag": "fixed_k24", "atomics": "fixed", "kM": 24, "kV": 22, "n": 32000, "particles_per_cell": 21.70138888888889, "mass_ceiling_pm": 256, "n_nonfinite": 0, "mean_radius": 0.1145249618846683, "com": [0.5008873443119228, 0.3439998752321117], "_x": [], "positions_file": "over_fixed_k24.f32", "dist_from_exact_f32": 1.0513348343010875e-06, "overflows": false}, {"tag": "fixed_k22", "atomics": "fixed", "kM": 22, "kV": 20, "n": 32000, "particles_per_cell": 21.70138888888889, "mass_ceiling_pm": 1024, "n_nonfinite": 0, "mean_radius": 0.11452500859195401, "com": [0.5008875553589314, 0.3439983597234823], "_x": [], "positions_file": "over_fixed_k22.f32", "dist_from_exact_f32": 1.8856025008062716e-06, "overflows": false}, {"tag": "casf32_k24", "atomics": "casf32", "kM": 24, "kV": 22, "n": 32000, "particles_per_cell": 21.70138888888889, "mass_ceiling_pm": 256, "n_nonfinite": 0, "mean_radius": 0.11452553703039589, "com": [0.5008877141224221, 0.3440001802728511], "_x": [], "positions_file": "over_casf32_k24.f32", "dist_from_exact_f32": 0.0, "overflows": false}]};
+window.DEFS = {"traj_rmse": "Mean over frames and particles of the per-particle distance to ground truth. THE NAME IS WRONG: it is a mean absolute distance, not an RMS, and not a centre-of-mass distance. Units: domain lengths. Use it to rank, never to certify.", "self_noise": "The canonical simulator run against itself at the same configuration. Nonzero only because GPU atomic scatter order varies between runs. It is the floor nothing can beat.", "substeps_per_frame": "round((1/60)/dt) -- how many solver steps one real-time frame costs. 167 for canonical elastic; 333 for any scene containing snow.", "particles_per_cell": "Particle count divided by (seeded area x number of grid cells). Sets how heavily loaded a grid node gets, which is what the fixed-point range has to cover."};</script>
+<script>// GENERATED FILE -- do not edit by hand.
+// Emitted by runs/material-variants/webgpu-port-of-the-interactive-simulation/web/gen_params.py,
+// which imports sim.physics and writes MAT["elastic"] plus the frozen world constants verbatim.
+// physics_version: phys-bebeaafbe73e
+var MPM_PARAMS = {
+  "dim": 2,
+  "n_grid": 128,
+  "dx": 0.0078125,
+  "inv_dx": 128.0,
+  "p_rho": 1.0,
+  "gravity": 9.8,
+  "bound": 3,
+  "floor_y": 0.0234375,
+  "NU": 0.2,
+  "FRICTION": 0.5,
+  "E": 400.0,
+  "dt": 0.0001,
+  "color": "#ff9d5c",
+  "kM": 24,
+  "kV": 22,
+  "physics_version": "phys-bebeaafbe73e",
+  "source": "sim.physics (MAT['elastic'] + sim.physics.core world constants)"
+};
+if (typeof module === 'object' && module.exports) { module.exports = MPM_PARAMS; }
+</script>
+<script>// mpm-webgpu.js -- a WebGPU compute port of the canonical 2D MLS-MPM elastic step.
+//
+// PORTABILITY CONTRACT: no dependency on the dashboard, the data server, or the harness. It needs
+// only `params.js` (generated from sim.physics by gen_params.py) and a WebGPU-capable browser.
+// Load it with a <script> tag -> window.MPMWebGPU.
+//
+// ---------------------------------------------------------------------------------------------
+// THE ONE IDEA
+// ---------------------------------------------------------------------------------------------
+// An explicit MPM solver costs substeps/frame x cost-per-substep, and substeps = (1/60)/dt is
+// pinned by CFL: 167 for elastic. The canonical Taichi/CUDA path pays a ~56 us kernel launch per
+// kernel per substep from Python, so a substep costs ~345 us and is FLAT in particle count -- the
+// GPU is idle, waiting to be told what to do. The fix is not a faster kernel, it is to stop paying
+// the launch: record every dispatch of every substep into ONE command buffer inside ONE compute
+// pass and submit once per frame. WebGPU orders dispatches within a pass and makes each one's
+// writes visible to the next, which is exactly the P2G -> grid -> G2P dependency chain, so this
+// needs no explicit barriers and no CPU round trip.
+//
+// ---------------------------------------------------------------------------------------------
+// WHAT WEBGPU FORCED, AND WHY
+// ---------------------------------------------------------------------------------------------
+//   1. NO ATOMIC FLOAT ADD. WGSL's atomics are u32/i32 only (`atomic<f32>` fails to compile:
+//      "'atomic' only supports 'i32', 'u32' or 'vec2u'"). P2G is a scatter that atomically
+//      accumulates mass and momentum as floats. Two routes are implemented and both are measured:
+//        'fixed'  -- FIXED POINT. mass -> atomic<u32>, momentum -> atomic<i32> (signed: momentum
+//                    goes negative). The scale is expressed in units of one particle mass, so it
+//                    is scene-independent: an integer of 2^kM means "one particle's mass at this
+//                    node". Mass contributions are w*2^kM with sum(w)=1 over the 3x3 stencil, so
+//                    a node holding k particles holds k*2^kM and u32 saturates at 2^(32-kM)
+//                    particles on one node. Conversion uses round(), not truncation: truncating a
+//                    signed momentum biases it toward zero, i.e. a systematic numerical drag.
+//        'casf32' -- EXACT f32 ADD via a compare-and-swap loop on the same u32 storage
+//                    (bitcast -> add -> atomicCompareExchangeWeak, retry on failure). No
+//                    quantisation at all; the price is retries under contention.
+//   2. NO ti.svd. R comes from the closed-form 2D polar rotation, exactly as in the JS port --
+//      not an approximation, since Taichi's own svd2d is built on the same rotation and the
+//      elastic path never uses the singular values.
+//   3. DENSE GRID SWEEP. The JS port walks a sparse active-cell list because one CPU thread cannot
+//      afford 16384 cells per substep. On a GPU the dense sweep is free and a sparse list would
+//      need a compaction pass, so this port sweeps every cell, like canonical Taichi does.
+//   4. CLEAR IS FUSED INTO grid_op. grid_op is the only reader of the atomic accumulators, so it
+//      loads them, computes the node velocity into a plain f32 buffer, and stores zeros back in
+//      the same invocation. That removes a whole 16384-cell dispatch per substep (4 dispatches
+//      per substep -> 3) for free.
+//   5. ONLY 8 STORAGE BUFFERS PER STAGE are guaranteed by the WebGPU baseline limits. The obvious
+//      layout (pos, vel, C, F, mass, momX, momY, gridV, display) is NINE and silently produces an
+//      invalid bind group -- every dispatch is then dropped and the simulation runs at the speed
+//      of doing nothing, which looks exactly like a spectacular result. So momentum X/Y share one
+//      interleaved buffer and the grid-velocity buffer doubles as the display buffer: 7 in total.
+//
+// The interaction force (poke/drag) is a demo-only external body force layered on the grid update.
+// It is off by default and is never enabled during verification.
+
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory(require('./params.js'));
+  } else {
+    root.MPMWebGPU = factory(root.MPM_PARAMS);
+  }
+})(typeof self !== 'undefined' ? self : this, function (P) {
+  'use strict';
+
+  var N_GRID = P.n_grid | 0;
+  var N_CELL = N_GRID * N_GRID;
+  var WG_P = 64;                 // particles per workgroup
+  var WG_G = 64;                 // cells per workgroup
+  var GRID_WG = Math.ceil(N_CELL / WG_G);
+
+  // ------------------------------------------------------------------ WGSL source
+  // Built as a string so the frozen constants come from params.js (generated from sim.physics)
+  // rather than being typed. `mode` picks the atomic strategy.
+  function buildShader(mode) {
+    var casf = (mode === 'casf32');
+    var atomT = casf ? 'atomic<u32>' : null;
+
+    // One inlined CAS float-add. WGSL will not let a storage pointer cross a function boundary
+    // without the unrestricted_pointer_parameters extension, so this is textually inlined.
+    function addF(buf, idxExpr, valExpr) {
+      return [
+        '  {',
+        '    var _old = atomicLoad(&' + buf + '[' + idxExpr + ']);',
+        '    loop {',
+        '      let _nv = bitcast<u32>(bitcast<f32>(_old) + (' + valExpr + '));',
+        '      let _r = atomicCompareExchangeWeak(&' + buf + '[' + idxExpr + '], _old, _nv);',
+        '      if (_r.exchanged) { break; }',
+        '      _old = _r.old_value;',
+        '    }',
+        '  }'
+      ].join('\n');
+    }
+    var scatterMass = casf ? addF('gm', 'gi', 'wm')
+      : '  atomicAdd(&gm[gi], u32(round((wm) * PR.massScale)));';
+    var scatterMX = casf ? addF('gp', '2 * gi', 'mvx')
+      : '  atomicAdd(&gp[2 * gi], i32(round((mvx) * PR.momScale)));';
+    var scatterMY = casf ? addF('gp', '2 * gi + 1', 'mvy')
+      : '  atomicAdd(&gp[2 * gi + 1], i32(round((mvy) * PR.momScale)));';
+
+    var loadMass = casf ? 'bitcast<f32>(atomicLoad(&gm[idx]))'
+                        : 'f32(atomicLoad(&gm[idx])) * PR.invMassScale';
+    var loadMX = casf ? 'bitcast<f32>(atomicLoad(&gp[2 * idx]))'
+                      : 'f32(atomicLoad(&gp[2 * idx])) * PR.invMomScale';
+    var loadMY = casf ? 'bitcast<f32>(atomicLoad(&gp[2 * idx + 1]))'
+                      : 'f32(atomicLoad(&gp[2 * idx + 1])) * PR.invMomScale';
+    var zeroMom = casf ? '0u' : '0';
+    var momT = casf ? 'atomic<u32>' : 'atomic<i32>';
+
+    return [
+      '// GENERATED from params.js (physics_version ' + P.physics_version + ', atomics=' + mode + ')',
+      'const N_GRID : i32 = ' + N_GRID + ';',
+      'const N_CELL : i32 = ' + N_CELL + ';',
+      'const DX : f32 = ' + P.dx + ';',
+      'const INV_DX : f32 = ' + P.inv_dx + ';',
+      'const BOUND : i32 = ' + P.bound + ';',
+      'const FLOOR : f32 = ' + P.floor_y + ';',
+      'const CEIL : f32 = ' + (1.0 - P.floor_y) + ';',
+      '',
+      'struct Params {',
+      '  dt : f32, pMass : f32, pVol : f32, mu : f32, la : f32,',
+      '  gravity : f32, friction : f32,',
+      '  massScale : f32, invMassScale : f32, momScale : f32, invMomScale : f32,',
+      '  n : u32, pokeOn : u32,',
+      '  pokeX : f32, pokeY : f32, pokeVX : f32, pokeVY : f32,',
+      '  pokeRadius : f32, pokeRate : f32, pokeSpring : f32,',
+      '};',
+      '',
+      '@group(0) @binding(0) var<uniform> PR : Params;',
+      '@group(0) @binding(1) var<storage, read_write> pos : array<vec2<f32>>;',
+      '@group(0) @binding(2) var<storage, read_write> vel : array<vec2<f32>>;',
+      '@group(0) @binding(3) var<storage, read_write> Cm  : array<vec4<f32>>;',
+      '@group(0) @binding(4) var<storage, read_write> Fm  : array<vec4<f32>>;',
+      '@group(0) @binding(5) var<storage, read_write> gm  : array<atomic<u32>>;',
+      '@group(0) @binding(6) var<storage, read_write> gp  : array<' + momT + '>;',
+      // gv.xy = node velocity (what G2P gathers). gv.z = node mass in PARTICLE MASSES, gv.w =
+      // |node momentum| in particle-mass*velocity -- the two quantities the mass/speed heatmaps
+      // and the fixed-point headroom probe need, carried for free instead of a 9th buffer.
+      '@group(0) @binding(7) var<storage, read_write> gv  : array<vec4<f32>>;',
+      '',
+      // ---------------------------------------------------------------- clear
+      '@compute @workgroup_size(' + WG_G + ')',
+      'fn clear_grid(@builtin(global_invocation_id) gid : vec3<u32>) {',
+      '  let idx = i32(gid.x);',
+      '  if (idx >= N_CELL) { return; }',
+      '  atomicStore(&gm[idx], 0u);',
+      '  atomicStore(&gp[2 * idx], ' + zeroMom + ');',
+      '  atomicStore(&gp[2 * idx + 1], ' + zeroMom + ');',
+      '  gv[idx] = vec4<f32>(0.0, 0.0, 0.0, 0.0);',
+      '}',
+      '',
+      // ---------------------------------------------------------------- P2G
+      '@compute @workgroup_size(' + WG_P + ')',
+      'fn p2g(@builtin(global_invocation_id) gid : vec3<u32>) {',
+      '  let p = gid.x;',
+      '  if (p >= PR.n) { return; }',
+      '  let Xp = pos[p] * INV_DX;',
+      '  let base = vec2<i32>(Xp - vec2<f32>(0.5, 0.5));',   // positions clamped >= 3dx -> floor
+      '  let fx = Xp - vec2<f32>(base);',
+      '  let w0 = 0.5 * (vec2<f32>(1.5, 1.5) - fx) * (vec2<f32>(1.5, 1.5) - fx);',
+      '  let w1 = vec2<f32>(0.75, 0.75) - (fx - vec2<f32>(1.0, 1.0)) * (fx - vec2<f32>(1.0, 1.0));',
+      '  let w2 = 0.5 * (fx - vec2<f32>(0.5, 0.5)) * (fx - vec2<f32>(0.5, 0.5));',
+      '',
+      '  let Fp = Fm[p];',                                   // (f00, f01, f10, f11), row major
+      '  let f00 = Fp.x; let f01 = Fp.y; let f10 = Fp.z; let f11 = Fp.w;',
+      // closed-form 2D polar rotation R = U V^T (what Taichi's svd2d is built on)
+      '  let rx = f00 + f11; let ry = f10 - f01;',
+      '  let rinv = 1.0 / max(sqrt(rx * rx + ry * ry), 1e-30);',
+      '  let rc = rx * rinv; let rs = ry * rinv;',
+      '  let a00 = f00 - rc; let a01 = f01 + rs; let a10 = f10 - rs; let a11 = f11 - rc;',
+      '  let b00 = a00 * f00 + a01 * f01; let b01 = a00 * f10 + a01 * f11;',
+      '  let b10 = a10 * f00 + a11 * f01; let b11 = a10 * f10 + a11 * f11;',
+      '  let Jd = f00 * f11 - f01 * f10;',
+      '  let lt = PR.la * (Jd - 1.0) * Jd;',
+      '  let k = -PR.dt * 4.0 * PR.pVol * INV_DX * INV_DX;',
+      '  let twoMu = 2.0 * PR.mu;',
+      '  let Cp = Cm[p];',
+      '  let af00 = k * (twoMu * b00 + lt) + PR.pMass * Cp.x;',
+      '  let af01 = k * (twoMu * b01)      + PR.pMass * Cp.y;',
+      '  let af10 = k * (twoMu * b10)      + PR.pMass * Cp.z;',
+      '  let af11 = k * (twoMu * b11 + lt) + PR.pMass * Cp.w;',
+      '  let mv = PR.pMass * vel[p];',
+      '',
+      '  for (var i = 0; i < 3; i = i + 1) {',
+      '    let wxi = select(select(w0.x, w1.x, i == 1), w2.x, i == 2);',
+      '    let dpx = (f32(i) - fx.x) * DX;',
+      '    for (var j = 0; j < 3; j = j + 1) {',
+      '      let wyj = select(select(w0.y, w1.y, j == 1), w2.y, j == 2);',
+      '      let dpy = (f32(j) - fx.y) * DX;',
+      '      let w = wxi * wyj;',
+      '      let gi = (base.x + i) * N_GRID + (base.y + j);',
+      '      let wm  = w * PR.pMass;',
+      '      let mvx = w * (mv.x + af00 * dpx + af01 * dpy);',
+      '      let mvy = w * (mv.y + af10 * dpx + af11 * dpy);',
+      scatterMass,
+      scatterMX,
+      scatterMY,
+      '    }',
+      '  }',
+      '}',
+      '',
+      // ---------------------------------------------------------------- grid op (+ fused clear)
+      '@compute @workgroup_size(' + WG_G + ')',
+      'fn grid_op(@builtin(global_invocation_id) gid : vec3<u32>) {',
+      '  let idx = i32(gid.x);',
+      '  if (idx >= N_CELL) { return; }',
+      '  let m = ' + loadMass + ';',
+      '  let momx = ' + loadMX + ';',
+      '  let momy = ' + loadMY + ';',
+      '  atomicStore(&gm[idx], 0u);',                 // fused clear: grid_op is the only reader
+      '  atomicStore(&gp[2 * idx], ' + zeroMom + ');',
+      '  atomicStore(&gp[2 * idx + 1], ' + zeroMom + ');',
+      '  var vx = momx; var vy = momy;',
+      '  if (m > 0.0) { vx = vx / m; vy = vy / m; }',
+      '  vy = vy - PR.dt * PR.gravity;',
+      '  let i = idx / N_GRID;',
+      '  let j = idx - i * N_GRID;',
+      '  if (PR.pokeOn == 1u) {',
+      '    let cx = PR.pokeX - f32(i) * DX;',
+      '    let cy = PR.pokeY - f32(j) * DX;',
+      '    let r2 = cx * cx + cy * cy;',
+      '    let s2 = PR.pokeRadius * PR.pokeRadius;',
+      '    if (r2 < s2 * 6.0) {',
+      '      let lam = min(0.5, PR.pokeRate * PR.dt * exp(-r2 / (0.5 * s2)));',
+      '      vx = vx + lam * (PR.pokeVX + cx * PR.pokeSpring - vx);',
+      '      vy = vy + lam * (PR.pokeVY + cy * PR.pokeSpring - vy);',
+      '    }',
+      '  }',
+      '  if (j < BOUND && vy < 0.0) {',              // floor: separating + Coulomb friction
+      '    let cap = PR.friction * (-vy);',
+      '    if (vx > 0.0) { vx = max(0.0, vx - cap); } else if (vx < 0.0) { vx = min(0.0, vx + cap); }',
+      '    vy = 0.0;',
+      '  }',
+      '  if (j > N_GRID - BOUND && vy > 0.0) { vy = 0.0; }',
+      '  if (i < BOUND && vx < 0.0) { vx = 0.0; vy = 0.0; }',
+      '  if (i > N_GRID - BOUND && vx > 0.0) { vx = 0.0; vy = 0.0; }',
+      '  let ipm = 1.0 / max(PR.pMass, 1e-30);',
+      '  gv[idx] = vec4<f32>(vx, vy, m * ipm, length(vec2<f32>(momx, momy)) * ipm);',
+      '}',
+      '',
+      // ---------------------------------------------------------------- G2P
+      '@compute @workgroup_size(' + WG_P + ')',
+      'fn g2p(@builtin(global_invocation_id) gid : vec3<u32>) {',
+      '  let p = gid.x;',
+      '  if (p >= PR.n) { return; }',
+      '  let Xp = pos[p] * INV_DX;',
+      '  let base = vec2<i32>(Xp - vec2<f32>(0.5, 0.5));',
+      '  let fx = Xp - vec2<f32>(base);',
+      '  let w0 = 0.5 * (vec2<f32>(1.5, 1.5) - fx) * (vec2<f32>(1.5, 1.5) - fx);',
+      '  let w1 = vec2<f32>(0.75, 0.75) - (fx - vec2<f32>(1.0, 1.0)) * (fx - vec2<f32>(1.0, 1.0));',
+      '  let w2 = 0.5 * (fx - vec2<f32>(0.5, 0.5)) * (fx - vec2<f32>(0.5, 0.5));',
+      '  var nv = vec2<f32>(0.0, 0.0);',
+      '  var c00 = 0.0; var c01 = 0.0; var c10 = 0.0; var c11 = 0.0;',
+      '  for (var i = 0; i < 3; i = i + 1) {',
+      '    let wxi = select(select(w0.x, w1.x, i == 1), w2.x, i == 2);',
+      '    let dpx = (f32(i) - fx.x) * DX;',
+      '    for (var j = 0; j < 3; j = j + 1) {',
+      '      let wyj = select(select(w0.y, w1.y, j == 1), w2.y, j == 2);',
+      '      let dpy = (f32(j) - fx.y) * DX;',
+      '      let w = wxi * wyj;',
+      '      let g = gv[(base.x + i) * N_GRID + (base.y + j)].xy;',
+      '      nv = nv + w * g;',
+      '      let s = 4.0 * w * INV_DX * INV_DX;',
+      '      c00 = c00 + s * g.x * dpx; c01 = c01 + s * g.x * dpy;',
+      '      c10 = c10 + s * g.y * dpx; c11 = c11 + s * g.y * dpy;',
+      '    }',
+      '  }',
+      '  vel[p] = nv;',
+      '  let np = pos[p] + PR.dt * nv;',
+      '  pos[p] = clamp(np, vec2<f32>(FLOOR, FLOOR), vec2<f32>(CEIL, CEIL));',
+      '  let g00 = 1.0 + PR.dt * c00; let g01 = PR.dt * c01;',
+      '  let g10 = PR.dt * c10;       let g11 = 1.0 + PR.dt * c11;',
+      '  let Fp = Fm[p];',
+      '  Fm[p] = vec4<f32>(g00 * Fp.x + g01 * Fp.z, g00 * Fp.y + g01 * Fp.w,',
+      '                    g10 * Fp.x + g11 * Fp.z, g10 * Fp.y + g11 * Fp.w);',
+      '  Cm[p] = vec4<f32>(c00, c01, c10, c11);',
+      '}',
+      '',
+      // The direct analogue of Taichi's `noop` kernel, which costs 56.4 us to launch from Python.
+      // Dispatched inside a recorded command buffer instead, its cost is the per-dispatch FLOOR --
+      // the number that decides whether 167 substeps a frame is affordable at all.
+      '@compute @workgroup_size(' + WG_G + ')',
+      'fn empty(@builtin(global_invocation_id) gid : vec3<u32>) {',
+      '  let idx = i32(gid.x);',
+      '  if (idx >= N_CELL) { return; }',
+      '  if (PR.n == 4294967295u) { gv[idx].w = 1.0; }',   // never true; keeps the store live
+      '}'
+    ].join('\n');
+  }
+
+  // ------------------------------------------------------------------ render shader
+  function renderShader() {
+    return [
+      'struct RParams { radius : f32, aspect : f32, n : u32, view : u32,',
+      '                 massRef : f32, vRef : f32, dimAlpha : f32, pad : f32, };',
+      '@group(0) @binding(0) var<uniform> R : RParams;',
+      '@group(0) @binding(1) var<storage, read> pos : array<vec2<f32>>;',
+      '@group(0) @binding(2) var<storage, read> vel : array<vec2<f32>>;',
+      '@group(0) @binding(3) var<storage, read> gv  : array<vec4<f32>>;',
+      '',
+      'struct VOut { @builtin(position) p : vec4<f32>, @location(0) uv : vec2<f32>,',
+      '              @location(1) sp : f32, };',
+      '',
+      // the unit quad, derived arithmetically -- dynamic indexing of a const array is a
+      // portability hazard across WGSL implementations and this costs nothing
+      'fn quad(vi : u32) -> vec2<f32> {',
+      '  let qx = select(0.0, 1.0, vi == 1u || vi == 4u || vi == 5u);',
+      '  let qy = select(0.0, 1.0, vi == 2u || vi == 3u || vi == 5u);',
+      '  return vec2<f32>(qx, qy) * 2.0 - vec2<f32>(1.0, 1.0);',
+      '}',
+      '',
+      '@vertex fn vs_particles(@builtin(vertex_index) vi : u32,',
+      '                        @builtin(instance_index) ii : u32) -> VOut {',
+      '  let q = quad(vi);',
+      '  let c = pos[ii];',
+      '  let ndc = vec2<f32>(c.x * 2.0 - 1.0, c.y * 2.0 - 1.0) + q * vec2<f32>(R.radius, R.radius * R.aspect);',
+      '  var o : VOut;',
+      '  o.p = vec4<f32>(ndc, 0.0, 1.0);',
+      '  o.uv = q;',
+      '  o.sp = length(vel[ii]);',
+      '  return o;',
+      '}',
+      '',
+      '@vertex fn vs_full(@builtin(vertex_index) vi : u32) -> VOut {',
+      '  let q = quad(vi);',
+      '  var o : VOut;',
+      '  o.p = vec4<f32>(q, 0.0, 1.0);',
+      '  o.uv = q * 0.5 + vec2<f32>(0.5, 0.5);',
+      '  o.sp = 0.0;',
+      '  return o;',
+      '}',
+      '',
+      'fn ramp(t : f32) -> vec3<f32> {',
+      '  let u = clamp(t, 0.0, 1.0);',
+      '  let c0 = vec3<f32>(0.039, 0.055, 0.078);',
+      '  let c1 = vec3<f32>(0.106, 0.298, 0.451);',
+      '  let c2 = vec3<f32>(0.435, 0.827, 0.933);',
+      '  let c3 = vec3<f32>(1.0, 0.616, 0.361);',
+      '  let c4 = vec3<f32>(1.0, 0.98, 0.92);',
+      '  if (u < 0.25) { return mix(c0, c1, u / 0.25); }',
+      '  if (u < 0.5)  { return mix(c1, c2, (u - 0.25) / 0.25); }',
+      '  if (u < 0.75) { return mix(c2, c3, (u - 0.5) / 0.25); }',
+      '  return mix(c3, c4, (u - 0.75) / 0.25);',
+      '}',
+      '',
+      '@fragment fn fs_particles(o : VOut) -> @location(0) vec4<f32> {',
+      '  let r2 = dot(o.uv, o.uv);',
+      '  if (r2 > 1.0) { discard; }',
+      '  let t = clamp(o.sp / max(R.vRef, 1e-6), 0.0, 1.0);',
+      '  let base = mix(vec3<f32>(1.0, 0.616, 0.361), vec3<f32>(1.0, 0.98, 0.93), t);',
+      '  let shade = 0.55 + 0.45 * sqrt(max(0.0, 1.0 - r2));',
+      '  return vec4<f32>(base * shade, R.dimAlpha);',
+      '}',
+      '',
+      '@fragment fn fs_grid(o : VOut) -> @location(0) vec4<f32> {',
+      '  let gi = vec2<i32>(clamp(o.uv * f32(' + N_GRID + '), vec2<f32>(0.0), vec2<f32>(' + (N_GRID - 1) + '.0)));',
+      '  let cell = gv[gi.x * ' + N_GRID + ' + gi.y];',
+      '  var t = 0.0;',
+      '  if (R.view == 1u) { t = log(1.0 + cell.z) / log(1.0 + max(R.massRef, 1e-6)); }',
+      '  else { t = length(cell.xy) / max(R.vRef, 1e-6); }',
+      '  return vec4<f32>(ramp(t), 1.0);',
+      '}'
+    ].join('\n');
+  }
+
+  // ------------------------------------------------------------------ helpers
+  function supported() { return (typeof navigator !== 'undefined') && !!navigator.gpu; }
+
+  // Deterministic disk seeding for the demo (verification uses the exact numpy point set exported
+  // from sim.physics instead, so the initial condition is identical there).
+  function seedDisk(cx, cy, radius, n, seed) {
+    var s = (seed >>> 0) || 1;
+    function rnd() { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }
+    var pts = new Float32Array(2 * n);
+    for (var i = 0; i < n; i++) {
+      var a = rnd() * Math.PI * 2, r = radius * Math.sqrt(rnd());
+      pts[2 * i] = cx + r * Math.cos(a);
+      pts[2 * i + 1] = cy + r * Math.sin(a);
+    }
+    return pts;
+  }
+
+  var _device = null, _adapterInfo = null, _hasTimestamp = false, _limits = null;
+  var ERRORS = [];
+
+  async function getDevice() {
+    if (_device) return _device;
+    if (!supported()) throw new Error('navigator.gpu is undefined (are you on a secure origin?)');
+    var adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+    if (!adapter) throw new Error('requestAdapter returned null');
+    _adapterInfo = adapter.info || (adapter.requestAdapterInfo ? await adapter.requestAdapterInfo() : {});
+    var feats = [];
+    _hasTimestamp = adapter.features.has('timestamp-query');
+    if (_hasTimestamp) feats.push('timestamp-query');
+    _device = await adapter.requestDevice({ requiredFeatures: feats });
+    _limits = {};
+    ['maxStorageBuffersPerShaderStage', 'maxStorageBufferBindingSize', 'maxBufferSize',
+      'maxComputeWorkgroupsPerDimension', 'maxComputeInvocationsPerWorkgroup']
+      .forEach(function (k) { _limits[k] = _device.limits[k]; });
+    // WebGPU errors are ASYNCHRONOUS and, left alone, silent: an invalid bind group makes every
+    // dispatch a no-op and the simulation "runs" at the speed of doing nothing. Never leave them
+    // unlistened.
+    _device.addEventListener('uncapturederror', function (e) {
+      ERRORS.push(String(e.error && e.error.message || e.error));
+      console.error('WebGPU uncaptured error:', e.error);
+    });
+    _device.lost.then(function (e) { ERRORS.push('DEVICE LOST: ' + e.message); });
+    return _device;
+  }
+
+  function deviceInfo() {
+    var a = _adapterInfo || {};
+    return {
+      vendor: a.vendor || '', architecture: a.architecture || '',
+      device: a.device || '', description: a.description || '',
+      timestampQuery: _hasTimestamp, limits: _limits
+    };
+  }
+  function errors() { return ERRORS.slice(); }
+
+  // ------------------------------------------------------------------ the simulator
+  async function createSim(opts) {
+    opts = opts || {};
+    var device = await getDevice();
+    var n = opts.n | 0;
+    var area = opts.area;
+    var dt = opts.dt !== undefined ? opts.dt : P.dt;
+    var E = opts.E !== undefined ? opts.E : P.E;
+    var mode = opts.atomics || 'fixed';
+    var kM = opts.kM !== undefined ? opts.kM : P.kM;
+    var kV = opts.kV !== undefined ? opts.kV : P.kV;
+
+    var nu = P.NU;
+    var pVol = area / n;
+    var pMass = pVol * P.p_rho;
+    var mu = E / (2.0 * (1.0 + nu));
+    var la = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu));
+    // Fixed-point scales in units of ONE PARTICLE MASS: an integer of 2^kM is one particle's mass
+    // at a node, an integer of 2^kV is one particle-mass times one unit of velocity.
+    var massScale = Math.pow(2, kM) / pMass;
+    var momScale = Math.pow(2, kV) / pMass;
+
+    device.pushErrorScope('validation');
+
+    var U = GPUBufferUsage;
+    function buf(bytes, usage) { return device.createBuffer({ size: bytes, usage: usage }); }
+    var STO = U.STORAGE | U.COPY_DST | U.COPY_SRC;
+
+    var posBuf = buf(n * 8, STO);
+    var velBuf = buf(n * 8, STO);
+    var CBuf = buf(n * 16, STO);
+    var FBuf = buf(n * 16, STO);
+    var gmBuf = buf(N_CELL * 4, STO);
+    var gpBuf = buf(N_CELL * 8, STO);
+    var gvBuf = buf(N_CELL * 16, STO);
+    var uBuf = buf(80, U.UNIFORM | U.COPY_DST);
+    var readBuf = device.createBuffer({ size: n * 8, usage: U.COPY_DST | U.MAP_READ });
+    var gridReadBuf = device.createBuffer({ size: N_CELL * 16, usage: U.COPY_DST | U.MAP_READ });
+
+    var mod = device.createShaderModule({ code: buildShader(mode), label: 'mpm-' + mode });
+    var info = await mod.getCompilationInfo();
+    var errs = info.messages.filter(function (m) { return m.type === 'error'; });
+    if (errs.length) throw new Error('WGSL: ' + errs.map(function (m) { return m.lineNum + ': ' + m.message; }).join(' | '));
+
+    function sb(b) {
+      return { binding: b, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } };
+    }
+    var layout = device.createBindGroupLayout({
+      label: 'mpm-compute-bgl',
+      entries: [{ binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } },
+        sb(1), sb(2), sb(3), sb(4), sb(5), sb(6), sb(7)]
+    });
+    var bind = device.createBindGroup({
+      label: 'mpm-compute-bg', layout: layout,
+      entries: [uBuf, posBuf, velBuf, CBuf, FBuf, gmBuf, gpBuf, gvBuf]
+        .map(function (b, i) { return { binding: i, resource: { buffer: b } }; })
+    });
+    var pl = device.createPipelineLayout({ bindGroupLayouts: [layout] });
+    function pipe(entry) {
+      return device.createComputePipeline({ layout: pl, label: entry,
+        compute: { module: mod, entryPoint: entry } });
+    }
+    var pClear = pipe('clear_grid'), pP2G = pipe('p2g'), pGrid = pipe('grid_op'), pG2P = pipe('g2p');
+    var pEmpty = pipe('empty');
+
+    var setupError = await device.popErrorScope();
+    if (setupError) throw new Error('WebGPU setup: ' + setupError.message);
+
+    var P_WG = Math.ceil(n / WG_P);
+    var poke = { on: false, x: 0, y: 0, vx: 0, vy: 0, radius: 0.075, rate: 900.0, spring: 16.0 };
+    var uArr = new ArrayBuffer(80);
+    var uF = new Float32Array(uArr), uU = new Uint32Array(uArr);
+
+    function writeUniform() {
+      uF[0] = dt; uF[1] = pMass; uF[2] = pVol; uF[3] = mu; uF[4] = la;
+      uF[5] = P.gravity; uF[6] = P.FRICTION;
+      uF[7] = massScale; uF[8] = 1.0 / massScale; uF[9] = momScale; uF[10] = 1.0 / momScale;
+      uU[11] = n >>> 0; uU[12] = poke.on ? 1 : 0;
+      uF[13] = poke.x; uF[14] = poke.y; uF[15] = poke.vx; uF[16] = poke.vy;
+      uF[17] = poke.radius; uF[18] = poke.rate; uF[19] = poke.spring;
+      device.queue.writeBuffer(uBuf, 0, uArr);
+    }
+    writeUniform();
+
+    // -------------------------------------------------- timestamp query (GPU-side clock)
+    var qset = null, qResolve = null, qRead = null;
+    if (_hasTimestamp) {
+      qset = device.createQuerySet({ type: 'timestamp', count: 2 });
+      qResolve = buf(16, U.QUERY_RESOLVE | U.COPY_SRC);
+      qRead = device.createBuffer({ size: 16, usage: U.COPY_DST | U.MAP_READ });
+    }
+
+    function seed(pts, v0x, v0y) {
+      var xs = new Float32Array(2 * n), vs = new Float32Array(2 * n);
+      var Cs = new Float32Array(4 * n), Fs = new Float32Array(4 * n);
+      for (var p = 0; p < n; p++) {
+        xs[2 * p] = pts[2 * p]; xs[2 * p + 1] = pts[2 * p + 1];
+        vs[2 * p] = v0x || 0; vs[2 * p + 1] = v0y || 0;
+        Fs[4 * p] = 1; Fs[4 * p + 3] = 1;
+      }
+      device.queue.writeBuffer(posBuf, 0, xs);
+      device.queue.writeBuffer(velBuf, 0, vs);
+      device.queue.writeBuffer(CBuf, 0, Cs);
+      device.queue.writeBuffer(FBuf, 0, Fs);
+      device.queue.writeBuffer(gmBuf, 0, new Uint32Array(N_CELL));
+      device.queue.writeBuffer(gpBuf, 0, new Int32Array(2 * N_CELL));
+      device.queue.writeBuffer(gvBuf, 0, new Float32Array(4 * N_CELL));
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // ONE COMMAND BUFFER PER FRAME. Every substep's three dispatches go into a single compute
+    // pass; WebGPU orders dispatches inside a pass and makes each one's writes visible to the
+    // next, which is exactly the P2G -> grid -> G2P dependency. Nothing crosses back to the CPU.
+    // ------------------------------------------------------------------------------------------
+    function encodeFrame(substeps, opt) {
+      opt = opt || {};
+      var enc = device.createCommandEncoder();
+      var desc = {};
+      if (opt.timed && qset) {
+        desc.timestampWrites = { querySet: qset, beginningOfPassWriteIndex: 0, endOfPassWriteIndex: 1 };
+      }
+      var pass = enc.beginComputePass(desc);
+      pass.setBindGroup(0, bind);
+      if (opt.clearFirst) { pass.setPipeline(pClear); pass.dispatchWorkgroups(GRID_WG); }
+      var phases = opt.phases || 'pgG';
+      var doP = phases.indexOf('p') >= 0, doG = phases.indexOf('g') >= 0,
+        doQ = phases.indexOf('G') >= 0, doE = phases.indexOf('e') >= 0;
+      for (var s = 0; s < substeps; s++) {
+        if (doE) { pass.setPipeline(pEmpty); pass.dispatchWorkgroups(GRID_WG); }
+        if (doP) { pass.setPipeline(pP2G); pass.dispatchWorkgroups(P_WG); }
+        if (doG) { pass.setPipeline(pGrid); pass.dispatchWorkgroups(GRID_WG); }
+        if (doQ) { pass.setPipeline(pG2P); pass.dispatchWorkgroups(P_WG); }
+      }
+      pass.end();
+      if (opt.timed && qset) {
+        enc.resolveQuerySet(qset, 0, 2, qResolve, 0);
+        enc.copyBufferToBuffer(qResolve, 0, qRead, 0, 16);
+      }
+      if (opt.readback) enc.copyBufferToBuffer(posBuf, 0, readBuf, 0, n * 8);
+      if (opt.gridReadback) enc.copyBufferToBuffer(gvBuf, 0, gridReadBuf, 0, N_CELL * 16);
+      var cmd = enc.finish();
+      // noSubmit prices the CPU-side RECORDING alone: with one launch per substep gone, the next
+      // candidate for the bottleneck is the JS that writes the 500-odd dispatches.
+      if (opt.noSubmit) return;
+      device.queue.submit([cmd]);
+    }
+
+    async function lastGpuNanos() {
+      if (!qset) return null;
+      await qRead.mapAsync(GPUMapMode.READ);
+      var t = new BigUint64Array(qRead.getMappedRange().slice(0));
+      qRead.unmap();
+      return Number(t[1] - t[0]);
+    }
+    async function readPositions() {
+      await readBuf.mapAsync(GPUMapMode.READ);
+      var out = new Float32Array(readBuf.getMappedRange().slice(0));
+      readBuf.unmap();
+      return out;
+    }
+    async function readGrid() {
+      await gridReadBuf.mapAsync(GPUMapMode.READ);
+      var out = new Float32Array(gridReadBuf.getMappedRange().slice(0));
+      gridReadBuf.unmap();
+      return out;
+    }
+
+    return {
+      n: n, device: device, mode: mode,
+      params: {
+        E: E, dt: dt, nu: nu, mu: mu, la: la, pVol: pVol, pMass: pMass,
+        n_grid: N_GRID, gravity: P.gravity, friction: P.FRICTION,
+        kM: kM, kV: kV, massScale: massScale, momScale: momScale,
+        atomics: mode, physics_version: P.physics_version
+      },
+      buffers: { pos: posBuf, vel: velBuf, gv: gvBuf },
+      poke: poke,
+      setDt: function (d) { dt = d; writeUniform(); },
+      getDt: function () { return dt; },
+      syncUniform: writeUniform,
+      seed: seed, encodeFrame: encodeFrame, lastGpuNanos: lastGpuNanos,
+      readPositions: readPositions, readGrid: readGrid,
+      dispatchesPerFrame: function (substeps) { return 3 * substeps; },
+      idle: function () { return device.queue.onSubmittedWorkDone(); },
+      destroy: function () {
+        [posBuf, velBuf, CBuf, FBuf, gmBuf, gpBuf, gvBuf, uBuf, readBuf, gridReadBuf]
+          .forEach(function (b) { b.destroy(); });
+      }
+    };
+  }
+
+  // ------------------------------------------------------------------ renderer (no readback)
+  async function createRenderer(canvas, sim) {
+    var device = sim.device;
+    var ctx = canvas.getContext('webgpu');
+    var fmt = navigator.gpu.getPreferredCanvasFormat();
+    ctx.configure({ device: device, format: fmt, alphaMode: 'opaque' });
+    device.pushErrorScope('validation');
+    var mod = device.createShaderModule({ code: renderShader(), label: 'mpm-render' });
+    var ci = await mod.getCompilationInfo();
+    var re = ci.messages.filter(function (m) { return m.type === 'error'; });
+    if (re.length) throw new Error('render WGSL: ' + re.map(function (m) { return m.lineNum + ': ' + m.message; }).join(' | '));
+
+    var rBuf = device.createBuffer({ size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    var layout = device.createBindGroupLayout({
+      entries: [
+        { binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } },
+        { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+        { binding: 2, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+        { binding: 3, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'read-only-storage' } }
+      ]
+    });
+    var bind = device.createBindGroup({
+      layout: layout,
+      entries: [
+        { binding: 0, resource: { buffer: rBuf } },
+        { binding: 1, resource: { buffer: sim.buffers.pos } },
+        { binding: 2, resource: { buffer: sim.buffers.vel } },
+        { binding: 3, resource: { buffer: sim.buffers.gv } }
+      ]
+    });
+    var pl = device.createPipelineLayout({ bindGroupLayouts: [layout] });
+    var blend = { color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha' },
+                  alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' } };
+    var pParticles = device.createRenderPipeline({
+      layout: pl, vertex: { module: mod, entryPoint: 'vs_particles' },
+      fragment: { module: mod, entryPoint: 'fs_particles', targets: [{ format: fmt, blend: blend }] },
+      primitive: { topology: 'triangle-list' }
+    });
+    var pGridView = device.createRenderPipeline({
+      layout: pl, vertex: { module: mod, entryPoint: 'vs_full' },
+      fragment: { module: mod, entryPoint: 'fs_grid', targets: [{ format: fmt }] },
+      primitive: { topology: 'triangle-list' }
+    });
+    var err = await device.popErrorScope();
+    if (err) throw new Error('renderer setup: ' + err.message);
+
+    var ru = new Float32Array(8);
+    var ruU = new Uint32Array(ru.buffer);
+
+    return {
+      draw: function (o) {
+        o = o || {};
+        var view = o.view || 'particles';                 // 'particles' | 'mass' | 'speed'
+        var enc = device.createCommandEncoder();
+        var pass = enc.beginRenderPass({
+          colorAttachments: [{
+            view: ctx.getCurrentTexture().createView(),
+            clearValue: { r: 0.039, g: 0.055, b: 0.078, a: 1 },
+            loadOp: 'clear', storeOp: 'store'
+          }]
+        });
+        ru[0] = o.radius !== undefined ? o.radius : 0.010;
+        ru[1] = canvas.width / canvas.height;
+        ruU[2] = sim.n >>> 0;
+        ruU[3] = view === 'mass' ? 1 : (view === 'speed' ? 2 : 0);
+        ru[4] = o.massRef !== undefined ? o.massRef : 24.0;
+        ru[5] = o.vRef !== undefined ? o.vRef : 2.5;
+        ru[6] = 1.0;
+        device.queue.writeBuffer(rBuf, 0, ru);
+        pass.setBindGroup(0, bind);
+        if (view !== 'particles') {
+          pass.setPipeline(pGridView); pass.draw(6, 1);
+          if (o.overlay) {
+            // faint: on a grid view the GRID is the subject, so the particles are a locator, not
+            // the picture. At 0.5 they simply repaint the heatmap in particle colours.
+            ru[6] = 0.13; device.queue.writeBuffer(rBuf, 0, ru);
+            pass.setPipeline(pParticles); pass.draw(6, sim.n);
+          }
+        } else {
+          pass.setPipeline(pParticles); pass.draw(6, sim.n);
+        }
+        pass.end();
+        device.queue.submit([enc.finish()]);
+      }
+    };
+  }
+
+  return {
+    supported: supported, getDevice: getDevice, deviceInfo: deviceInfo, errors: errors,
+    createSim: createSim, createRenderer: createRenderer, seedDisk: seedDisk,
+    PARAMS: P, N_GRID: N_GRID, N_CELL: N_CELL, WG_P: WG_P, WG_G: WG_G,
+    buildShader: buildShader
+  };
+});
+</script>
+<script>// demo.js -- the interactive WebGPU elastic sim UI.
+//
+// PORTABILITY: needs only params.js + mpm-webgpu.js and a <div id=...> to mount into. No CDN, no
+// fetch, no harness. It runs inside a sandboxed `allow-scripts` iframe (the dashboard task page),
+// as a standalone file, or on a portfolio page.
+//
+// NOTHING LOAD-BEARING DEPENDS ON requestAnimationFrame. rAF only decides WHEN to draw; the sim
+// advances by exactly one frame's worth of substeps per drawn frame and every reported number comes
+// from either the GPU timestamp query or a wall-clock total over >= 30 frames. If rAF stops (tab
+// hidden, browser throttling), the sim simply stops advancing and resumes cleanly -- no latched
+// state, no accumulator that runs away, no measurement that silently becomes wrong.
+(function (root) {
+  'use strict';
+
+  function el(tag, cls, txt) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (txt !== undefined) e.textContent = txt;
+    return e;
+  }
+
+  root.MPMDemo = function mount(host, opts) {
+    opts = opts || {};
+    var M = root.MPMWebGPU;
+    var P = M.PARAMS;
+
+    host.innerHTML = '';
+    var wrap = el('div', 'mpmd');
+    var stage = el('div', 'mpmd-stage');
+    var canvas = document.createElement('canvas');
+    canvas.className = 'mpmd-canvas';
+    stage.appendChild(canvas);
+    var hud = el('div', 'mpmd-hud');
+    stage.appendChild(hud);
+    var badge = el('div', 'mpmd-badge', 'drag to poke the block');
+    stage.appendChild(badge);
+    wrap.appendChild(stage);
+
+    var controls = el('div', 'mpmd-controls');
+    wrap.appendChild(controls);
+    var note = el('div', 'mpmd-note');
+    wrap.appendChild(note);
+    host.appendChild(wrap);
+
+    if (!M.supported()) {
+      stage.innerHTML = '<div class="mpmd-fail">This browser exposes no <code>navigator.gpu</code>.' +
+        ' WebGPU is only visible in a <b>secure context</b> &mdash; https, or http://localhost.' +
+        ' On a plain-HTTP LAN address the API is hidden even on hardware that fully supports it.</div>';
+      return;
+    }
+
+    // ---------------------------------------------------------------- controls
+    function group(label) {
+      var g = el('div', 'mpmd-g');
+      g.appendChild(el('label', 'mpmd-lab', label));
+      controls.appendChild(g);
+      return g;
+    }
+    function slider(label, min, max, step, val, fmt, onchange) {
+      var g = group(label);
+      var row = el('div', 'mpmd-row');
+      var inp = document.createElement('input');
+      inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; inp.value = val;
+      var read = el('span', 'mpmd-read', fmt(val));
+      inp.addEventListener('input', function () {
+        read.textContent = fmt(+inp.value); onchange(+inp.value);
+      });
+      row.appendChild(inp); row.appendChild(read); g.appendChild(row);
+      return { input: inp, read: read, set: function (v) { inp.value = v; read.textContent = fmt(v); } };
+    }
+    function seg(label, items, initial, onchange) {
+      var g = group(label);
+      var row = el('div', 'mpmd-seg');
+      var btns = items.map(function (it) {
+        var b = el('button', 'mpmd-sb' + (it.value === initial ? ' on' : ''), it.label);
+        b.type = 'button';
+        if (it.title) b.title = it.title;
+        b.addEventListener('click', function () {
+          btns.forEach(function (x) { x.classList.remove('on'); });
+          b.classList.add('on');
+          onchange(it.value);
+        });
+        row.appendChild(b);
+        return b;
+      });
+      g.appendChild(row);
+      return btns;
+    }
+
+    var state = {
+      n: opts.n || 8000,
+      speed: 1.0,
+      view: 'particles',
+      overlay: true,
+      kM: 24, kV: 22,
+      atomics: 'fixed',
+      running: true
+    };
+
+    var sim = null, renderer = null, building = false, generation = 0;
+
+    function sceneSeed(n) {
+      // a slab of rubber resting on the floor, wide enough to grab and deform
+      var half = 0.20, h = 0.24, y0 = P.floor_y + 0.004;
+      var s = 20250816 >>> 0;
+      function rnd() { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }
+      var pts = new Float32Array(2 * n);
+      for (var i = 0; i < n; i++) {
+        pts[2 * i] = 0.5 - half + rnd() * 2 * half;
+        pts[2 * i + 1] = y0 + rnd() * h;
+      }
+      return { pts: pts, area: 2 * half * h };
+    }
+
+    async function build() {
+      if (building) return;
+      building = true;
+      var myGen = ++generation;
+      if (sim) { try { sim.destroy(); } catch (e) {} sim = null; }
+      var sc = sceneSeed(state.n);
+      try {
+        sim = await M.createSim({ n: state.n, area: sc.area, atomics: state.atomics,
+                                  kM: state.kM, kV: state.kV });
+      } catch (e) {
+        stage.innerHTML = '<div class="mpmd-fail">WebGPU init failed: ' + e.message + '</div>';
+        building = false; return;
+      }
+      if (myGen !== generation) { building = false; return; }
+      sim.seed(sc.pts, 0, 0);
+      renderer = await M.createRenderer(canvas, sim);
+      building = false;
+      fpsWin.length = 0; lastGpuMs = null;
+    }
+
+    // ---------------------------------------------------------------- pointer interaction
+    var pointer = { active: false, x: 0, y: 0, px: 0, py: 0, t: 0 };
+    function toSim(ev) {
+      var r = canvas.getBoundingClientRect();
+      return { x: (ev.clientX - r.left) / r.width, y: 1.0 - (ev.clientY - r.top) / r.height };
+    }
+    stage.addEventListener('pointerdown', function (ev) {
+      var p = toSim(ev);
+      pointer.active = true; pointer.x = p.x; pointer.y = p.y;
+      pointer.px = p.x; pointer.py = p.y; pointer.t = performance.now();
+      stage.setPointerCapture(ev.pointerId);
+      badge.style.opacity = 0;
+      ev.preventDefault();
+    });
+    stage.addEventListener('pointermove', function (ev) {
+      if (!pointer.active) return;
+      var p = toSim(ev);
+      pointer.x = p.x; pointer.y = p.y;
+      ev.preventDefault();
+    });
+    function release(ev) {
+      pointer.active = false;
+      if (sim) { sim.poke.on = false; sim.syncUniform(); }
+      if (ev && ev.pointerId !== undefined && stage.hasPointerCapture &&
+        stage.hasPointerCapture(ev.pointerId)) stage.releasePointerCapture(ev.pointerId);
+    }
+    stage.addEventListener('pointerup', release);
+    stage.addEventListener('pointercancel', release);
+    stage.addEventListener('pointerleave', release);
+    stage.style.touchAction = 'none';
+
+    // ---------------------------------------------------------------- HUD
+    var rows = {};
+    ['fps', 'gpu', 'substeps', 'particles', 'speed'].forEach(function (k) {
+      var r = el('div', 'mpmd-hrow');
+      r.appendChild(el('span', 'mpmd-hk', k));
+      var v = el('span', 'mpmd-hv', '--');
+      r.appendChild(v); hud.appendChild(r); rows[k] = v;
+    });
+
+    var fpsWin = [];
+    var lastGpuMs = null;
+    var frameCount = 0;
+    var inflight = false;
+
+    function resize() {
+      var r = stage.getBoundingClientRect();
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      var w = Math.max(64, Math.round(r.width * dpr));
+      var h = Math.max(64, Math.round(r.height * dpr));
+      if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    }
+
+    async function tick() {
+      if (!sim || !renderer || inflight) return;
+      resize();
+      var spf = Math.max(1, Math.round(state.speed * (1 / 60) / P.dt));
+      if (pointer.active) {
+        var t = performance.now();
+        var dtp = Math.max(1e-3, (t - pointer.t) / 1000);
+        sim.poke.on = true;
+        sim.poke.x = pointer.x; sim.poke.y = pointer.y;
+        sim.poke.vx = (pointer.x - pointer.px) / dtp;
+        sim.poke.vy = (pointer.y - pointer.py) / dtp;
+        pointer.px = pointer.x; pointer.py = pointer.y; pointer.t = t;
+        sim.syncUniform();
+      }
+      var timed = (frameCount % 30) === 0;
+      var t0 = performance.now();
+      inflight = true;
+      sim.encodeFrame(spf, { timed: timed });
+      renderer.draw({
+        view: state.view, overlay: state.overlay,
+        radius: Math.max(0.004, 0.030 / Math.sqrt(state.n / 900)),
+        // reference values from the measured range: a loaded node carries ~2x the
+        // particles-per-cell in particle masses, and node speeds run to a couple of m/s
+        vRef: state.view === 'particles' ? 2.5 : 4.0,
+        massRef: Math.max(4, 2.2 * state.n / (0.4 * 0.24 * P.n_grid * P.n_grid))
+      });
+      if (timed) { try { lastGpuMs = (await sim.lastGpuNanos()) / 1e6; } catch (e) { lastGpuMs = null; } }
+      await sim.idle();
+      inflight = false;
+      var dtms = performance.now() - t0;
+      fpsWin.push(dtms);
+      if (fpsWin.length > 40) fpsWin.shift();
+      frameCount++;
+
+      if (fpsWin.length >= 30) {
+        // averaged over >= 30 frames: performance.now()'s ~100 us clamp is 1000x below this total
+        var mean = fpsWin.reduce(function (a, b) { return a + b; }, 0) / fpsWin.length;
+        rows.fps.textContent = (1000 / mean).toFixed(0) + ' fps  (' + mean.toFixed(1) + ' ms)';
+      }
+      rows.gpu.textContent = lastGpuMs === null ? 'n/a' : lastGpuMs.toFixed(2) + ' ms compute';
+      rows.substeps.textContent = spf + ' / frame  (dt = ' + P.dt.toExponential(1) + ' s)';
+      rows.particles.textContent = state.n.toLocaleString();
+      rows.speed.textContent = state.speed.toFixed(2) + ' x real time';
+    }
+
+    var raf = 0;
+    function loop() {
+      raf = requestAnimationFrame(loop);
+      if (!state.running) return;
+      tick();
+    }
+
+    // ---------------------------------------------------------------- build the controls
+    slider('particles', 500, 40000, 500, state.n, function (v) { return v.toLocaleString(); },
+      function (v) { state.n = v; build(); });
+    slider('sim speed (x real time)', 0.1, 2, 0.05, 1.0, function (v) { return v.toFixed(2) + ' x'; },
+      function (v) { state.speed = v; });
+    seg('view', [
+      { value: 'particles', label: 'particles', title: 'the material itself, shaded by speed' },
+      { value: 'mass', label: 'grid mass', title: 'the background grid the solver actually solves on' },
+      { value: 'speed', label: 'grid speed', title: 'the node velocity field after the grid update' }
+    ], 'particles', function (v) { state.view = v; });
+    seg('atomic accumulator', [
+      { value: 'f24', label: 'fixed 2^24', title: 'fixed point, 24 bits per particle mass -- matches exact f32 to within the simulator\u2019s own noise' },
+      { value: 'f20', label: 'fixed 2^20', title: 'fixed point, 20 bits per particle mass -- coarser; measurably off on contact-heavy scenes' },
+      { value: 'cas', label: 'exact f32', title: 'compare-and-swap loop: exact f32 addition, but slower under contention' }
+    ], 'f24', function (v) {
+      if (v === 'cas') { state.atomics = 'casf32'; }
+      else { state.atomics = 'fixed'; state.kM = v === 'f24' ? 24 : 20; state.kV = v === 'f24' ? 22 : 18; }
+      build();
+    });
+    var g = group('');
+    var btnRow = el('div', 'mpmd-seg');
+    var bReset = el('button', 'mpmd-sb', 'reset');
+    bReset.type = 'button';
+    bReset.addEventListener('click', function () { build(); });
+    var bPause = el('button', 'mpmd-sb', 'pause');
+    bPause.type = 'button';
+    bPause.addEventListener('click', function () {
+      state.running = !state.running;
+      bPause.textContent = state.running ? 'pause' : 'resume';
+    });
+    btnRow.appendChild(bReset); btnRow.appendChild(bPause);
+    g.appendChild(btnRow);
+
+    note.innerHTML = 'One command buffer per frame: <b>' +
+      (3 * Math.round((1 / 60) / P.dt)) + ' compute dispatches</b> recorded and submitted once. ' +
+      'Physics parameters generated from <code>sim.physics</code> (<code>' + P.physics_version +
+      '</code>), elastic <code>E=' + P.E + '</code>, <code>dt=' + P.dt.toExponential(0) +
+      '</code> on a ' + P.n_grid + '\u00d7' + P.n_grid + ' grid.';
+
+    build().then(function () { loop(); });
+    window.addEventListener('resize', resize);
+    return { state: state, stop: function () { cancelAnimationFrame(raf); } };
+  };
+})(typeof self !== 'undefined' ? self : this);
+</script>
+<script>// page.js -- the charts on the bespoke task page. Everything is drawn as inline SVG from the
+// numbers in window.PAGE (extracted from metrics.json at build time); no images, no libraries.
+(function () {
+  'use strict';
+  var D = window.PAGE;
+  var NS = 'http://www.w3.org/2000/svg';
+  var COL = { webgpu: '#6fd3ee', javascript: '#ff9d5c', taichi_cuda: '#b58cf0',
+              grid: '#8fd9b6', p2g: '#6fd3ee', g2p: '#ff9d5c', encode: '#b58cf0',
+              muted: '#7f8ea3', line: '#1e2733', bad: '#ff7a7a', good: '#8fd9b6' };
+  var NAME = { webgpu: 'WebGPU', javascript: 'JavaScript', taichi_cuda: 'Taichi / CUDA' };
+
+  function E(t, a, kids) {
+    var e = document.createElementNS(NS, t);
+    for (var k in a) if (a[k] !== null && a[k] !== undefined) e.setAttribute(k, a[k]);
+    (kids || []).forEach(function (c) { e.appendChild(c); });
+    return e;
+  }
+  function T(x, y, s, o) {
+    o = o || {};
+    var e = E('text', { x: x, y: y, fill: o.fill || COL.muted, 'font-size': o.size || 11,
+      'text-anchor': o.anchor || 'start', 'font-family': o.mono ? 'ui-monospace,Menlo,Consolas,monospace' : 'inherit',
+      'font-weight': o.weight || 400, transform: o.transform });
+    e.textContent = s;
+    return e;
+  }
+  function svg(w, h) {
+    return E('svg', { viewBox: '0 0 ' + w + ' ' + h, preserveAspectRatio: 'xMidYMid meet' });
+  }
+  function path(d, stroke, width, extra) {
+    return E('path', Object.assign({ d: d, fill: 'none', stroke: stroke, 'stroke-width': width || 2,
+      'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, extra || {}));
+  }
+  function fmt(v) {
+    if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+    if (v >= 1000) return Math.round(v / 1000) + 'k';
+    return String(Math.round(v));
+  }
+
+  // ---------------------------------------------------------------- launch-floor bars
+  (function () {
+    var host = document.getElementById('floorChart');
+    if (!host) return;
+    var W = 900, H = 190, L = 260, R = 40;
+    var s = svg(W, H);
+    var rows = [
+      { lab: 'empty CUDA kernel, launched from Python', v: D.floor.taichi_cuda_empty_kernel_from_python, c: COL.taichi_cuda },
+      { lab: 'empty WGSL dispatch, inside one recorded command buffer', v: D.floor.webgpu_empty_dispatch_in_recorded_buffer, c: COL.webgpu }
+    ];
+    var max = rows[0].v * 1.18;
+    rows.forEach(function (r, i) {
+      var y = 42 + i * 62;
+      var w = (W - L - R) * r.v / max;
+      s.appendChild(T(L - 12, y + 17, r.lab, { anchor: 'end', size: 12.5, fill: '#dfe6ee' }));
+      s.appendChild(E('rect', { x: L, y: y, width: Math.max(w, 2), height: 26, rx: 4, fill: r.c, opacity: 0.85 }));
+      s.appendChild(T(L + Math.max(w, 2) + 10, y + 18, r.v.toFixed(2) + ' \u00b5s',
+        { size: 13, mono: true, fill: r.c, weight: 600 }));
+    });
+    s.appendChild(T(L, H - 26, 'The same substep issues 3 (WebGPU) or 4 (Taichi) of these, ' +
+      D.spf + ' times a frame.', { size: 12 }));
+    s.appendChild(T(L, H - 8, 'Doing nothing therefore costs ' +
+      (D.floor.taichi_cuda_empty_kernel_from_python * 4 * D.spf / 1000).toFixed(0) + ' ms/frame from Python and ' +
+      (D.floor.webgpu_empty_dispatch_in_recorded_buffer * 3 * D.spf / 1000).toFixed(2) +
+      ' ms/frame in WebGPU \u2014 a ' + D.floor.ratio.toFixed(0) + '\u00d7 difference in the floor.',
+      { size: 12, fill: '#dfe6ee' }));
+    host.appendChild(s);
+  })();
+
+  // ---------------------------------------------------------------- three-way cost curve
+  (function () {
+    var host = document.getElementById('costChart');
+    if (!host) return;
+    var mode = 'time';
+    var impls = ['webgpu', 'javascript', 'taichi_cuda'];
+    function draw() {
+      host.innerHTML = '';
+      var W = 900, H = 420, L = 66, R = 22, Tp = 18, B = 52;
+      var s = svg(W, H);
+      if (mode === 'time') {
+        var pts = {};
+        impls.forEach(function (k) {
+          pts[k] = D.threeWay.filter(function (r) { return r.impl === k; })
+            .sort(function (a, b) { return a.n - b.n; });
+        });
+        var allN = D.threeWay.map(function (r) { return r.n; });
+        var allY = D.threeWay.map(function (r) { return r.frame_ms; });
+        var x0 = Math.log10(Math.min.apply(null, allN)), x1 = Math.log10(Math.max.apply(null, allN));
+        var y0 = Math.log10(Math.min.apply(null, allY) * 0.75), y1 = Math.log10(Math.max.apply(null, allY) * 1.3);
+        var X = function (n) { return L + (Math.log10(n) - x0) / (x1 - x0) * (W - L - R); };
+        var Y = function (v) { return H - B - (Math.log10(v) - y0) / (y1 - y0) * (H - Tp - B); };
+        [0.5, 1, 2, 5, 10, 16.67, 50, 100, 250, 500, 900].forEach(function (v) {
+          if (Math.log10(v) < y0 || Math.log10(v) > y1) return;
+          var is60 = v === 16.67;
+          s.appendChild(E('line', { x1: L, x2: W - R, y1: Y(v), y2: Y(v),
+            stroke: is60 ? '#4a5c6b' : COL.line, 'stroke-width': is60 ? 1.6 : 1,
+            'stroke-dasharray': is60 ? '7 5' : null }));
+          s.appendChild(T(L - 8, Y(v) + 4, is60 ? '16.7' : String(v), { anchor: 'end', size: 10.5, mono: true }));
+        });
+        s.appendChild(T(L + 8, Y(16.67) - 7, '60 fps budget', { anchor: 'start', size: 11, fill: '#8ea3b5' }));
+        [500, 2048, 8192, 32768, 131072, 262144].forEach(function (n) {
+          if (Math.log10(n) < x0 - 1e-9 || Math.log10(n) > x1 + 1e-9) return;
+          s.appendChild(E('line', { x1: X(n), x2: X(n), y1: Tp, y2: H - B, stroke: COL.line, 'stroke-width': 1 }));
+          s.appendChild(T(X(n), H - B + 17, fmt(n), { anchor: 'middle', size: 10.5, mono: true }));
+        });
+        impls.forEach(function (k) {
+          var p = pts[k];
+          if (!p.length) return;
+          var d = p.map(function (r, i) { return (i ? 'L' : 'M') + X(r.n).toFixed(1) + ' ' + Y(r.frame_ms).toFixed(1); }).join(' ');
+          s.appendChild(path(d, COL[k], 2.4));
+          p.forEach(function (r) {
+            s.appendChild(E('circle', { cx: X(r.n), cy: Y(r.frame_ms), r: 3.1, fill: COL[k] }));
+          });
+          // label at the series' own midpoint, not its last point, so nothing collides with the
+          // right edge or with the 60 fps rule
+          var mid = p[Math.max(0, Math.floor(p.length / 2) - 1)];
+          s.appendChild(T(X(mid.n), Y(mid.frame_ms) - 13, NAME[k],
+            { anchor: 'middle', size: 12, fill: COL[k], weight: 600 }));
+        });
+        s.appendChild(T(L, H - 10, 'particles  (log)', { size: 11.5 }));
+        var ym = (Tp + H - B) / 2;
+        s.appendChild(T(18, ym, 'frame time, ms (log)',
+          { size: 11.5, anchor: 'middle', transform: 'rotate(-90 18 ' + ym + ')' }));
+      } else {
+        var rows = impls.map(function (k) { return { k: k, v: D.budget[k] }; });
+        var max = Math.max.apply(null, rows.map(function (r) { return r.v || 1; })) * 1.15;
+        var LB = 150;
+        rows.forEach(function (r, i) {
+          var y = 44 + i * 92;
+          s.appendChild(T(LB - 12, y + 26, NAME[r.k], { anchor: 'end', size: 13.5, fill: '#dfe6ee', weight: 600 }));
+          if (r.v === null) {
+            s.appendChild(E('rect', { x: LB, y: y, width: 4, height: 40, rx: 2, fill: COL.bad }));
+            s.appendChild(T(LB + 16, y + 20, 'never reaches 60 fps',
+              { size: 14, fill: COL.bad, weight: 600 }));
+            s.appendChild(T(LB + 16, y + 40, 'flat ~55 ms/frame from 500 to 16384 particles \u2014 ' +
+              'the cost is launch overhead, so no particle count helps', { size: 11.5 }));
+          } else {
+            var w = (W - LB - 40) * r.v / max;
+            s.appendChild(E('rect', { x: LB, y: y, width: Math.max(w, 3), height: 40, rx: 5, fill: COL[r.k], opacity: 0.85 }));
+            s.appendChild(T(LB + Math.max(w, 3) + 12, y + 26, Math.round(r.v).toLocaleString() + ' particles',
+              { size: 15, mono: true, fill: COL[r.k], weight: 600 }));
+          }
+        });
+        s.appendChild(T(LB, H - 16, 'Largest particle count whose measured frame still fits 16.67 ms, ' +
+          'interpolated between the two bracketing measurements. Compute only \u2014 rendering excluded.',
+          { size: 11.5 }));
+      }
+      host.appendChild(s);
+    }
+    var tg = document.getElementById('costToggle');
+    tg.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      [].forEach.call(tg.children, function (c) { c.classList.remove('on'); });
+      b.classList.add('on'); mode = b.dataset.v; draw();
+    });
+    draw();
+  })();
+
+  // ---------------------------------------------------------------- accuracy vs scale
+  (function () {
+    var host = document.getElementById('accChart');
+    var tbl = document.getElementById('accTable');
+    if (!host) return;
+    var scene = 'drop';
+    function draw() {
+      host.innerHTML = ''; tbl.innerHTML = '';
+      var A = D.accuracy[scene];
+      var W = 900, H = 380, L = 74, R = 30, Tp = 20, B = 58;
+      var s = svg(W, H);
+      var fixed = A.variants.filter(function (v) { return v.atomics === 'fixed'; })
+        .sort(function (a, b) { return a.kM - b.kM; });
+      var cas = A.variants.find(function (v) { return v.atomics === 'casf32'; });
+      var ks = fixed.map(function (v) { return v.kM; });
+      var kmin = Math.min.apply(null, ks) - 1, kmax = Math.max.apply(null, ks) + 1;
+      var vals = A.variants.map(function (v) { return v.traj_rmse; })
+        .concat([A.band.self_noise, A.band['perturbed_ic_1e-7']]);
+      var y0 = Math.log10(Math.min.apply(null, vals) * 0.45);
+      var y1 = Math.log10(Math.max.apply(null, vals) * 3.2);
+      var X = function (k) { return L + (k - kmin) / (kmax - kmin) * (W - L - R); };
+      var Y = function (v) { return H - B - (Math.log10(v) - y0) / (y1 - y0) * (H - Tp - B); };
+      for (var e = Math.floor(y0); e <= Math.ceil(y1); e++) {
+        if (e < y0 || e > y1) continue;
+        s.appendChild(E('line', { x1: L, x2: W - R, y1: Y(Math.pow(10, e)), y2: Y(Math.pow(10, e)),
+          stroke: COL.line, 'stroke-width': 1 }));
+        s.appendChild(T(L - 8, Y(Math.pow(10, e)) + 4, '1e' + e, { anchor: 'end', size: 10.5, mono: true }));
+      }
+      // the band: everything below the top edge is indistinguishable from chaos
+      s.appendChild(E('rect', { x: L, y: Y(A.band['perturbed_ic_1e-7']), width: W - L - R,
+        height: Math.max(1, (H - B) - Y(A.band['perturbed_ic_1e-7'])), fill: '#22303d', opacity: 0.75 }));
+      // band labels go on the LEFT: at coarse k the curve is high up, so the lower-left is empty
+      [['perturbed_ic_1e-7', 'canonical with a one-ULP nudge to the initial positions', -6],
+       ['self_noise', 'canonical re-run against itself', 14]]
+        .forEach(function (p) {
+          var v = A.band[p[0]];
+          s.appendChild(E('line', { x1: L, x2: W - R, y1: Y(v), y2: Y(v), stroke: COL.webgpu,
+            'stroke-width': 1.2, 'stroke-dasharray': p[0] === 'self_noise' ? '2 4' : '7 4', opacity: 0.85 }));
+          s.appendChild(T(L + 8, Y(v) + p[2], p[1], { anchor: 'start', size: 10.5, fill: '#7fb9cf' }));
+        });
+      var d = fixed.map(function (v, i) { return (i ? 'L' : 'M') + X(v.kM).toFixed(1) + ' ' + Y(v.traj_rmse).toFixed(1); }).join(' ');
+      s.appendChild(path(d, COL.webgpu, 2.4));
+      fixed.forEach(function (v) {
+        var inside = v.traj_rmse <= A.band['perturbed_ic_1e-7'];
+        s.appendChild(E('circle', { cx: X(v.kM), cy: Y(v.traj_rmse), r: 4.6,
+          fill: inside ? COL.good : COL.webgpu }));
+        s.appendChild(T(X(v.kM), H - B + 18, '2^' + v.kM, { anchor: 'middle', size: 11, mono: true }));
+        s.appendChild(T(X(v.kM), Y(v.traj_rmse) - 11, (v.vs_perturbed_ic < 10 ? v.vs_perturbed_ic.toFixed(1) : Math.round(v.vs_perturbed_ic)) + '\u00d7',
+          { anchor: 'middle', size: 10.5, mono: true, fill: inside ? COL.good : '#a9c3d2' }));
+      });
+      if (cas) {
+        s.appendChild(E('line', { x1: L, x2: W - R, y1: Y(cas.traj_rmse), y2: Y(cas.traj_rmse),
+          stroke: COL.javascript, 'stroke-width': 1.8, 'stroke-dasharray': '5 4' }));
+        s.appendChild(T(W - R, Y(cas.traj_rmse) - 8, 'exact f32 (compare-and-swap): ' + cas.traj_rmse.toExponential(2),
+          { size: 11, anchor: 'end', fill: COL.javascript, weight: 600 }));
+      }
+      s.appendChild(T(L, H - 12, 'fixed-point resolution: quanta per particle mass', { size: 11.5 }));
+      var ym2 = (Tp + H - B) / 2;
+      s.appendChild(T(18, ym2, 'traj_rmse vs canonical (domain lengths)',
+        { size: 11.5, anchor: 'middle', transform: 'rotate(-90 18 ' + ym2 + ')' }));
+      s.appendChild(T(W - R, Tp + 6, A.desc, { anchor: 'end', size: 11.5, fill: '#dfe6ee' }));
+      host.appendChild(s);
+
+      var h = '<table><tr><th>accumulator</th><th>traj_rmse</th><th>&times; self-noise</th>' +
+        '<th>&times; IC nudge</th><th>final-frame gap</th><th>node ceiling</th></tr>';
+      A.variants.forEach(function (v) {
+        var inside = v.traj_rmse <= A.band['perturbed_ic_1e-7'];
+        var cls = inside ? 'good' : (v.vs_perturbed_ic > 20 ? 'bad' : 'warm');
+        h += '<tr><td>' + (v.atomics === 'fixed' ? 'fixed 2<sup>' + v.kM + '</sup>' : 'exact f32 (CAS)') +
+          '</td><td class="' + cls + '">' + v.traj_rmse.toExponential(2) + '</td><td>' +
+          v.vs_self_noise.toFixed(1) + '</td><td class="' + cls + '">' + v.vs_perturbed_ic.toFixed(1) +
+          '</td><td>' + v.final_frame_dist.toExponential(2) + '</td><td>' +
+          (v.atomics === 'fixed' ? Math.round(v.mass_ceiling) + ' pm' : '&mdash;') + '</td></tr>';
+      });
+      tbl.innerHTML = h + '</table>';
+    }
+    var tg = document.getElementById('sceneToggle');
+    tg.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      [].forEach.call(tg.children, function (c) { c.classList.remove('on'); });
+      b.classList.add('on'); scene = b.dataset.v; draw();
+    });
+    draw();
+  })();
+
+  // ---------------------------------------------------------------- node occupancy vs density
+  (function () {
+    var host = document.getElementById('occChart');
+    if (!host) return;
+    var W = 900, H = 320, L = 70, R = 196, Tp = 20, B = 52;
+    var s = svg(W, H);
+    var o = D.occupancy.slice().sort(function (a, b) { return a.particles_per_cell - b.particles_per_cell; });
+    var x0 = Math.log10(o[0].particles_per_cell * 0.8), x1 = Math.log10(o[o.length - 1].particles_per_cell * 1.25);
+    var y1 = Math.log10(1400), y0 = Math.log10(1.5);
+    var X = function (v) { return L + (Math.log10(v) - x0) / (x1 - x0) * (W - L - R); };
+    var Y = function (v) { return H - B - (Math.log10(v) - y0) / (y1 - y0) * (H - Tp - B); };
+    [2, 5, 10, 20, 50, 100, 250, 500, 1000].forEach(function (v) {
+      if (Math.log10(v) < y0 || Math.log10(v) > y1) return;
+      s.appendChild(E('line', { x1: L, x2: W - R, y1: Y(v), y2: Y(v), stroke: COL.line, 'stroke-width': 1 }));
+      s.appendChild(T(L - 8, Y(v) + 4, String(v), { anchor: 'end', size: 10.5, mono: true }));
+    });
+    [{ k: 20, c: '#3d5566' }, { k: 22, c: '#4d7fa3' }, { k: 24, c: COL.webgpu }, { k: 26, c: '#8fd9b6' }, { k: 30, c: COL.bad }]
+      .forEach(function (r) {
+        var cap = Math.pow(2, 32 - r.k);
+        if (cap < Math.pow(10, y0) || cap > Math.pow(10, y1)) return;
+        s.appendChild(E('line', { x1: L, x2: W - R, y1: Y(cap), y2: Y(cap), stroke: r.c,
+          'stroke-width': 1.4, 'stroke-dasharray': '6 4' }));
+        s.appendChild(T(W - R + 8, Y(cap) + 4, 'ceiling at 2^' + r.k + ' \u2192 ' + cap + ' pm',
+          { size: 10.5, mono: true, fill: r.c }));
+      });
+    var d = o.map(function (r, i) { return (i ? 'L' : 'M') + X(r.particles_per_cell).toFixed(1) + ' ' + Y(r.max_node_mass_pm).toFixed(1); }).join(' ');
+    s.appendChild(path(d, '#ffffff', 2.4));
+    o.forEach(function (r) {
+      s.appendChild(E('circle', { cx: X(r.particles_per_cell), cy: Y(r.max_node_mass_pm), r: 3.4, fill: '#fff' }));
+      s.appendChild(T(X(r.particles_per_cell), H - B + 17, r.particles_per_cell.toFixed(1),
+        { anchor: 'middle', size: 10.5, mono: true }));
+    });
+    s.appendChild(T(L, H - 10, 'particles per cell', { size: 11.5 }));
+    var ym3 = (Tp + H - B) / 2;
+    s.appendChild(T(18, ym3, 'heaviest node (particle masses)',
+      { size: 11.5, anchor: 'middle', transform: 'rotate(-90 18 ' + ym3 + ')' }));
+    host.appendChild(s);
+  })();
+
+  // ---------------------------------------------------------------- phase split
+  (function () {
+    var host = document.getElementById('phaseChart');
+    if (!host) return;
+    var mode = 'abs';
+    function draw() {
+      host.innerHTML = '';
+      var rows = D.phases;
+      var W = 900, H = 330, L = 62, R = 20, Tp = 18, B = 56;
+      var s = svg(W, H);
+      var keys = ['grid', 'p2g', 'g2p'];
+      var totals = rows.map(function (r) { return keys.reduce(function (a, k) { return a + r[k]; }, 0); });
+      var max = mode === 'abs' ? Math.max.apply(null, totals) * 1.08 : 1;
+      var bw = (W - L - R) / rows.length * 0.66;
+      rows.forEach(function (r, i) {
+        var cx = L + (i + 0.5) * (W - L - R) / rows.length;
+        var tot = totals[i], acc = 0;
+        keys.forEach(function (k) {
+          var v = mode === 'abs' ? r[k] : r[k] / tot;
+          var h = v / max * (H - Tp - B);
+          var y = H - B - acc - h;
+          s.appendChild(E('rect', { x: cx - bw / 2, y: y, width: bw, height: Math.max(h, 0.6),
+            fill: COL[k], opacity: 0.88 }));
+          acc += h;
+        });
+        s.appendChild(T(cx, H - B + 16, fmt(r.n), { anchor: 'middle', size: 10, mono: true }));
+        if (mode === 'abs') {
+          s.appendChild(T(cx, H - B - acc - 6, tot.toFixed(1), { anchor: 'middle', size: 9.5, mono: true }));
+        }
+      });
+      var ymp = (Tp + H - B) / 2;
+      s.appendChild(T(16, ymp, mode === 'abs' ? 'GPU time per frame' : 'share of the frame',
+        { size: 11.5, anchor: 'middle', transform: 'rotate(-90 16 ' + ymp + ')' }));
+      var ticks = mode === 'abs' ? [0, 5, 10, 15, 20] : [0, 0.25, 0.5, 0.75, 1];
+      ticks.forEach(function (v) {
+        if (v > max) return;
+        var y = H - B - v / max * (H - Tp - B);
+        s.appendChild(E('line', { x1: L, x2: W - R, y1: y, y2: y, stroke: COL.line, 'stroke-width': 1 }));
+        s.appendChild(T(L - 8, y + 4, mode === 'abs' ? v + ' ms' : (v * 100) + '%',
+          { anchor: 'end', size: 10.5, mono: true }));
+      });
+      s.appendChild(T(L, H - 10, 'particles', { size: 11.5 }));
+      host.appendChild(s);
+      var lg = document.createElement('div');
+      lg.className = 'legend';
+      lg.innerHTML = '<span><i style="background:' + COL.grid + '"></i>grid update (+ fused clear), ' +
+        D.spf + ' dispatches</span><span><i style="background:' + COL.p2g +
+        '"></i>P2G, the atomic scatter</span><span><i style="background:' + COL.g2p +
+        '"></i>G2P, the gather</span>';
+      host.appendChild(lg);
+    }
+    var tg = document.getElementById('phaseToggle');
+    tg.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      [].forEach.call(tg.children, function (c) { c.classList.remove('on'); });
+      b.classList.add('on'); mode = b.dataset.v; draw();
+    });
+    draw();
+  })();
+
+  // ---------------------------------------------------------------- metric definitions on hover
+  [].forEach.call(document.querySelectorAll('.def'), function (e) {
+    var d = window.DEFS[e.dataset.def];
+    if (d) e.setAttribute('title', d);
+  });
+
+  // ---------------------------------------------------------------- the live sim
+  if (window.MPMDemo) {
+    var host = document.getElementById('demo');
+    if (host) MPMDemo(host, { n: 8000 });
+  }
+})();
+</script>

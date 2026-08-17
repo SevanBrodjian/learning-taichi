@@ -1,0 +1,298 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>MPM WebGPU verification + benchmark harness</title>
+<style>
+  body { background:#0a0e14; color:#dfe6ee; font:13px/1.5 ui-monospace,Menlo,Consolas,monospace; padding:14px; }
+  pre { white-space:pre-wrap; }
+  .ok { color:#7ee787 } .bad { color:#ff8f8f } .hd { color:#6fd3ee }
+</style>
+<h3 class="hd">MPM WebGPU harness</h3>
+<pre id="log"></pre>
+<script src="/web/params.js"></script>
+<script src="/web/mpm-webgpu.js"></script>
+<script>
+// Drives every browser-side measurement in one page load, then POSTs the artifacts to serve.py.
+// The Python driver writes verify/job.json, loads this page, and waits for verify/out/done.json.
+//
+// TIMING PROTOCOL (this is the part that is easy to get wrong):
+//   * performance.now() is clamped to ~100 us in Chromium, so NOTHING short is ever timed directly.
+//     Every wall-clock number here is a total over >= 30 frames divided by the frame count, and each
+//     frame is >= 500 dispatches, so the clamp is far below the measured interval.
+//   * GPU-side time comes from timestamp-query on the compute pass. Chromium quantises those too
+//     (100 us by default); the harness measures the quantum explicitly and reports it, and every
+//     GPU number is likewise a pass covering many substeps.
+//   * Nothing here uses requestAnimationFrame. Sustained throughput is measured by submitting F
+//     frames back-to-back and awaiting queue.onSubmittedWorkDone() once, which is the real
+//     steady-state rate the display path would see.
+const LOG = document.getElementById('log');
+function say(s, cls) { LOG.innerHTML += '<span class="' + (cls || '') + '">' + s + '</span>\n'; }
+async function post(name, body) {
+  await fetch('/save?name=' + name, { method: 'POST', body: body });
+}
+function now() { return performance.now(); }
+
+async function main() {
+  const job = await (await fetch('/verify/job.json?t=' + Date.now())).json();
+  const out = { job_id: job.id, started: Date.now() };
+  if (!MPMWebGPU.supported()) { say('navigator.gpu MISSING (insecure origin?)', 'bad'); await post('done.json', JSON.stringify({ error: 'no webgpu' })); return; }
+  await MPMWebGPU.getDevice();
+  out.device = MPMWebGPU.deviceInfo();
+  out.params = MPMWebGPU.PARAMS;
+  out.user_agent = navigator.userAgent;
+  say('adapter: ' + JSON.stringify(out.device), 'ok');
+
+  // ---------------------------------------------------------------- 0. timestamp quantum probe
+  // Chromium quantises BOTH performance.now() and timestamp-query for side-channel reasons. Find
+  // the actual quantum instead of assuming it, by growing the pass until the clock stops reading
+  // zero and taking the GCD of what comes back.
+  {
+    const sim = await MPMWebGPU.createSim({ n: 4096, area: Math.PI * 0.11 * 0.11 });
+    sim.seed(MPMWebGPU.seedDisk(0.5, 0.52, 0.11, 4096, 7), 0, 0);
+    const rows = [];
+    for (const s of [1, 2, 4, 8, 16, 32, 64, 128, 167, 334, 668]) {
+      const a = [];
+      for (let i = 0; i < 6; i++) { sim.encodeFrame(s, { timed: true }); a.push(await sim.lastGpuNanos()); }
+      rows.push({ substeps: s, ns: a });
+    }
+    const all = rows.flatMap(r => r.ns).filter(v => v > 0);
+    const gcd = all.reduce((a, b) => { while (b) { [a, b] = [b, a % b]; } return a; }, 0);
+    out.timestamp_probe = { rows: rows, apparent_quantum_ns: gcd };
+    say('timestamp quantum ~ ' + gcd + ' ns; first nonzero at ' +
+      (rows.find(r => r.ns.some(v => v > 0)) || { substeps: null }).substeps + ' substeps');
+    sim.destroy();
+  }
+
+  // ---------------------------------------------------------------- 1. verification rollouts
+  out.rollouts = [];
+  for (const ic of job.ics) {
+    const raw = await (await fetch('/verify/' + ic.pts_file)).arrayBuffer();
+    const pts = new Float32Array(raw);
+    const spf = Math.max(1, Math.round((ic.T / ic.n_frames) / MPMWebGPU.PARAMS.dt));
+    for (const v of job.variants) {
+      const t0 = now();
+      const sim = await MPMWebGPU.createSim({
+        n: ic.n, area: ic.area, atomics: v.atomics, kM: v.kM, kV: v.kV
+      });
+      sim.seed(pts, ic.v0[0], ic.v0[1]);
+      const traj = new Float32Array(ic.n_frames * ic.n * 2);
+      let maxNodeMass = 0, maxNodeMom = 0;
+      const probe = !!v.probe;
+      for (let f = 0; f < ic.n_frames; f++) {
+        sim.encodeFrame(spf, { readback: true, gridReadback: probe });
+        traj.set(await sim.readPositions(), f * ic.n * 2);
+        if (probe) {
+          // gv = (vx, vy, node mass in particle masses, |node momentum| in pm*velocity)
+          const g = await sim.readGrid();
+          for (let c = 0; c < g.length; c += 4) {
+            if (g[c + 2] > maxNodeMass) maxNodeMass = g[c + 2];
+            if (g[c + 3] > maxNodeMom) maxNodeMom = g[c + 3];
+          }
+        }
+      }
+      let bad = 0;
+      for (let i = 0; i < traj.length; i++) if (!isFinite(traj[i])) bad++;
+      const tag = ic.name + '_' + v.name;
+      await post('traj_' + tag + '.f32', traj.buffer);
+      const row = {
+        ic: ic.name, variant: v.name, atomics: v.atomics, kM: v.kM, kV: v.kV,
+        n: ic.n, spf: spf, frames: ic.n_frames, n_nonfinite: bad,
+        wall_ms: now() - t0, file: 'traj_' + tag + '.f32',
+        pMass: sim.params.pMass, massScale: sim.params.massScale, momScale: sim.params.momScale
+      };
+      if (probe) {
+        row.max_node_mass_pm = maxNodeMass;                     // particle masses at one node
+        row.max_node_mom_pm = maxNodeMom;                       // particle-mass * velocity
+        row.mass_saturates_at_pm = Math.pow(2, 32 - v.kM);
+        row.mom_saturates_at_pm = Math.pow(2, 31 - v.kV);
+        row.mass_headroom = Math.pow(2, 32 - v.kM) / Math.max(maxNodeMass, 1e-9);
+        row.mom_headroom = Math.pow(2, 31 - v.kV) / Math.max(maxNodeMom, 1e-9);
+      }
+      out.rollouts.push(row);
+      say('rollout ' + tag + '  ' + row.wall_ms.toFixed(0) + ' ms  nonfinite=' + bad +
+        (probe ? '  maxNodeMass=' + maxNodeMass.toFixed(2) + 'pm  maxNodeMom=' + maxNodeMom.toFixed(2) : ''),
+        bad ? 'bad' : 'ok');
+      sim.destroy();
+    }
+  }
+
+  // ---------------------------------------------------------------- 2. scaling + phase split
+  // One command buffer per frame, 167 substeps of elastic in it. Sustained throughput = submit F
+  // frames back to back and wait once. GPU time = timestamp-query over the whole pass.
+  //
+  // SEEDING MATTERS FOR A SCALING CURVE. Growing a disk's radius as sqrt(n) keeps density constant
+  // but leaves the domain past ~35k particles; everything outside is then clamped onto the
+  // boundary cells and P2G measures a pathological atomic pile-up instead of the cost of more
+  // particles. So the scene is a box at the reference density, capped at the domain, and
+  // particles_per_cell is reported so the reader can see exactly where density starts rising.
+  const DENSITY0 = 2048 / (Math.PI * 0.11 * 0.11);         // particles per unit area, reference disk
+  const SIDE_MAX = 0.90;
+  function boxScene(n, seed) {
+    const side = Math.min(SIDE_MAX, Math.sqrt(n / DENSITY0));
+    const x0 = 0.5 - side / 2, y0 = 0.5 - side / 2;
+    let s = (seed >>> 0) || 1;
+    const rnd = () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+    const pts = new Float32Array(2 * n);
+    for (let i = 0; i < n; i++) { pts[2 * i] = x0 + rnd() * side; pts[2 * i + 1] = y0 + rnd() * side; }
+    return { pts: pts, area: side * side, side: side,
+             particles_per_cell: n / (side * side * MPMWebGPU.N_CELL) };
+  }
+
+  const SPF = Math.round((1 / 60) / MPMWebGPU.PARAMS.dt);
+  out.substeps_per_frame = SPF;
+
+  // ---- 2a. the per-dispatch FLOOR, the direct analogue of Taichi's 56.4 us empty launch ----
+  out.dispatch_floor = [];
+  {
+    const sc = boxScene(2048, 5);
+    const sim = await MPMWebGPU.createSim({ n: 2048, area: sc.area });
+    sim.seed(sc.pts, 0, 0);
+    for (const s of job.bench.floor_substeps) {
+      for (let i = 0; i < 2; i++) sim.encodeFrame(s, { phases: 'e' });
+      await sim.idle();
+      const g = [];
+      for (let i = 0; i < 7; i++) { sim.encodeFrame(s, { timed: true, phases: 'e' }); g.push(await sim.lastGpuNanos()); }
+      g.sort((a, b) => a - b);
+      out.dispatch_floor.push({ dispatches: s, gpu_ns: g[3], ns_per_dispatch: g[3] / s });
+    }
+    say('dispatch floor: ' + out.dispatch_floor.map(r => r.dispatches + 'x -> ' + (r.ns_per_dispatch / 1000).toFixed(2) + ' us').join('  '));
+    sim.destroy();
+  }
+
+  // ---- 2b. how full does a node get? this is what sets the fixed-point scale ----
+  out.density_probe = [];
+  for (const n of job.bench.density_probe_n) {
+    const sc = boxScene(n, 99);
+    const sim = await MPMWebGPU.createSim({ n: n, area: sc.area, kM: 24, kV: 22 });
+    sim.seed(sc.pts, 0, 0);
+    let maxM = 0, maxP = 0;
+    for (let f = 0; f < 30; f++) {
+      sim.encodeFrame(SPF, { gridReadback: true });
+      const g = await sim.readGrid();
+      for (let c = 0; c < g.length; c += 4) {
+        if (g[c + 2] > maxM) maxM = g[c + 2];
+        if (g[c + 3] > maxP) maxP = g[c + 3];
+      }
+    }
+    out.density_probe.push({ n: n, particles_per_cell: sc.particles_per_cell,
+      max_node_mass_pm: maxM, max_node_mom_pm: maxP });
+    say('density n=' + n + '  ppc=' + sc.particles_per_cell.toFixed(1) +
+      '  maxNodeMass=' + maxM.toFixed(1) + 'pm  maxNodeMom=' + maxP.toFixed(1));
+    sim.destroy();
+  }
+
+  out.scaling = [];
+  for (const spec of job.bench.scaling) {
+    const n = spec.n, F = spec.frames, mode = spec.atomics || 'fixed';
+    const sc = boxScene(n, 12345);
+    const sim = await MPMWebGPU.createSim({ n: n, area: sc.area, atomics: mode });
+    sim.seed(sc.pts, 0, 0);
+    // warm up: build pipelines, settle caches
+    for (let i = 0; i < 3; i++) sim.encodeFrame(SPF);
+    await sim.idle();
+    // --- sustained throughput (wall clock over F frames, no rAF anywhere) ---
+    let t0 = now();
+    for (let f = 0; f < F; f++) sim.encodeFrame(SPF);
+    await sim.idle();
+    const sustained = (now() - t0) / F;
+    // --- CPU recording cost alone ---
+    t0 = now();
+    for (let f = 0; f < F; f++) sim.encodeFrame(SPF, { noSubmit: true });
+    const encodeMs = (now() - t0) / F;
+    // --- GPU pass time (timestamp query), median of 5 ---
+    const g = [];
+    for (let i = 0; i < 5; i++) { sim.encodeFrame(SPF, { timed: true }); g.push(await sim.lastGpuNanos()); }
+    g.sort((a, b) => a - b);
+    const gpuMs = g[2] / 1e6;
+    // --- phase split by DIFFERENCING whole loops (never by timing one 30 us kernel) ---
+    async function timedPhases(phases) {
+      const a = [];
+      for (let i = 0; i < 5; i++) { sim.encodeFrame(SPF, { timed: true, phases: phases }); a.push(await sim.lastGpuNanos()); }
+      a.sort((x, y) => x - y); return a[2] / 1e6;
+    }
+    const tG = await timedPhases('g');          // grid sweep only
+    const tPG = await timedPhases('pg');        // + P2G scatter
+    const tAll = await timedPhases('pgG');      // + G2P gather
+    out.scaling.push({
+      n: n, atomics: mode, frames: F, substeps: SPF,
+      side: sc.side, particles_per_cell: sc.particles_per_cell,
+      sustained_ms: sustained, encode_ms: encodeMs, gpu_ms: gpuMs,
+      us_per_substep_gpu: gpuMs * 1000 / SPF,
+      us_per_substep_sustained: sustained * 1000 / SPF,
+      fps: 1000 / sustained,
+      phase_ms: { grid: tG, p2g: tPG - tG, g2p: tAll - tPG, total_pgG: tAll },
+      dispatches_per_frame: 3 * SPF
+    });
+    say('n=' + n + ' [' + mode + ']  sustained ' + sustained.toFixed(2) + ' ms (' +
+      (1000 / sustained).toFixed(1) + ' fps)  gpu ' + gpuMs.toFixed(2) + ' ms  encode ' +
+      encodeMs.toFixed(2) + ' ms  phases g/p/G ' + tG.toFixed(2) + '/' + (tPG - tG).toFixed(2) +
+      '/' + (tAll - tPG).toFixed(2));
+    sim.destroy();
+  }
+
+  // ---------------------------------------------------------------- 3. fixed-point vs CAS f32 cost
+  out.atomics_head_to_head = [];
+  for (const n of job.bench.atomics_n) {
+    const row = { n: n };
+    const scA = boxScene(n, 12345);
+    row.particles_per_cell = scA.particles_per_cell;
+    for (const mode of ['fixed', 'casf32']) {
+      const sim = await MPMWebGPU.createSim({ n: n, area: scA.area, atomics: mode });
+      sim.seed(scA.pts, 0, 0);
+      for (let i = 0; i < 3; i++) sim.encodeFrame(SPF);
+      await sim.idle();
+      const g = [];
+      for (let i = 0; i < 7; i++) { sim.encodeFrame(SPF, { timed: true }); g.push(await sim.lastGpuNanos()); }
+      g.sort((a, b) => a - b);
+      const pg = [];
+      for (let i = 0; i < 7; i++) { sim.encodeFrame(SPF, { timed: true, phases: 'pg' }); pg.push(await sim.lastGpuNanos()); }
+      pg.sort((a, b) => a - b);
+      row[mode + '_gpu_ms'] = g[3] / 1e6;
+      row[mode + '_p2g_grid_ms'] = pg[3] / 1e6;
+      sim.destroy();
+    }
+    row.slowdown_total = row.casf32_gpu_ms / row.fixed_gpu_ms;
+    row.slowdown_p2g_grid = row.casf32_p2g_grid_ms / row.fixed_p2g_grid_ms;
+    out.atomics_head_to_head.push(row);
+    say('atomics n=' + n + '  fixed ' + row.fixed_gpu_ms.toFixed(2) + ' ms  casf32 ' +
+      row.casf32_gpu_ms.toFixed(2) + ' ms  (x' + row.slowdown_total.toFixed(2) + ')');
+  }
+
+  // ---------------------------------------------------------------- 4. the substep-count axis
+  // The MVP's real question: a shared grid runs at min(dt), so snow forces 333 substeps on
+  // everything. Price the frame as a function of substeps/frame at a fixed particle count.
+  out.substep_sweep = [];
+  {
+    const n = job.bench.substep_sweep_n;
+    const scS = boxScene(n, 12345);
+    const sim = await MPMWebGPU.createSim({ n: n, area: scS.area });
+    sim.seed(scS.pts, 0, 0);
+    for (const s of job.bench.substeps) {
+      for (let i = 0; i < 2; i++) sim.encodeFrame(s);
+      await sim.idle();
+      const F = 20;
+      const t0 = now();
+      for (let f = 0; f < F; f++) sim.encodeFrame(s);
+      await sim.idle();
+      const ms = (now() - t0) / F;
+      const g = [];
+      for (let i = 0; i < 5; i++) { sim.encodeFrame(s, { timed: true }); g.push(await sim.lastGpuNanos()); }
+      g.sort((a, b) => a - b);
+      out.substep_sweep.push({ n: n, substeps: s, sustained_ms: ms, gpu_ms: g[2] / 1e6, fps: 1000 / ms });
+    }
+    say('substep sweep at n=' + n + ': ' + out.substep_sweep.map(r => r.substeps + '->' + r.sustained_ms.toFixed(1) + 'ms').join('  '));
+    sim.destroy();
+  }
+
+  out.finished = Date.now();
+  out.webgpu_errors = MPMWebGPU.errors();
+  if (out.webgpu_errors.length) say('WEBGPU ERRORS: ' + out.webgpu_errors.join(' | '), 'bad');
+  await post('bench.json', JSON.stringify(out, null, 2));
+  await post('done.json', JSON.stringify({ ok: true, at: Date.now() }));
+  say('DONE', 'ok');
+}
+
+main().catch(async function (e) {
+  say('ERROR ' + (e && e.stack ? e.stack : e), 'bad');
+  try { await post('done.json', JSON.stringify({ error: String(e && e.message || e), stack: String(e && e.stack || '') })); } catch (_) {}
+});
+</script>

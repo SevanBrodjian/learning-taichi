@@ -119,8 +119,11 @@ GRAPH = {
     # demo track — PROVISIONAL edges, set at creation. Per CLAUDE.md these get re-derived once each task
     # has actually run and its result shows what it really was.
     "webgpu-port-of-the-interactive-simulation": [
-        ("interactive-simulation-of-one-material", "extends",
-         "same port, GPU backend; the JS port's 1150-particle substep budget is exactly what it is trying to beat"),
+        ("interactive-simulation-of-one-material", "refutes",
+         "continues that port onto the GPU, and overturns its headline reading. That task concluded from a"
+         " flat CUDA cost curve that small problems do not want a GPU and that one JS thread beats a 4090"
+         " below ~4300 particles. On the SAME 4090 the WebGPU dispatch floor is 1.11us against CUDA-from-"
+         "Python's 55.6us, and the curve stops being flat: the flatness measured the API, not the device."),
     ],
     "sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid": [
         ("implement-nondifferentiable-material-variants", "extends",

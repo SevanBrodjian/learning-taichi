@@ -1,0 +1,89 @@
+{
+  "impl": "javascript-single-thread",
+  "substeps_per_frame": 167,
+  "physics_version_of_port": "phys-1dc280eb52c9",
+  "node": "v20.12.1",
+  "rows": [
+    {
+      "n": 500,
+      "particles_per_cell": 3.288325270493705,
+      "side": 0.0963357865318394,
+      "us_per_substep": 44.7582,
+      "frame_ms": 7.474619400000001,
+      "fps": 133.78607611780205,
+      "active_cells": 225
+    },
+    {
+      "n": 1000,
+      "particles_per_cell": 3.288325270493705,
+      "side": 0.13623937585520662,
+      "us_per_substep": 82.5944,
+      "frame_ms": 13.7932648,
+      "fps": 72.49915190492102,
+      "active_cells": 414
+    },
+    {
+      "n": 2048,
+      "particles_per_cell": 3.2883252704937047,
+      "side": 0.19496992359960677,
+      "us_per_substep": 161.3773797338792,
+      "frame_ms": 26.950022415557825,
+      "fps": 37.105720528926746,
+      "active_cells": 754
+    },
+    {
+      "n": 4096,
+      "particles_per_cell": 3.288325270493705,
+      "side": 0.27572911020941004,
+      "us_per_substep": 345.33668032786886,
+      "frame_ms": 57.6712256147541,
+      "fps": 17.33966964184248,
+      "active_cells": 1467
+    },
+    {
+      "n": 8192,
+      "particles_per_cell": 3.2883252704937047,
+      "side": 0.38993984719921354,
+      "us_per_substep": 658.0139344262295,
+      "frame_ms": 109.88832704918033,
+      "fps": 9.100147639452658,
+      "active_cells": 2799
+    },
+    {
+      "n": 16384,
+      "particles_per_cell": 3.288325270493705,
+      "side": 0.5514582204188201,
+      "us_per_substep": 1332.8139999999999,
+      "frame_ms": 222.57993799999997,
+      "fps": 4.492767897167804,
+      "active_cells": 5328
+    },
+    {
+      "n": 32768,
+      "particles_per_cell": 3.2883252704937047,
+      "side": 0.7798796943984271,
+      "us_per_substep": 2649.356,
+      "frame_ms": 442.44245200000006,
+      "fps": 2.2601809466511136,
+      "active_cells": 10599
+    },
+    {
+      "n": 49152,
+      "particles_per_cell": 3.7037037037037033,
+      "side": 0.9,
+      "us_per_substep": 4025.1389999999997,
+      "frame_ms": 672.198213,
+      "fps": 1.4876564392175793,
+      "active_cells": 13979
+    },
+    {
+      "n": 65536,
+      "particles_per_cell": 4.938271604938271,
+      "side": 0.9,
+      "us_per_substep": 5284.281,
+      "frame_ms": 882.474927,
+      "fps": 1.1331766709786646,
+      "active_cells": 14042
+    }
+  ]
+}

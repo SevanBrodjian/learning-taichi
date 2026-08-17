@@ -144,26 +144,49 @@ not of the physics.** A dense array is correct on a GPU and wasteful on a thread
 reverse at high occupancy. Porting a solver between execution models means re-deriving those choices, not
 translating them.
 
-## Small problems do not want a GPU
+## A flat cost curve measures the API, not the device
 
-The other surprise from measuring rather than assuming: at these sizes a GPU is not fast.
+The most useful measurement to make on any implementation is **cost against problem size**, because its
+*shape* identifies what is being paid for. If halving the particle count does not halve the time, the
+particles were never the bill.
 
-![Cost of one MLS-MPM substep against particle count for three implementations, with the 60 fps real-time
-line marked. The GPU curve is flat because it is launch-bound, and one JavaScript thread is cheaper below
-about four thousand particles.](/api/data/learning-taichi/runs/material-variants/interactive-simulation-of-one-material/substep_budget.png)
+Driving a GPU one kernel at a time from a scripting language produces exactly that signature: a substep
+cost that is **flat** across a thirty-fold range of particle count. Flat means the arithmetic finished long
+before the next instruction to start work arrived. The floor is easy to measure directly, and it should
+always be measured directly: time a kernel that does *nothing*. If an empty launch costs tens of
+microseconds and a substep issues four of them $S$ times a frame, then several tens of milliseconds per
+frame are spent on nothing at all, and no particle count changes that.
 
-The GPU curve is **flat** from five hundred particles to sixteen thousand. Flat means the arithmetic is not
-what is being paid for. A substep launches a handful of kernels, each launch carries a fixed cost, and at
-16 384 cells the kernels finish long before the next launch can be issued. An empty kernel that touches
-nothing already costs tens of microseconds. Below roughly four thousand particles a single scalar CPU thread
-is genuinely cheaper than a large discrete GPU running the same physics.
+The seductive misreading is "small problems do not want a GPU". That conclusion does not follow, and it is
+wrong. The fixed cost being measured is per **submission**, not per unit of work, so it disappears if the
+work is submitted differently. Modern graphics APIs let a program **record many dispatches into one command
+buffer and submit it once**, with the ordering and memory-visibility guarantees between consecutive
+dispatches that a $\text{P2G} \to \text{grid} \to \text{G2P}$ chain needs. All $3S$ dispatches of a frame
+then go across the boundary as a single object.
 
-This is the difference between the **throughput regime** and the **latency regime**. Batch work, where a
-million particles are simulated offline and only the total matters, lives in the first and the GPU wins by
-orders of magnitude. Interactive work, where a small state must be advanced many times per frame with a
-sequential dependency between every step, lives in the second, where fixed per-launch costs are multiplied
-by $S$ and dominate. A structured, controllable world model that must respond to input is a latency
-problem, and reasoning about it with throughput benchmarks gives the wrong answer.
+The difference this makes is not incremental. On one machine an empty compute dispatch inside a recorded
+buffer measured **about 1 microsecond against about 56 microseconds** for an empty kernel launched
+individually from a scripting language, a factor of fifty in the floor, with the identical device and the
+identical arithmetic. A substep dominated by launch overhead at 345 microseconds became a substep of about
+7 microseconds, and the cost curve went from flat to properly proportional to particle count. Cost then
+scales with the P2G scatter, which is the thing that ought to dominate.
+
+So the honest version of the lesson is sharper and more useful than the original one:
+
+- **A flat cost curve is a diagnosis, not a verdict.** It says the bottleneck is issuing work, and issuing
+  work is the part you can restructure.
+- **Latency-bound and throughput-bound are properties of how work is submitted**, not just of how much of
+  it there is. Interactive simulation has a small state, a hard sequential dependency, and hundreds of
+  steps per frame, all of which make per-submission cost the thing to attack first.
+- **Batching does not touch $S$.** The substep count is still set by $\Delta t$, and the frame still costs
+  $S$ times something. Removing the launch overhead changes what that something is; it does not repeal the
+  budget equation.
+
+The comparison worth internalising is that on the same machine and the same physics, one CPU thread, a
+GPU driven one launch at a time, and the same GPU driven with one submission per frame differ by more than
+two orders of magnitude in the particle count they sustain at 60 fps &mdash; and the middle of those three
+is the *slowest* at every size below a few thousand particles. Which is to say: the implementation strategy
+outweighed the choice of hardware.
 
 ## What survives a port, and what was never physics
 
@@ -222,7 +245,9 @@ trajectory error against a canonical rollout and the cost per frame.
 ## What's open
 
 The substep-count argument is exact, but the constant in "a substep may cost 100 microseconds" is a
-statement about one machine, one language, and one problem size, and it moves with all three. Whether a
+statement about one machine, one language, and one problem size, and it moves with all three. The
+batched-submission result above says the same thing more sharply: that constant moved by a factor of fifty
+without a line of arithmetic changing. Whether a
 coarse-time learned model can hold a rollout together at one evaluation per frame is untested and is the
 interesting question, because a positive answer would decouple interactive simulation from the CFL condition
 entirely, and a negative one would say that explicit stability is a floor no amount of learning removes.

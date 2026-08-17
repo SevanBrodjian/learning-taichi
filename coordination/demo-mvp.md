@@ -126,8 +126,19 @@ site will be HTTPS, so the production case was never in doubt.
 
 - **Now (JS, elastic only):** ~1150 particles at 60 fps real time.
 - **Snow in scene (JS):** ~550 particles at 60 fps — the number to beat.
-- **WebGPU hope:** enough headroom that substep count stops being the binding constraint and particle count
-  becomes interesting again. Treat any specific figure as a conjecture until measured.
+- **WebGPU: MEASURED 2026-08-16, and the headroom is real.** On the same RTX 4090, the dispatch floor
+  falls from 55.6 us (CUDA-from-Python, per kernel per substep) to **1.11 us**, and the cost curve stops
+  being flat. At 2048 particles: **7.1 us/substep, 1.18 ms/frame** against JS at 161 us/1229 particles and
+  Taichi-CUDA managing no real-time particle count at all. Budget at 60 fps: **~172,600 particles**
+  (elastic, 167 substeps). Substep count is still the wall for snow: 333 substeps costs 5.2 ms at 16,384
+  particles.
+- **Fixed-point atomics: use 2^24 (mass) / 2^22 (momentum).** The obvious 2^20 sits 79x outside the noise
+  band on a contact-heavy scene while looking fine (4.5x) on a gentle drop -- a single-scene check would
+  have shipped it. Precision trades against RANGE: 2^24 saturates at 256 particle-masses per node, and
+  overrun **wraps silently** -- no NaN, no error, the block just detonates. A deep study of this is the
+  planned follow-up.
+- **The WebGPU port is elastic-only.** It implements the closed-form polar path; snow and sand need a real
+  SVD in G2P, so extending it to four materials is genuine work, not a parameter change.
 - **Acceptable fallback if real time is unaffordable:** a smooth 60 fps display at a stated fraction of real
   time. The existing page already exposes `sim speed x real time` honestly; slow motion that is *labelled*
   is far better than a stutter or a lie.

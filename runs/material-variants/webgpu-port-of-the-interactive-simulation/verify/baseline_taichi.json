@@ -1,0 +1,85 @@
+{
+  "impl": "taichi-cuda",
+  "physics_version": "phys-bebeaafbe73e",
+  "arch": "Arch.cuda",
+  "substeps_per_frame": 167,
+  "n_grid": 128,
+  "rows": [
+    {
+      "n": 500,
+      "particles_per_cell": 3.288325270493705,
+      "side": 0.0963357865318394,
+      "us_per_substep": 357.6647500085528,
+      "frame_ms": 59.73001325142832,
+      "fps": 16.742001977976912,
+      "launches_per_frame": 668
+    },
+    {
+      "n": 1000,
+      "particles_per_cell": 3.288325270493705,
+      "side": 0.13623937585520662,
+      "us_per_substep": 352.52174999186536,
+      "frame_ms": 58.871132248641516,
+      "fps": 16.9862539041463,
+      "launches_per_frame": 668
+    },
+    {
+      "n": 2048,
+      "particles_per_cell": 3.2883252704937047,
+      "side": 0.19496992359960677,
+      "us_per_substep": 377.70450002426514,
+      "frame_ms": 63.07665150405228,
+      "fps": 15.85372679359424,
+      "launches_per_frame": 668
+    },
+    {
+      "n": 4096,
+      "particles_per_cell": 3.288325270493705,
+      "side": 0.27572911020941004,
+      "us_per_substep": 335.25275001011323,
+      "frame_ms": 55.98720925168891,
+      "fps": 17.8612224714493,
+      "launches_per_frame": 668
+    },
+    {
+      "n": 8192,
+      "particles_per_cell": 3.2883252704937047,
+      "side": 0.38993984719921354,
+      "us_per_substep": 346.568249988195,
+      "frame_ms": 57.87689774802857,
+      "fps": 17.278051155291276,
+      "launches_per_frame": 668
+    },
+    {
+      "n": 16384,
+      "particles_per_cell": 3.288325270493705,
+      "side": 0.5514582204188201,
+      "us_per_substep": 328.8467500169645,
+      "frame_ms": 54.91740725283307,
+      "fps": 18.209162632098078,
+      "launches_per_frame": 668
+    },
+    {
+      "n": 32768,
+      "us_per_substep": null,
+      "note": "exceeds canonical MAX_P=16384"
+    },
+    {
+      "n": 49152,
+      "us_per_substep": null,
+      "note": "exceeds canonical MAX_P=16384"
+    },
+    {
+      "n": 65536,
+      "us_per_substep": null,
+      "note": "exceeds canonical MAX_P=16384"
+    },
+    {
+      "n": 131072,
+      "us_per_substep": null,
+      "note": "exceeds canonical MAX_P=16384"
+    }
+  ],
+  "empty_launch_us": 55.640624996158294,
+  "grid_op_only_us": 77.05125000939006
+}

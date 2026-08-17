@@ -9,7 +9,6 @@
     "source": "file:line of the implementation",
     "caution": "optional -- traps, misleading names, what it does NOT tell you"
   },
-
   "traj_rmse": {
     "label": "trajectory RMSE",
     "short": "How far the run's particles sit from ground truth, averaged over the whole rollout.",
@@ -19,7 +18,6 @@
     "source": "sim/one_nn_whole_fluid.py:619",
     "caution": "THE NAME IS WRONG. It is a mean absolute distance, not a root-mean-square, and it is NOT a centre-of-mass distance. It also has no interpretable scale -- 0.12 could be 'slightly off' or 'not a liquid' and the number alone cannot tell you. Use it to RANK cells, never to CERTIFY one as physical. It correlates only moderately with shape error (Spearman rho ~ 0.55 on the 5x5 whole-material grid)."
   },
-
   "roundness": {
     "label": "roundness (circularity)",
     "short": "How close the material's silhouette is to a perfect disk.",
@@ -29,7 +27,6 @@
     "source": "sim/one_nn_whole_fluid.py:663 (via _iso_raw:642, _disk_iso_raw:654)",
     "caution": "Computed on the LAST few frames only (settled state), so it says nothing about the motion that got there. Resolution-dependent: the 64x64 raster and the closing pass set how much fine spray is ignored."
   },
-
   "shape_error": {
     "label": "shape error",
     "short": "How far the run's roundness is from the ground truth's roundness at the same conditions.",
@@ -39,7 +36,6 @@
     "source": "derived; introduced by the task page at runs/material-variants/train-one-nn-to-mimic-viscosity-and-st/bespoke_page.html",
     "caution": "Directly interpretable because it is read against the ground truth's own roundness -- this is exactly what traj_rmse lacks. But it is a single scalar about the SETTLED shape and is blind to how the material got there."
   },
-
   "spread_width": {
     "label": "spread width",
     "short": "Horizontal extent of the material, robust to outlying particles.",
@@ -49,7 +45,6 @@
     "source": "sim/one_nn_whole_fluid.py:607",
     "caution": "Percentile-based, so it deliberately ignores the outermost 10% of particles -- a thin spray or a few flung particles will not show up here."
   },
-
   "pile_height": {
     "label": "pile height",
     "short": "How tall the settled material stands above the floor.",
@@ -58,7 +53,6 @@
     "range": "0 to 1. The signature that separates snow (holds a pile) from fluid (spreads flat).",
     "source": "sim/one_nn_whole_fluid.py:611"
   },
-
   "self_noise": {
     "label": "simulator self-noise",
     "short": "The canonical ground-truth simulator run against itself: the error floor nothing can beat.",
@@ -68,7 +62,6 @@
     "source": "reported per trained corner as metrics.edge.<corner>.true_self_noise",
     "caution": "This is the floor for a DETERMINISTIC comparison. It is not a claim about physical accuracy -- the canonical simulator's own error against reality is a separate, unmeasured thing."
   },
-
   "physics_version": {
     "label": "physics version",
     "short": "Stamp of the frozen canonical physics a run used, so two runs are provably on the same ground truth.",
@@ -78,7 +71,6 @@
     "source": "sim/physics/__init__.py",
     "caution": "Equal versions prove the same GROUND TRUTH was used. They do NOT prove a task's own differentiable variant matches it -- see the material-parameter drift noted in spec/registry/README.md."
   },
-
   "repose_angle": {
     "label": "angle of repose",
     "short": "The slope, in degrees, that a settled pile of material actually holds.",
@@ -88,7 +80,6 @@
     "source": "sim/physics/core.py:622 (via surface_profile:603)",
     "caution": "TWO traps. (1) It is NOT the model's friction-angle parameter phi -- canonical sand runs phi=50 and measures ~25. (2) It is NOT converged in the timestep for any plastic material: the same canonical sand reads ~25 at dt=1e-4 and ~14 at dt/8, and canonical snow reads ~57 at its own dt and ~17 at dt/8. Always quote it with the dt it was measured at. Fitting the WHOLE flank rather than the steep part is deliberate, so that a flat puddle with a sharp rim does not read as a steep pile."
   },
-
   "shape_drift": {
     "label": "settled-shape drift",
     "short": "How far a run's settled shape has moved from the same run at a converged timestep.",
@@ -98,7 +89,6 @@
     "source": "runs/material-variants/sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid/dt_experiment2.py:83",
     "caution": "Measures only the SETTLED state, so it is blind to differences in the motion that got there. It is defined against a dt/8 reference, not against reality."
   },
-
   "substeps_per_frame": {
     "label": "substeps per frame",
     "short": "How many solver steps a real-time 60 fps frame costs at a given timestep.",
@@ -108,7 +98,6 @@
     "source": "sim/physics/core.py:519 (shared_dt); the division itself at runs/material-variants/sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid/experiment.py:293",
     "caution": "It prices REAL-TIME playback only. A clip rendered offline, or labelled slow motion, pays a different bill. It also says nothing about the cost of one substep, which is machine- and implementation-dependent."
   },
-
   "dt_stable_max": {
     "label": "largest stable timestep",
     "short": "The biggest timestep at which a material's rollout stays finite and bounded.",
@@ -118,7 +107,6 @@
     "source": "runs/material-variants/sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid/dt_experiment2.py:96",
     "caution": "STABILITY IS THE WRONG CRITERION ON ITS OWN and this number will mislead anyone who uses it to pick a timestep. Every canonical material tolerates a far larger dt than it uses, and the settled behaviour is already wrong well below this point -- compare dt_faithful_max."
   },
-
   "dt_faithful_max": {
     "label": "largest faithful timestep",
     "short": "The biggest timestep at which the settled shape still matches a converged reference.",
@@ -128,11 +116,46 @@
     "source": "runs/material-variants/sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid/dt_experiment2.py:97",
     "caution": "Defined against a dt/8 reference, and for materials whose settled state drifts monotonically with SUBSTEP COUNT that reference is itself not a fixed point -- so read this as 'agrees with a much finer run', not as 'converged to the true answer'."
   },
-
   "_unregistered": [
     "airborne fraction (used by one-nn-for-three-materials)",
     "gap closed % (used by learned-residual)",
     "relative RMSE / relRMSE (used for stress, capillary, state fits)",
     "effective viscosity (used by the weight-interpolation tasks)"
-  ]
+  ],
+  "us_per_substep": {
+    "label": "microseconds per substep",
+    "short": "Wall-clock cost of one full P2G / grid / G2P solver step, on stated hardware.",
+    "formula": "total time for K substeps divided by K, with K large enough that the timer's resolution is negligible. Reported either as GPU-side time (timestamp-query over the whole pass) or as sustained wall time (K frames submitted back to back, one queue wait).",
+    "units": "microseconds",
+    "range": "Measured on one RTX 4090 at n_grid=128: ~345-378 (Taichi/CUDA driven per-kernel from Python, FLAT in particle count), 45-5300 (single JavaScript thread, linear in particle count), 6-140 (WebGPU with all substeps in one command buffer).",
+    "source": "runs/material-variants/webgpu-port-of-the-interactive-simulation/verify/baselines.py:66 (timeit) and runs/material-variants/webgpu-port-of-the-interactive-simulation/verify/harness.html (sustained/gpu paths)",
+    "caution": "This is an IMPLEMENTATION number, not a device number. A flat curve against particle count means the measurement is dominated by the cost of ISSUING work, not doing it -- the same kernels on the same GPU differ by ~50x depending only on whether each is launched individually or recorded into one command buffer. Never quote it without the hardware, the API, AND how the work was submitted."
+  },
+  "frame_ms": {
+    "label": "frame time",
+    "short": "What one real-time frame of simulation costs: substeps_per_frame x cost of one substep.",
+    "formula": "substeps_per_frame * us_per_substep / 1000. Compute only -- rendering and readback excluded unless stated.",
+    "units": "milliseconds",
+    "range": "16.67 ms is the 60 fps budget. Above it the simulation is not real time and must either drop particles, drop frames, or be labelled slow motion.",
+    "source": "runs/material-variants/webgpu-port-of-the-interactive-simulation/verify/score.py:52 (budget_60fps) and runs/material-variants/webgpu-port-of-the-interactive-simulation/metrics.json:three_way",
+    "caution": "Excludes drawing. A compute budget that just fits 16.67 ms is NOT a frame that hits 60 fps once rendering, readback and compositing are added."
+  },
+  "particle_budget_60fps": {
+    "label": "particle budget at 60 fps",
+    "short": "The largest particle count whose measured frame still fits inside 16.67 ms.",
+    "formula": "linear interpolation of the measured frame_ms-vs-particle-count curve at 16.67 ms. Undefined (reported as none) when even the smallest measured scene misses the budget.",
+    "units": "particles",
+    "range": "Measured for canonical elastic (167 substeps/frame) on one RTX 4090: ~1230 (single JS thread), none at any size (Taichi/CUDA from Python), ~173000 (WebGPU, one command buffer per frame).",
+    "source": "runs/material-variants/webgpu-port-of-the-interactive-simulation/verify/score.py:52",
+    "caution": "Interpolated between two measured points, not measured at the crossing. It also depends on particle DENSITY, not just count -- the cost is driven by the P2G atomic scatter, so the same count spread thinner is cheaper. Compute only; rendering excluded."
+  },
+  "dispatch_floor_us": {
+    "label": "dispatch floor",
+    "short": "What it costs to tell the GPU to run a kernel that does nothing.",
+    "formula": "time for K dispatches of an empty kernel, divided by K. The analogue on both sides of a port: an empty Taichi kernel launched from Python vs an empty WGSL dispatch recorded inside one command buffer.",
+    "units": "microseconds",
+    "range": "Measured on one RTX 4090: 55.6 (Taichi kernel launched from Python) vs 1.11 (WGSL dispatch inside a recorded command buffer) -- a 50x difference on the same device.",
+    "source": "runs/material-variants/webgpu-port-of-the-interactive-simulation/verify/baselines.py:52 (noop) and runs/material-variants/webgpu-port-of-the-interactive-simulation/verify/harness.html (phases 'e')",
+    "caution": "Multiply by the number of kernels per substep AND by substeps_per_frame before comparing to a frame budget -- that product is what actually decides whether a real-time explicit solver is possible. This is a per-SUBMISSION cost, so it is a property of how the API is driven, not of the hardware."
+  }
 }

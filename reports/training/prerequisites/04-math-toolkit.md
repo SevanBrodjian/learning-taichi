@@ -150,3 +150,33 @@ slopes that are ill-defined or enormous. The result can be a gradient that is te
 computes but physically meaningless or numerically overflowing. Those are not autodiff bugs. They are the
 honest consequence of differentiating a non-smooth physical step, and taking them apart is the entire job
 of [[failure-modes]].
+
+## Floating point, in the two facts a simulator actually needs
+
+Almost nothing in a simulator depends on the details of the IEEE-754 format, but two of its properties
+decide how a rollout behaves, and both are easy to get backwards.
+
+**A float's precision is relative, not absolute.** A `float32` carries 24 bits of significand, so the gap
+between one representable number and the next, its *unit in the last place* or **ULP**, is about $2^{-24}$
+*of the value itself*, roughly $6 \times 10^{-8}$ in relative terms. Near $1$ the spacing is about
+$10^{-7}$; near $10^{-5}$ it is about $10^{-12}$; near $10^{6}$ it is about $0.06$. A float is a ruler whose
+tick marks get further apart as you move away from zero. A fixed-point integer, the other option a machine
+offers, is the opposite: its tick marks are evenly spaced everywhere, so its error is *absolute*, excellent
+near zero and hopeless once the value grows.
+
+The consequence is that "how accurate is this number" is not answerable without knowing its magnitude, and
+that the same absolute error can be negligible for one quantity and fatal for another. It is also why an
+error is best reported relative to something meaningful, a ULP of a typical value, rather than as a bare
+decimal.
+
+**Addition is not associative, so summation order changes the answer.** Each addition rounds its result to
+the nearest representable float, so $(a + b) + c$ and $a + (b + c)$ can differ in the last bits. Summing
+$N$ values in a different order therefore produces a different total, with the discrepancy growing roughly
+as $\sqrt{N}$ times one ULP when the rounding errors behave like independent noise.
+
+That is not a curiosity, it is why a parallel simulator is **not reproducible**. When many threads
+accumulate into the same memory location, the hardware serialises them in whatever order they arrive, and
+that order changes between runs. Two runs of identical code on identical input therefore land on slightly
+different numbers, and in a chaotic system that difference grows. Any claim that one implementation matches
+another has to be measured against that floor rather than against zero; the construction for doing so
+honestly is in [[real-time-cost]].

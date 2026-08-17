@@ -1,0 +1,104 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>MPM WebGPU: fixed-point range study</title>
+<style>
+  body { background:#0a0e14; color:#dfe6ee; font:13px/1.5 ui-monospace,Menlo,Consolas,monospace; padding:14px; }
+  pre { white-space:pre-wrap; } .ok{color:#7ee787} .bad{color:#ff8f8f} .hd{color:#6fd3ee}
+</style>
+<h3 class="hd">fixed-point range study</h3>
+<pre id="log"></pre>
+<script src="/web/params.js"></script>
+<script src="/web/mpm-webgpu.js"></script>
+<script>
+// A fixed-point accumulator has a fixed number of bits to split between RESOLUTION (quanta per
+// particle mass, 2^kM) and RANGE (particle masses per node, 2^(32-kM)). The accuracy sweep pins the
+// resolution the physics needs. This pins the range the physics needs -- how heavy a node actually
+// gets as the material is sampled more finely -- and then deliberately overflows it, because a
+// saturating u32 does NOT raise an error: it wraps, silently.
+const LOG = document.getElementById('log');
+function say(s, c) { LOG.innerHTML += '<span class="' + (c || '') + '">' + s + '</span>\n'; }
+async function post(name, body) { await fetch('/save?name=' + name, { method: 'POST', body: body }); }
+
+function boxScene(n, side, seed) {
+  const x0 = 0.5 - side / 2, y0 = 0.5 - side / 2;
+  let s = (seed >>> 0) || 1;
+  const rnd = () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+  const pts = new Float32Array(2 * n);
+  for (let i = 0; i < n; i++) { pts[2 * i] = x0 + rnd() * side; pts[2 * i + 1] = y0 + rnd() * side; }
+  return { pts, area: side * side, side, ppc: n / (side * side * MPMWebGPU.N_CELL) };
+}
+
+async function main() {
+  await MPMWebGPU.getDevice();
+  const P = MPMWebGPU.PARAMS;
+  const SPF = Math.round((1 / 60) / P.dt);
+  const out = { device: MPMWebGPU.deviceInfo(), substeps_per_frame: SPF, occupancy: [], overflow: [] };
+
+  // ---- how heavy does the heaviest node get, as a function of particles per cell? ----
+  // Measured with kM = 30 so the accumulator cannot itself saturate while measuring its own range.
+  const SIDE = 0.30;
+  for (const n of [1000, 2000, 4000, 8000, 16000, 32000, 64000]) {
+    const sc = boxScene(n, SIDE, 4242);
+    const sim = await MPMWebGPU.createSim({ n: n, area: sc.area, atomics: 'casf32' });
+    sim.seed(sc.pts, 0, 0);
+    let maxM = 0, maxP = 0;
+    for (let f = 0; f < 24; f++) {
+      sim.encodeFrame(SPF, { gridReadback: true });
+      const g = await sim.readGrid();
+      for (let c = 0; c < g.length; c += 4) {
+        if (g[c + 2] > maxM) maxM = g[c + 2];
+        if (g[c + 3] > maxP) maxP = g[c + 3];
+      }
+    }
+    out.occupancy.push({ n, side: SIDE, particles_per_cell: sc.ppc,
+      max_node_mass_pm: maxM, max_node_mom_pm: maxP,
+      mass_per_ppc: maxM / sc.ppc });
+    say('ppc=' + sc.ppc.toFixed(1).padStart(6) + '  maxNodeMass=' + maxM.toFixed(1).padStart(8) +
+      ' pm   maxNodeMom=' + maxP.toFixed(1).padStart(8) + '   (mass/ppc=' + (maxM / sc.ppc).toFixed(2) + ')');
+    sim.destroy();
+  }
+
+  // ---- drive it past the ceiling on purpose and watch what a wrapped u32 does ----
+  // At kM the mass accumulator holds 2^(32-kM) particle masses. Pick a scene whose nodes exceed
+  // that and compare against the exact-f32 CAS path on the identical initial condition.
+  const nOver = 32000;
+  const scO = boxScene(nOver, SIDE, 4242);
+  let ref = null;
+  for (const v of [{ kM: 30, kV: 28 }, { kM: 26, kV: 24 }, { kM: 24, kV: 22 }, { kM: 22, kV: 20 },
+                   { atomics: 'casf32', kM: 24, kV: 22 }]) {
+    const sim = await MPMWebGPU.createSim({ n: nOver, area: scO.area,
+      atomics: v.atomics || 'fixed', kM: v.kM, kV: v.kV });
+    sim.seed(scO.pts, 0, 0);
+    for (let f = 0; f < 24; f++) sim.encodeFrame(SPF);
+    sim.encodeFrame(SPF, { readback: true });
+    const x = await sim.readPositions();
+    let bad = 0, spread = 0, cx = 0, cy = 0;
+    for (let i = 0; i < nOver; i++) {
+      if (!isFinite(x[2 * i]) || !isFinite(x[2 * i + 1])) bad++;
+      cx += x[2 * i]; cy += x[2 * i + 1];
+    }
+    cx /= nOver; cy /= nOver;
+    for (let i = 0; i < nOver; i++) spread += Math.hypot(x[2 * i] - cx, x[2 * i + 1] - cy);
+    spread /= nOver;
+    const tag = (v.atomics || 'fixed') + '_k' + v.kM;
+    if (tag === 'casf32_k24') ref = x;
+    out.overflow.push({ tag, atomics: v.atomics || 'fixed', kM: v.kM, kV: v.kV, n: nOver,
+      particles_per_cell: scO.ppc, mass_ceiling_pm: Math.pow(2, 32 - v.kM),
+      n_nonfinite: bad, mean_radius: spread, com: [cx, cy], _x: Array.from(x.slice(0, 0)) });
+    out.overflow[out.overflow.length - 1].positions_file = 'over_' + tag + '.f32';
+    await post('over_' + tag + '.f32', x.buffer);
+    say('overflow test ' + tag.padEnd(12) + ' ceiling=' + Math.pow(2, 32 - v.kM).toFixed(0).padStart(7) +
+      ' pm   nonfinite=' + bad + '  meanRadius=' + spread.toFixed(4), bad ? 'bad' : '');
+    sim.destroy();
+  }
+
+  out.webgpu_errors = MPMWebGPU.errors();
+  await post('range.json', JSON.stringify(out, null, 2));
+  await post('done2.json', JSON.stringify({ ok: true }));
+  say('DONE', 'ok');
+}
+main().catch(async e => {
+  say('ERROR ' + (e.stack || e), 'bad');
+  await post('done2.json', JSON.stringify({ error: String(e.message || e) }));
+});
+</script>

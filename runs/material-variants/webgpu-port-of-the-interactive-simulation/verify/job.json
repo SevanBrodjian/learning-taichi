@@ -1,0 +1,177 @@
+{
+  "id": "webgpu-verify-1",
+  "physics_version": "phys-bebeaafbe73e",
+  "ics": [
+    {
+      "name": "drop",
+      "n": 2048,
+      "area": 0.0380132711084365,
+      "T": 2.5,
+      "n_frames": 150,
+      "v0": [
+        0.0,
+        0.0
+      ],
+      "pts_file": "ic_drop.f32",
+      "desc": "drop (disk r=0.11 at (0.5,0.52), released from rest)"
+    },
+    {
+      "name": "launch",
+      "n": 2048,
+      "area": 0.0380132711084365,
+      "T": 2.5,
+      "n_frames": 150,
+      "v0": [
+        0.75,
+        0.0
+      ],
+      "pts_file": "ic_launch.f32",
+      "desc": "launch (disk r=0.11 at (0.30,0.55), v0=(0.75,0)) -- bounces and rolls"
+    }
+  ],
+  "variants": [
+    {
+      "name": "fixed_k12",
+      "atomics": "fixed",
+      "kM": 12,
+      "kV": 10
+    },
+    {
+      "name": "fixed_k16",
+      "atomics": "fixed",
+      "kM": 16,
+      "kV": 14
+    },
+    {
+      "name": "fixed_k20",
+      "atomics": "fixed",
+      "kM": 20,
+      "kV": 18,
+      "probe": true
+    },
+    {
+      "name": "fixed_k22",
+      "atomics": "fixed",
+      "kM": 22,
+      "kV": 20
+    },
+    {
+      "name": "fixed_k24",
+      "atomics": "fixed",
+      "kM": 24,
+      "kV": 22,
+      "probe": true
+    },
+    {
+      "name": "fixed_k26",
+      "atomics": "fixed",
+      "kM": 26,
+      "kV": 24
+    },
+    {
+      "name": "casf32",
+      "atomics": "casf32",
+      "kM": 20,
+      "kV": 18
+    }
+  ],
+  "bench": {
+    "scaling": [
+      {
+        "n": 500,
+        "frames": 60,
+        "atomics": "fixed"
+      },
+      {
+        "n": 1000,
+        "frames": 60,
+        "atomics": "fixed"
+      },
+      {
+        "n": 2048,
+        "frames": 60,
+        "atomics": "fixed"
+      },
+      {
+        "n": 4096,
+        "frames": 60,
+        "atomics": "fixed"
+      },
+      {
+        "n": 8192,
+        "frames": 60,
+        "atomics": "fixed"
+      },
+      {
+        "n": 16384,
+        "frames": 60,
+        "atomics": "fixed"
+      },
+      {
+        "n": 32768,
+        "frames": 40,
+        "atomics": "fixed"
+      },
+      {
+        "n": 49152,
+        "frames": 40,
+        "atomics": "fixed"
+      },
+      {
+        "n": 65536,
+        "frames": 30,
+        "atomics": "fixed"
+      },
+      {
+        "n": 98304,
+        "frames": 24,
+        "atomics": "fixed"
+      },
+      {
+        "n": 131072,
+        "frames": 20,
+        "atomics": "fixed"
+      },
+      {
+        "n": 196608,
+        "frames": 14,
+        "atomics": "fixed"
+      },
+      {
+        "n": 262144,
+        "frames": 12,
+        "atomics": "fixed"
+      }
+    ],
+    "atomics_n": [
+      2048,
+      16384,
+      49152
+    ],
+    "substep_sweep_n": 16384,
+    "substeps": [
+      1,
+      10,
+      42,
+      84,
+      139,
+      167,
+      333,
+      500
+    ],
+    "floor_substeps": [
+      16,
+      64,
+      167,
+      334,
+      668,
+      1336
+    ],
+    "density_probe_n": [
+      2048,
+      8192,
+      32768,
+      49152
+    ]
+  }
+}

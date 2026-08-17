@@ -1,0 +1,25 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WebGPU MLS-MPM elastic -- standalone demo</title>
+<link rel="stylesheet" href="demo.css">
+<style>
+  body { background:#0a0e14; color:#dfe6ee; margin:0; padding:24px;
+         font:14px/1.6 ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  main { max-width:760px; margin:0 auto; }
+  h1 { font-size:18px; margin:0 0 4px; }
+  p.lead { color:#7f8ea3; margin:0 0 18px; font-size:13px; }
+</style>
+<main>
+  <h1>MLS-MPM elastic, WebGPU compute</h1>
+  <p class="lead">
+    Standalone: this file, <code>demo.css</code>, <code>demo.js</code>, <code>mpm-webgpu.js</code> and
+    <code>params.js</code> and nothing else. Serve it from <code>https</code> or
+    <code>http://localhost</code> &mdash; <code>navigator.gpu</code> is hidden outside a secure context.
+  </p>
+  <div id="demo"></div>
+</main>
+<script src="params.js"></script>
+<script src="mpm-webgpu.js"></script>
+<script src="demo.js"></script>
+<script>MPMDemo(document.getElementById('demo'), { n: 8000 });</script>

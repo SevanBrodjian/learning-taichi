@@ -10,12 +10,33 @@ mechanism that kills ground-truth drift (e.g. "snow quietly started behaving lik
 - **elastic** — corotated stress from the deformation gradient `F`.
 - **snow** — elastic + Stomakhin plastic clamp + hardening. **Crumbles and holds an angle of repose**
   (asserted by the golden signatures).
+- **sand** — Hencky (log-strain) elasticity + Drucker-Prager return mapping (Klár et al. 2016), friction
+  angle `phi`. **Cohesionless**: its shear strength is proportional to confining pressure, so unlike snow
+  it cannot stand a vertical wall, and an over-steep heap relaxes to a finite angle of repose (asserted by
+  the golden signatures).
 - Frozen parameters live in `core.MAT`; scenes in `core.scene`; the forward roll is `core.simulate`.
+- **Multi-material**: `core.simulate_multi(groups, ...)` runs several materials in ONE shared grid via a
+  per-particle `mat_id` and a runtime branch. Each material still takes exactly its canonical path. The
+  signatures assert that a single material pushed through this path lands where `simulate` lands, to within
+  the simulator's own run-to-run noise. A shared grid forces a shared timestep: `core.shared_dt(materials)`
+  is `min(dt)` over the materials present, and it is not optional.
+
+### Known caveat on the plastic materials (measured, unresolved)
+The settled shape of every non-elastic canonical material drifts with the **substep count**, not just with
+physical time. On an over-steep heap, elastic gives an identical settled shape from `dt = 1.25e-5` to
+`4e-4`, while snow relaxes from holding the seeded 60° slope at its canonical `dt` to about 17° at `dt/8`,
+and sand from about 25° to about 14°. Any angle-of-repose number from this library must therefore be quoted
+**with the timestep it was measured at**. The golden signatures are written as qualitative orderings that
+hold across the tested range, precisely so they do not encode a `dt`-specific number.
 
 ## Not yet canonical (promote-later)
 - **Surface tension** (the continuum-surface-force capillary term). A working implementation exists in
   `sim/fluid_surface_tension.py`; it needs a careful port + a passing golden signature before it becomes
   canonical. Do not add it to `core.py` without that test.
+- **Material-to-material contact.** `simulate_multi` gives every node one velocity, so two different
+  materials sharing a node exchange momentum as if the node held one blended material. That is enough for
+  coexistence and is NOT a calibrated multi-phase contact model. Any claim about how sand and water
+  interact at their interface needs a real contact treatment first.
 
 ## Promotion criteria — how code becomes canonical physics
 The default is **not** to promote: experiment-specific physics stays in the task's own code. Promote only

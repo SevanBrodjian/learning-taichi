@@ -79,6 +79,56 @@
     "caution": "Equal versions prove the same GROUND TRUTH was used. They do NOT prove a task's own differentiable variant matches it -- see the material-parameter drift noted in spec/registry/README.md."
   },
 
+  "repose_angle": {
+    "label": "angle of repose",
+    "short": "The slope, in degrees, that a settled pile of material actually holds.",
+    "formula": "bin particles by x between their 1st and 99th percentile (20 bins), take the 90th percentile of y in each bin as the free surface, split the profile at its apex, least-squares fit a line to EACH WHOLE FLANK, and report atan of the mean |slope| in degrees.",
+    "units": "degrees",
+    "range": "0 to ~57. A settled fluid reads 0-5; canonical sand on the heap scene reads ~25 at its canonical dt; a material that keeps the seeded 60-degree heap reads ~57.",
+    "source": "sim/physics/core.py:622 (via surface_profile:603)",
+    "caution": "TWO traps. (1) It is NOT the model's friction-angle parameter phi -- canonical sand runs phi=50 and measures ~25. (2) It is NOT converged in the timestep for any plastic material: the same canonical sand reads ~25 at dt=1e-4 and ~14 at dt/8, and canonical snow reads ~57 at its own dt and ~17 at dt/8. Always quote it with the dt it was measured at. Fitting the WHOLE flank rather than the steep part is deliberate, so that a flat puddle with a sharp rim does not read as a steep pile."
+  },
+
+  "shape_drift": {
+    "label": "settled-shape drift",
+    "short": "How far a run's settled shape has moved from the same run at a converged timestep.",
+    "formula": "max over the three settled observables (spread_width, pile_height, repose_angle) of the relative difference against a reference run at dt/8; repose_angle is normalised by max(reference, 1 degree) so a near-zero reference angle cannot divide by ~0.",
+    "units": "dimensionless relative error",
+    "range": ">= 0. Below ~0.15 the settled configuration is still recognisably the same; above ~1 it is a different outcome.",
+    "source": "runs/material-variants/sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid/dt_experiment2.py:83",
+    "caution": "Measures only the SETTLED state, so it is blind to differences in the motion that got there. It is defined against a dt/8 reference, not against reality."
+  },
+
+  "substeps_per_frame": {
+    "label": "substeps per frame",
+    "short": "How many solver steps a real-time 60 fps frame costs at a given timestep.",
+    "formula": "round((1/60) / dt). For a grid holding several materials, dt is min(dt) over the materials present, so the stiffest material sets the number for every particle in the scene.",
+    "units": "count",
+    "range": "139 (water alone) to 333 (any scene containing snow), at the canonical timesteps and n_grid=128.",
+    "source": "sim/physics/core.py:519 (shared_dt); the division itself at runs/material-variants/sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid/experiment.py:293",
+    "caution": "It prices REAL-TIME playback only. A clip rendered offline, or labelled slow motion, pays a different bill. It also says nothing about the cost of one substep, which is machine- and implementation-dependent."
+  },
+
+  "dt_stable_max": {
+    "label": "largest stable timestep",
+    "short": "The biggest timestep at which a material's rollout stays finite and bounded.",
+    "formula": "largest dt in a multiplicative sweep for which the run keeps finite positions AND a finite max particle speed under 1e3, on the harder of the drop and heap scenes.",
+    "units": "seconds",
+    "range": "2.4e-4 (fluid) to 1.6e-3 (sand) at n_grid=128, i.e. 2x to 16x the canonical timesteps.",
+    "source": "runs/material-variants/sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid/dt_experiment2.py:96",
+    "caution": "STABILITY IS THE WRONG CRITERION ON ITS OWN and this number will mislead anyone who uses it to pick a timestep. Every canonical material tolerates a far larger dt than it uses, and the settled behaviour is already wrong well below this point -- compare dt_faithful_max."
+  },
+
+  "dt_faithful_max": {
+    "label": "largest faithful timestep",
+    "short": "The biggest timestep at which the settled shape still matches a converged reference.",
+    "formula": "largest dt in the sweep with shape_drift <= 0.15 against the same run at dt/8, on the harder of the drop and heap scenes.",
+    "units": "seconds",
+    "range": "Always well below dt_stable_max. For elastic the two nearly coincide; for the plastic and fluid paths they differ by one to two orders of magnitude.",
+    "source": "runs/material-variants/sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid/dt_experiment2.py:97",
+    "caution": "Defined against a dt/8 reference, and for materials whose settled state drifts monotonically with SUBSTEP COUNT that reference is itself not a fixed point -- so read this as 'agrees with a much finer run', not as 'converged to the true answer'."
+  },
+
   "_unregistered": [
     "airborne fraction (used by one-nn-for-three-materials)",
     "gap closed % (used by learned-residual)",

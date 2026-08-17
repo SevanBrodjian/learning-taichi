@@ -124,9 +124,14 @@ GRAPH = {
     ],
     "sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid": [
         ("implement-nondifferentiable-material-variants", "extends",
-         "adds a fourth material to the canonical forward set that task established"),
+         "adds a fourth material to the canonical forward set that task established, and gives the"
+         " canonical step a per-particle material id so one grid holds all four"),
+        ("fluids-snow-and-solids-as-differentiable-simulations", "refutes",
+         "that task treated a plastic material's settled shape as a property of the material; this one"
+         " measures it decaying with SUBSTEP COUNT rather than physical time, so canonical snow's slope"
+         " is partly a discretisation artefact and its dt was never set by stability"),
         ("interactive-simulation-of-one-material", "applies",
-         "reuses its particle renderer as the visual starting point for the four-material view"),
+         "reuses its particle renderer, and its substeps-per-frame budget framing, for four materials"),
     ],
 
     "more-realistic-basic-fluid-sims": [

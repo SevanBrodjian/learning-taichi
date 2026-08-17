@@ -26,6 +26,36 @@ collapses to one line: a substep may cost about 100 microseconds, and no more.
 That inverts the intuition a graphics-shaped mind arrives with. The particle count is a slider. The
 timestep is a wall.
 
+## One grid means one timestep, so the stiffest material bills everyone
+
+The budget equation is written per *simulation*, not per material, and that is not a simplification. A
+single grid carries one velocity field, and one substep advances all of it at once. Two materials
+sharing that grid are therefore advanced together, at a single $\Delta t$, and the only safe choice is
+the smallest one any of them needs:
+
+$$
+\Delta t_{\text{scene}} \;=\; \min_{m \,\in\, \text{materials present}} \Delta t_m .
+$$
+
+The consequence is sharper than it first sounds. Substep count is not the average of the materials in a
+scene, it is the **maximum**, so adding one small object made of a demanding material multiplies the cost
+of everything else in the scene. A pool of water sitting comfortably at 139 substeps per frame more than
+doubles to 333 the moment a single snowball is dropped into it, and every one of those extra substeps is
+also spent on all the water. There is no version of this where the water pays its own cheaper bill.
+
+That makes **material choice a budget decision rather than an aesthetic one**, which is an unusual
+constraint to design a scene under. The mitigations are all uncomfortable. Sub-cycling the stiff material
+on its own finer clock means the two clocks have to exchange momentum at some coarser rate, and getting
+that exchange stable is a harder problem than the one it solves. Softening the expensive material to buy
+a larger timestep changes what the material *is*, which is exactly the ground-truth drift a frozen
+physics library exists to prevent. Accepting the cost, and being honest about the frame rate or the
+particle count that results, is often the least bad option.
+
+The wider point for a controllable world model is that a simulation whose cost is set by its most
+demanding constituent scales badly in a way a learned model does not. A network's cost is a property of
+the network. An explicit solver's cost is a property of *whatever happens to be in the scene*, which
+means adding one new material can silently halve the frame rate of content that was fine yesterday.
+
 ## The timestep is not a performance knob
 
 The tempting move is obvious and wrong. Doubling $\Delta t$ halves $S$ and doubles the frame rate for free.
@@ -44,6 +74,51 @@ The practical rule is that **a stable-looking simulation at an inflated timestep
 Divergence announces itself. Silent trajectory error does not. Anything that consumes a rollout downstream,
 a learned model fit to it, a controller optimised through it, a comparison between two materials, is reading
 a different physical system than the one it thinks it is.
+
+## And refining the timestep does not save a plastic material
+
+The natural repair for the previous section is to shrink $\Delta t$ until the answer stops changing. For
+an elastic solid that works exactly as advertised: released as an over-steep pile, it settles into an
+identical shape across a thirty-fold range of timestep, to the last decimal place the diagnostics report.
+
+For anything with a **plastic projection** it does not work, and the way it fails is worth understanding
+because the naive reading of the data is backwards. Halve the timestep and a settled pile of snow or sand
+sits noticeably lower. Halve it again and it sags further. There is no timestep at which the answer stops
+moving, so "refine until converged" never terminates.
+
+The diagnostic that resolves it is to ask **which axis the runs collapse on**. Plot the pile's slope
+against physical time and the curves for different timesteps fan apart. Plot the same runs against the
+*cumulative number of substeps taken* and they land on top of each other. For snow the spread across
+timesteps falls from tens of degrees at equal time to a degree or two at equal substep count. Elastic,
+the control, is flat on both axes. A process that depends on how many times a loop ran rather than on how
+much time passed is not physics.
+
+The mechanism is a **ratchet**, and it is worth spelling out because the ingredients are generic. Every
+substep, the particle-to-grid and grid-to-particle round trip returns a velocity gradient that is right to
+within a small quadrature error, so the trial deformation each particle computes carries a little noise.
+An elastic material stores that noise as elastic strain and gives it back, so it averages out. A plastic
+return mapping is **one-sided**: it can move a state from outside the admissible set to the boundary, and
+it can never move one back out. Symmetric noise fed through a one-way valve becomes a drift. The drift
+accrues once per projection, the projection happens once per substep, and so the total accumulated
+artificial yielding is proportional to the substep count. Halving $\Delta t$ doubles it.
+
+That reading also settles which run to trust, and it is the opposite of the usual answer. **The coarse run
+is the clean one.** The finer run has not resolved anything the coarse one missed, it has simply spent
+more substeps ratcheting. Reported this way round, a material's apparent strength always has to be quoted
+with the timestep and the physical duration it was measured at, because "how strong is this snow" has no
+answer without them.
+
+This is a caution and not a solved problem. It is measured on one scene family at one grid resolution with
+a handful of timesteps per material, and the ratchet story is the mechanism the evidence is most consistent
+with rather than one that has been isolated. The tests that would isolate it are a sweep across grid
+resolutions, since transfer noise should scale with the cell size, and a return mapping that is not applied
+once per substep, which should remove the substep dependence outright if the mechanism is right.
+
+The consequence for a learned world model is uncomfortable and interesting. Any dataset of plastic material
+behaviour generated by an explicit solver carries the solver's substep count baked into its labels, so a
+network fit to short rollouts and a network fit to long ones are being taught different materials. That is
+a data-generation bug that looks exactly like a modelling result, and nothing in a loss curve would reveal
+it.
 
 ## Where a substep's time goes, and why that depends on the machine
 

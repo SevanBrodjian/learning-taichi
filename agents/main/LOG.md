@@ -61,3 +61,35 @@ browser, verified it against `sim.physics`, and measured what interactive rates 
 - Textbook: new core page `real-time-cost`; revised `svd-polar` (added the 2D closed-form polar rotation
   and corrected the claim that the SVD is the numerically stable route to R) and `material-stiffness`
   (the CFL wall is now measured; accuracy dies before stability does).
+
+## 2026-08-16 — worker: sand as a fourth canonical material, four materials in one grid
+- **Promotion.** `sand` is canonical: Drucker-Prager return mapping (Klár et al. 2016) on a Hencky
+  log-strain elastic law, `E=300, dt=1e-4, phi=50`. Chosen because sand is *cohesionless* (shear strength
+  ∝ confining pressure = a cone), where snow's Stomakhin clamp is a fixed box = cohesion. Log strain makes
+  the volume/shape split of the yield condition exact, so the cone projection is closed-form.
+  `phys-1dc280eb52c9` → `phys-bebeaafbe73e`.
+- **New canonical scene `heap`** (over-steep 60° triangle released from rest) — the honest angle-of-repose
+  test. A collapsing column measures runout, not repose.
+- **4 new signatures for sand + 4 asserting the multi-material path == canonical. All 14 pass.**
+- **`simulate_multi`**: per-particle `mat_id`, runtime branch in P2G/G2P, `shared_dt = min(dt)`.
+- **Sand costs 167 substeps/frame — the same as elastic. SNOW (333) STILL BINDS THE DEMO.**
+- **Two standing claims failed, both worth remembering:**
+  1. *Snow's dt is not set by hardening, and not by stability at all.* Snow's measured stability wall is
+     **8× its canonical dt**; `xi=0` does not move it. The hardening IS real (and bimodal across 4 decades:
+     ~44% of particles end up *softer* than nominal, ~50% stiffer than elastic) but it is not what pins dt.
+  2. *An angle of repose from this solver is not converged.* The settled slope of every **plastic** material
+     decays with **substep count, not physical time** — snow's spread across dt is 37.1° at equal time and
+     **1.6° at equal substep count**; elastic (no plastic projection) is 0.0° on both. So the FINE run is the
+     corrupted one. Hypothesised mechanism: a one-sided return mapping rectifies transfer noise into
+     permanent plastic strain, once per substep. Canonical snow's cohesion decays over a long rollout.
+- **Two methodology lessons (both caught false alarms in this run):** single-sample comparisons against a
+  single self-noise number are coin flips on chaotic scenes — the frozen-material check and the refactor
+  check each produced a false FAIL before being made distributional (N repeats, within- vs across-code
+  distributions, plus a one-ulp rounding-perturbation bracket for the refactor).
+- **Re-confirmed the gotcha already in this log:** manifest prose fields render as PLAIN TEXT. Markdown was
+  written first and had to be rewritten as flat prose with CAPS emphasis; all tables moved to `results[]`.
+- Textbook: rewrote `material-showcase` (now four materials, leads with "a material is defined by which
+  deformations it refuses to remember"); extended `constitutive-models` (the DP cone + return mapping),
+  `real-time-cost` (one grid = one dt; and the substep-creep result), `linear-algebra` (deviatoric split),
+  `svd-polar` (log/Hencky strain). Registered `repose_angle`, `shape_drift`, `substeps_per_frame`,
+  `dt_stable_max`, `dt_faithful_max`.

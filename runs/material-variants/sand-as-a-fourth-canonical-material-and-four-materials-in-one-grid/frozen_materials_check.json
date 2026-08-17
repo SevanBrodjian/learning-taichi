@@ -1,0 +1,90 @@
+{
+ "version_before": "phys-1dc280eb52c9",
+ "version_after": "phys-bebeaafbe73e",
+ "reps_per_side": 4,
+ "rows": [
+  {
+   "scene": "drop",
+   "material": "fluid",
+   "reps": 4,
+   "within_code_mean": 0.000680811955438306,
+   "within_code_min": 0.00046225369442254305,
+   "within_code_max": 0.0009536633151583374,
+   "across_code_mean": 0.000696431099640904,
+   "across_code_min": 0.0004485140088945627,
+   "across_code_max": 0.0010440051555633545,
+   "ratio_of_means": 1.0229419358426843,
+   "passed": true
+  },
+  {
+   "scene": "drop",
+   "material": "elastic",
+   "reps": 4,
+   "within_code_mean": 2.222690978233762e-06,
+   "within_code_min": 4.525269048372138e-07,
+   "within_code_max": 4.196271220280323e-06,
+   "across_code_mean": 2.5826870029277416e-06,
+   "across_code_min": 1.1720271686499473e-06,
+   "across_code_max": 6.022870820743265e-06,
+   "ratio_of_means": 1.161964046383113,
+   "passed": true
+  },
+  {
+   "scene": "drop",
+   "material": "snow",
+   "reps": 4,
+   "within_code_mean": 9.354438816444599e-06,
+   "within_code_min": 7.593708687636536e-06,
+   "within_code_max": 1.1076320333813783e-05,
+   "across_code_mean": 1.0763747525288636e-05,
+   "across_code_min": 7.697315595578402e-06,
+   "across_code_max": 1.3727081750403158e-05,
+   "ratio_of_means": 1.1506566814426695,
+   "passed": true
+  },
+  {
+   "scene": "column",
+   "material": "fluid",
+   "reps": 4,
+   "within_code_mean": 0.008314551785588264,
+   "within_code_min": 0.0060835168696939945,
+   "within_code_max": 0.01149747148156166,
+   "across_code_mean": 0.008086010930128396,
+   "across_code_min": 0.005156593397259712,
+   "across_code_max": 0.011300476267933846,
+   "ratio_of_means": 0.9725131478697382,
+   "passed": true
+  },
+  {
+   "scene": "column",
+   "material": "elastic",
+   "reps": 4,
+   "within_code_mean": 1.8792750466900543e-07,
+   "within_code_min": 1.4395018865798193e-07,
+   "within_code_max": 2.667399030542583e-07,
+   "across_code_mean": 1.9607749912609052e-07,
+   "across_code_min": 1.4788648172725516e-07,
+   "across_code_max": 2.83600257944272e-07,
+   "ratio_of_means": 1.0433677575373523,
+   "passed": true
+  },
+  {
+   "scene": "column",
+   "material": "snow",
+   "reps": 4,
+   "within_code_mean": 0.002922189024199421,
+   "within_code_min": 0.0013594841584563255,
+   "within_code_max": 0.005379705689847469,
+   "across_code_mean": 0.002639628408360295,
+   "across_code_min": 0.0009346992010250688,
+   "across_code_max": 0.004744375124573708,
+   "ratio_of_means": 0.9033051546292294,
+   "passed": true
+  }
+ ],
+ "worst_ratio_of_means": 1.161964046383113,
+ "worst_across_code": 0.011300476267933846,
+ "worst_within_code": 0.01149747148156166,
+ "unchanged": true,
+ "test": "For each scene and material, all pairwise traj_rmse distances WITHIN each code version are compared against all distances ACROSS versions. 'Unchanged' means the across-version distances are drawn from the same spread as the within-version ones, which is the only meaningful statement when the reference simulator is nondeterministic and the scenes are chaotic."
+}

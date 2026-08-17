@@ -99,6 +99,43 @@ $$
 The trace turns a full matrix of local motion into the single number the weakly compressible model needs,
 and it is the right single number precisely because it is frame-independent.
 
+## Splitting a matrix into volume and shape: the deviator
+
+The trace pulls out one number. Subtracting it back off pulls the matrix apart into two pieces that
+mean genuinely different physical things, and almost every material law is a statement about how a
+material treats each piece. For a $d \times d$ matrix $A$ (here $d = 2$),
+
+$$
+A \;=\; \underbrace{\frac{\operatorname{tr} A}{d}\, I}_{\text{isotropic part}} \;+\; \underbrace{\operatorname{dev} A}_{\text{deviatoric part}}, \qquad \operatorname{dev} A \;\equiv\; A - \frac{\operatorname{tr} A}{d}\, I .
+$$
+
+The **isotropic** (or spherical) part is a multiple of the identity, so it scales every direction
+equally. It is pure volume change and carries no sense of direction. The **deviatoric** part is what is
+left, and by construction $\operatorname{tr}(\operatorname{dev} A) = 0$, so it changes no volume at all.
+It is pure shape change: stretch one axis, squeeze another by exactly the compensating amount. The
+division is clean because the two pieces are orthogonal under the Frobenius inner product
+$\langle A, B\rangle = \operatorname{tr}(A^{\top}B)$, so no part of the volume change hides inside the
+shape change or the other way round.
+
+Applied to a stress tensor $\sigma$ the split has names. The isotropic part is **pressure**, up to a
+sign convention, and the deviatoric part is **shear stress**. Applied to a strain measure it separates
+"this parcel got smaller" from "this parcel got squashed sideways".
+
+The reason this is worth its own section is that **a material is largely defined by how differently it
+answers the two pieces.** Water resists the isotropic part hard and the deviatoric part not at all,
+which is the one-line reason a liquid holds volume but not shape. An elastic solid resists both, with
+the two Lamé parameters $\lambda$ and $\mu$ setting the separate strengths. A granular material like
+sand is the interesting case: how much deviatoric stress it can carry is **proportional to** how much
+isotropic compression it is under, because pressing grains together is what lets them resist sliding
+past each other. Written on the two pieces, that is a cone,
+$\lVert \operatorname{dev}\sigma \rVert \le -\alpha\,\operatorname{tr}\sigma$, with the tip at zero
+pressure where the material can carry nothing. See [[constitutive-models]] for what is built on it.
+
+The size of the deviatoric part is measured with the Frobenius norm,
+$\lVert \operatorname{dev} A \rVert = \sqrt{\sum_{ij} (\operatorname{dev} A)_{ij}^2}$, which is just the
+length of the matrix read as a list of numbers. It is the natural choice here precisely because it is
+the norm that goes with the inner product the split is orthogonal in.
+
 ## Determinant, signed area and the meaning of $J$
 
 The **determinant** of a $2 \times 2$ matrix $A = \begin{bmatrix} a & b \\ c & d \end{bmatrix}$ is

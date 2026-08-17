@@ -7,9 +7,12 @@ not. Changing the physics is a deliberate, version-bumping, signature-test-gated
 
 Public API:
   simulate(material, pts, area, T, n_frames, ...) -> (snaps, times, stable)   # the forward ground truth
+  simulate_multi(groups, T, n_frames, ...)                                    # several materials, ONE grid
+      -> (snaps, times, mats, stable, dt)
+  shared_dt(materials)                                                        # the dt a shared grid forces
   scene(name, n)                                                              # canonical initial conditions
-  MAT                                                                         # frozen per-material params
-  spread_width / pile_height / circularity                                    # shape diagnostics
+  MAT / MAT_ID                                                                # frozen per-material params
+  spread_width / pile_height / repose_angle / circularity                     # shape diagnostics
   core.*                                                                      # building-block ti.func's for
                                                                               #   learned-dynamics tasks to reuse
 """
@@ -19,8 +22,8 @@ import hashlib
 import pathlib
 
 from . import core
-from .core import (MAT, circularity, pile_height, scene, seed_box, seed_disk,
-                   simulate, spread_width)
+from .core import (MAT, MAT_ID, circularity, dp_alpha, pile_height, repose_angle, scene, seed_box,
+                   seed_disk, shared_dt, simulate, simulate_multi, spread_width, surface_profile)
 
 
 def _version() -> str:

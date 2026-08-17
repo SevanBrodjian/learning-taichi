@@ -124,6 +124,76 @@ Snow applies such a clamp **per particle, per step**, so a long rollout stacks u
 their net effect is a **rougher loss landscape** than the elastic or fluid case. Rougher means the gradient
 direction is noisier and the largest stable learning rate is smaller still.
 
+## Sand: a yield surface that depends on pressure
+
+Snow and sand are both plastic, and comparing them is the fastest way to see what a plastic model
+actually *is*. A plastic model is a rule for **which deformations the material refuses to remember**.
+Everything else follows from the shape of that admissible set.
+
+Snow's admissible set is a **fixed box** on the principal stretches, the clamp above. It does not depend
+on how hard the material is being squeezed. That means snow has **cohesion**: an unloaded block of it
+can hold a vertical wall, because at zero pressure the box is exactly as large as it is under load.
+
+Sand has no cohesion. Its strength comes from grains rubbing against each other, and friction needs
+normal force, so **the shear a granular pack can carry is proportional to the pressure it is under**. At
+zero pressure it can carry nothing, which is why dry sand cannot stand a vertical wall and why a pile of
+it slumps to a characteristic slope instead. Any model that gets sand right has to make the admissible
+set shrink to a point as pressure goes to zero, and that is a **cone**, not a box.
+
+Writing that cone down is where the [[svd-polar]] log strain earns its keep. Work in Hencky strain
+$\varepsilon = \ln\Sigma$, split it as in [[linear-algebra]] into its trace (volume) and deviator
+(shape) $\hat\varepsilon = \varepsilon - \tfrac{1}{d}(\operatorname{tr}\varepsilon) I$, and the
+Drucker-Prager criterion is one line,
+
+$$
+\lVert \hat\varepsilon \rVert \;\le\; -\frac{d\lambda + 2\mu}{2\mu}\,\alpha\, \operatorname{tr}\varepsilon,
+\qquad \operatorname{tr}\varepsilon \le 0 ,
+$$
+
+with $d$ the spatial dimension, $\lambda$ and $\mu$ the Lamé parameters, and
+
+$$
+\alpha \;=\; \sqrt{\tfrac{2}{3}}\;\frac{2\sin\varphi}{3 - \sin\varphi}
+$$
+
+the cone slope set by a single parameter, the **internal friction angle** $\varphi$ of the pack. Read the
+inequality from the right: $-\operatorname{tr}\varepsilon$ is how compressed the material is, so the
+right-hand side is the shear budget that compression buys. Turn $\varphi$ up and the cone opens, the
+budget grows, and the material holds a steeper pile. Turn it to zero and $\alpha = 0$, the budget
+vanishes, and what is left is a material with no shear strength at all, which moves like a liquid that
+additionally cannot be pulled. The factor $(d\lambda+2\mu)/(2\mu)$ is the conversion from a condition on
+stress, where the criterion is physically stated, to the condition on strain used here, and it is exactly
+the ratio by which the Hencky stress law maps volumetric strain into pressure relative to shear.
+
+The condition $\operatorname{tr}\varepsilon \le 0$ is the **no-tension** rule, and it does as much
+visible work as the friction term. Grains can push on each other and cannot pull, so any particle that
+finds itself in net extension has no business carrying stress at all.
+
+The step that enforces this is a **return mapping**: integrate the deformation as if the material were
+elastic, then, if the trial state sits outside the cone, put it back. Three cases, in order of how much
+they change:
+
+1. $\operatorname{tr}\varepsilon \ge 0$, the material is in tension. Project to the **tip** of the cone,
+   $\varepsilon \leftarrow 0$, releasing all stored stress. The volumetric strain thrown away is
+   accumulated in a running plastic record, so the same amount of compression has to be re-applied
+   before the pack carries load again. Without that bookkeeping the material silently gains volume every
+   time it is thrown apart and never re-packs.
+2. Inside the cone. Nothing happens, the step was elastic.
+3. Outside. Slide the log strain back onto the cone **along the deviatoric direction**, keeping the
+   volumetric part fixed. Keeping it fixed is a deliberate modelling choice, and it says the material
+   does not dilate when it shears.
+
+Structurally this is the same kind of object as the snow clamp, a projection applied per particle per
+step, so the remarks above about kinks and roughened gradient landscapes carry over. The differences are
+that the projection surface is a cone rather than a box, and that the cone has a genuine **tip**, a point
+where the surface is not smooth in any direction rather than merely creased along a face. Nothing here
+has been measured against a gradient-based control task, so that is a structural expectation and not a
+result.
+
+What the model produces is the behaviour a person recognises immediately, a heap that stands at a finite
+slope and runs out when it is pushed past it. [[material-showcase]] shows all four materials doing it
+from the same starting shape.
+
 ## What changes, and what does not
 
 The three models, applied to the same control task (throw a blob's center of mass to a target by

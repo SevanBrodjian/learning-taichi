@@ -1,13 +1,14 @@
 {
   "_generated_by": "harness/tools/sync_registry.py -- DO NOT EDIT BY HAND",
   "_source": "sim/physics/core.py (MAT)",
-  "physics_version": "phys-1dc280eb52c9",
+  "physics_version": "phys-bebeaafbe73e",
   "_param_meaning": {
     "E": "Young's modulus / bulk stiffness. Sets how hard stress pushes back, and via c=sqrt(E/rho) the CFL-stable timestep (dt ~ 1/sqrt(E)).",
     "dt": "Stable explicit timestep for this material at the canonical resolution.",
     "xi": "Snow hardening coefficient in h = exp(xi*(1-Jp)): how much compacted snow stiffens. 0 for materials with no plastic record.",
     "tc": "Plastic clamp, compression side: singular values of F are clamped below 1-tc. 0 = no clamp.",
     "ts": "Plastic clamp, stretch side: singular values of F are clamped above 1+ts. 0 = no clamp.",
+    "phi": "Drucker-Prager internal friction angle, degrees: the slope of the granular yield cone via alpha = sqrt(2/3)*2 sin(phi)/(3-sin(phi)). 0 for materials with no pressure-dependent yield. NOT the angle of repose -- canonical sand runs phi=50 and MEASURES about 25 (see the repose_angle metric).",
     "color": "Canonical render colour, so a material looks the same across every task's figures."
   },
   "_rule": "A task's differentiable variant may reimplement the STEP; it may not reimplement these PARAMETERS or the constitutive law. Import them from sim.physics and declare any deviation in the task contract.",
@@ -19,6 +20,7 @@
       "xi": 0.0,
       "tc": 0.0,
       "ts": 0.0,
+      "phi": 0.0,
       "color": "#4db6ff",
       "signatures": "asserted in sim/physics/signatures.py"
     },
@@ -28,6 +30,7 @@
       "xi": 0.0,
       "tc": 0.0,
       "ts": 0.0,
+      "phi": 0.0,
       "color": "#ff9d5c",
       "signatures": "asserted in sim/physics/signatures.py"
     },
@@ -37,6 +40,7 @@
       "xi": 10.0,
       "tc": 0.025,
       "ts": 0.0075,
+      "phi": 0.0,
       "color": "#e6ecff",
       "signatures": "asserted in sim/physics/signatures.py",
       "_known_drift": [
@@ -59,6 +63,16 @@
           "actual": 0.0002
         }
       ]
+    },
+    "sand": {
+      "E": 300.0,
+      "dt": 0.0001,
+      "xi": 0.0,
+      "tc": 0.0,
+      "ts": 0.0,
+      "phi": 50.0,
+      "color": "#ffd24d",
+      "signatures": "asserted in sim/physics/signatures.py"
     }
   }
 }

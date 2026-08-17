@@ -1,0 +1,10 @@
+{
+ "E_eff_median": 380.95709228515625,
+ "E_eff_p95": 1857.740478515625,
+ "E_eff_p99": 3836.52783203125,
+ "E_eff_max": 11347.642578125,
+ "frac_softer_than_nominal": 0.43825,
+ "frac_stiffer_than_elastic": 0.49575,
+ "Jp_median": 0.9067949056625366,
+ "Jp_gt_1_frac": 0.43825
+}

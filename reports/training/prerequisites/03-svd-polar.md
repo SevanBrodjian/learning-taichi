@@ -120,6 +120,44 @@ moved into an accumulated plastic record. Working on the singular values is what
 because they are the coordinate-free measure of stretch. Clamping them means "allow this much elastic
 stretch and no more, in every direction equally," independent of how the material happens to be oriented.
 
+## Logarithmic strain: the other useful surgery on $\Sigma$
+
+Clamping is one function applied to the singular values. The logarithm is another, and it is the one
+that makes granular plasticity tractable. **Hencky strain** (also called true or logarithmic strain) is
+
+$$
+\varepsilon \;=\; \ln \Sigma \;=\; \operatorname{diag}(\ln\sigma_1, \ln\sigma_2),
+$$
+
+the ordinary scalar logarithm applied to each principal stretch. Three properties earn it its place.
+
+**It makes stretching additive.** Stretches compose by multiplication. Stretch a fibre by $2$, then by
+$3$, and it is $6$ times its rest length. Logarithms turn that into addition, so successive deformations
+add their log strains. That is the natural bookkeeping for a material that yields repeatedly, because
+"how much total permanent stretch has accumulated" becomes a sum rather than a product.
+
+**It is symmetric about no deformation.** Halving a length and doubling it are physically opposite and
+equal, and $\ln\tfrac12 = -\ln 2$ says so. The naive small-strain measure $\Sigma - I$ does not: it
+scores the halving as $-0.5$ and the doubling as $+1$, so any yield criterion written on it treats
+compression and extension asymmetrically for no physical reason.
+
+**Its trace is exactly the log volume change.** Since $\det F = \sigma_1\sigma_2$,
+
+$$
+\operatorname{tr}\varepsilon \;=\; \ln\sigma_1 + \ln\sigma_2 \;=\; \ln(\sigma_1\sigma_2) \;=\; \ln J .
+$$
+
+So the volume-and-shape split of [[linear-algebra]] lands on log strain perfectly: the trace *is* the
+volume part and the deviator *is* the shape part, with no cross-talk and no approximation. A yield
+condition that needs to say "the shape change this material tolerates is proportional to how hard it is
+being squeezed" is one line in these coordinates and a mess in any other, which is why the sand model in
+[[constitutive-models]] is built on them.
+
+The one hazard is the obvious one. $\ln\sigma \to -\infty$ as $\sigma \to 0$, so a particle crushed
+toward zero area produces an unbounded strain and an unbounded stress. Implementations floor the
+singular value at a small positive number before taking the log. That floor is a numerical guard, not
+physics, and it is the right place to look when a heavily compressed simulation misbehaves.
+
 ## Where the gradient breaks, and why it matters here
 
 The SVD is the reason gradients can flow through elastic and plastic stress at all, and also the reason they

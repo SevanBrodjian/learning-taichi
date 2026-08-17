@@ -7,12 +7,17 @@ These encode the qualitative truths that DEFINE correctness for this domain, so 
     snow lands strictly between the two in both width and height.
   * snow CRUMBLES: on a collapsing column it slumps well below the elastic (which springs back), yet
     holds a pile well above the fluid (which runs out flat) -- i.e. snow is materially != elastic.
+  * sand PILES AT AN ANGLE OF REPOSE: released as an over-steep 60-degree heap it relaxes to a finite
+    slope it can support, where fluid runs flat and where snow and elastic simply keep the seeded slope
+    (they are cohesive, sand is not). Sand is therefore materially != all three.
   * surface tension rounds a blob: a gravity-off box is blockier at sigma_st=0 than under surface tension.
 
 Run:  python -m sim.physics.signatures      (prints a table; exit code 1 if any signature fails)
 The pytest wrapper lives at sim/tests/test_signatures.py.
 """
 from __future__ import annotations
+
+import numpy as np
 
 from . import core
 
@@ -49,6 +54,46 @@ def check():
                 f"elastic {hce:.3f} vs snow {hcn:.3f}"))
     out.append(("column: snow holds a pile above fluid", hcn > hcf * 1.15,
                 f"snow {hcn:.3f} vs fluid {hcf:.3f}"))
+
+    # --- sand: the angle of repose ------------------------------------------------------------
+    # An over-steep heap released from rest. What each material has left at the end IS the signature:
+    # fluid keeps no slope, snow and elastic keep the whole seeded slope, sand keeps some of it.
+    hp = core.scene("heap", N)
+    fh, _ = _final("fluid", hp)
+    eh, _ = _final("elastic", hp)
+    nh, _ = _final("snow", hp)
+    dh, sd = _final("sand", hp)
+    af, ae, an, ad = (core.repose_angle(fh), core.repose_angle(eh),
+                      core.repose_angle(nh), core.repose_angle(dh))
+    wf2, wd, wn2 = core.spread_width(fh), core.spread_width(dh), core.spread_width(nh)
+    hf2, hd = core.pile_height(fh), core.pile_height(dh)
+    seeded = core.repose_angle(hp["pts"])
+
+    out.append(("heap: sand stable", sd, f"stable={sd}"))
+    out.append(("heap: sand holds an angle of repose, fluid does not",
+                ad > 15.0 and af < 5.0, f"sand {ad:.1f} deg vs fluid {af:.1f} deg"))
+    out.append(("heap: sand does NOT spread flat like a fluid",
+                wf2 > wd * 1.5 and hd > hf2 * 1.5,
+                f"width fluid {wf2:.3f} vs sand {wd:.3f}; height sand {hd:.3f} vs fluid {hf2:.3f}"))
+    out.append(("heap: sand YIELDS where cohesive snow/elastic keep the seeded slope",
+                an > ad * 1.4 and ae > ad * 1.4 and wd > wn2 * 1.3,
+                f"seeded {seeded:.1f} -> sand {ad:.1f}, snow {an:.1f}, elastic {ae:.1f} deg; "
+                f"width sand {wd:.3f} vs snow {wn2:.3f}"))
+
+    # --- multi-material: one grid, four materials, and the refactor changed nothing ------------
+    # A single material pushed through the runtime-branching multi-material path must land where the
+    # canonical compile-time path lands, to within the simulator's own run-to-run noise.
+    drop2 = core.scene("drop", N)
+    for m in ("fluid", "elastic", "snow", "sand"):
+        a, _, _ = core.simulate(m, drop2["pts"], drop2["area"], drop2["T"], NF, v0=drop2["v0"])
+        b, _, _ = core.simulate(m, drop2["pts"], drop2["area"], drop2["T"], NF, v0=drop2["v0"])
+        g = [{"material": m, "pts": drop2["pts"], "area": drop2["area"], "v0": drop2["v0"]}]
+        c, _, _, ok, _ = core.simulate_multi(g, drop2["T"], NF, dt=core.MAT[m]["dt"])
+        noise = float(np.linalg.norm(a - b, axis=-1).mean())
+        cross = float(np.linalg.norm(a - c, axis=-1).mean())
+        out.append((f"multi-material path matches canonical for {m}",
+                    ok and cross <= max(noise * 3.0, 1e-6),
+                    f"vs canonical {cross:.2e}, self-noise {noise:.2e}"))
 
     # viscosity (fluid knob): a thicker fluid spreads less than a thin one on the same drop. Both use
     # viscosities stable at the fluid timestep, so "less spread" is oozing, not a numerical collapse.

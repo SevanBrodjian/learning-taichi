@@ -31,6 +31,10 @@ MEANING = {
           "materials with no plastic record.",
     "tc": "Plastic clamp, compression side: singular values of F are clamped below 1-tc. 0 = no clamp.",
     "ts": "Plastic clamp, stretch side: singular values of F are clamped above 1+ts. 0 = no clamp.",
+    "phi": "Drucker-Prager internal friction angle, degrees: the slope of the granular yield cone via "
+           "alpha = sqrt(2/3)*2 sin(phi)/(3-sin(phi)). 0 for materials with no pressure-dependent yield. "
+           "NOT the angle of repose -- canonical sand runs phi=50 and MEASURES about 25 (see the "
+           "repose_angle metric).",
     "color": "Canonical render colour, so a material looks the same across every task's figures.",
 }
 
@@ -58,5 +62,5 @@ open(dst, "w", encoding="utf-8").write(json.dumps(out, indent=2, ensure_ascii=Fa
 print("wrote %s at %s" % (dst, VERSION))
 for n, e in out["materials"].items():
     flag = "  <-- %d known drift(s)" % len(e["_known_drift"]) if "_known_drift" in e else ""
-    print("  %-8s E=%-6s dt=%-8s xi=%-5s tc=%-8s ts=%s%s"
-          % (n, e["E"], e["dt"], e["xi"], e["tc"], e["ts"], flag))
+    print("  %-8s E=%-6s dt=%-8s xi=%-5s tc=%-8s ts=%-8s phi=%s%s"
+          % (n, e["E"], e["dt"], e["xi"], e["tc"], e["ts"], e.get("phi", 0.0), flag))

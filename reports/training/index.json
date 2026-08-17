@@ -80,7 +80,7 @@
     },
     {
      "id": "material-showcase",
-     "title": "Three materials, one solver: fluid, elastic, snow",
+     "title": "Four materials, one solver: fluid, elastic, snow, sand",
      "file": "core/06-material-showcase.md"
     },
     {

@@ -35,7 +35,7 @@ mouse and touch, parameters generated from `sim.physics` by `web/gen_params.py`.
 | fluid (water) | 180 | 1.2e-4 | **139** |
 | elastic | 400 | 1.0e-4 | **167** |
 | snow | 150 | 5.0e-5 | **333** |
-| sand | — | — | **not in canonical physics yet** |
+| sand | 300 | 1.0e-4 | **167** (canonical since `phys-bebeaafbe73e`) |
 
 **2. A shared grid means ONE timestep, so the stiffest material present sets the cost for everything.**
 Put snow in the scene and the whole scene pays 333 substeps/frame — roughly double elastic. At the measured
@@ -43,15 +43,44 @@ JS cost of 88 us/substep at 1000 particles, a snow-bearing scene is ~29 ms/frame
 particles, or ~550 particles at 60 fps.** This is the single biggest threat to the MVP and it must be
 designed for, not discovered late.
 
-**3. Sand is not canonical physics.** `sim/physics/` freezes exactly fluid, elastic and snow. Adding sand
-means **promoting new ground truth** through `sim/physics/PROMOTION.md`: it is ground truth, the golden
-signatures pass, the version bumps — and sand needs its own signature (it should pile at an angle of repose
-and not spread like a fluid). It also needs a constitutive model choice (Drucker-Prager style plasticity is
-the usual answer for granular MPM).
+**Sand does not make this worse.** Measured 2026-08-16: sand runs at dt=1e-4, i.e. 167 substeps/frame,
+exactly what elastic costs. Adding sand to a scene that already contains snow costs **nothing**. Snow
+remains the material to design around. (Sand alone takes a water-only scene from 139 to 167.)
 
-**Also not yet supported:** the canonical `simulate` runs **one material at a time**. A single grid holding
-four materials needs a per-particle material id and a step that branches on it. That is an API change to
-canonical physics, not just a demo feature.
+**⚠ CORRECTION — why snow needs a small dt is UNKNOWN, and the hardening story was wrong.** This document
+previously asserted that snow's dt=5e-5 comes from hardening making compacted snow ~3x stiffer than
+elastic. The sand task measured it. The hardening is real and larger than that guess (compacted snow
+reaches an effective stiffness of ~1858 at the 95th percentile against elastic's 400, and it is bimodal —
+~44% of particles end up *softer* than nominal). **But snow's measured stability wall is 8x its canonical
+timestep, and setting xi=0 does not move it.** Snow's dt was never set by stability. Do not repeat the
+hardening explanation; the real reason is an open question.
+
+**⚠ A plastic material's "strength" is not a converged quantity.** The settled slope of every plastic
+material (snow, sand, and the fluid to a small degree) decays with **substep count, not physical time** —
+canonical snow holds a 56 degree heap at its own dt and collapses to 19 degrees at dt/4, while at *equal
+substep count* every timestep agrees to within 1.6 degrees. Elastic, which has no plastic projection, is
+flat on both axes. So the fine-timestep run is the CORRUPTED one, not the converged one: a one-sided
+return mapping appears to rectify transfer noise into permanent plastic strain, once per substep.
+
+**Consequence for the MVP, and it is a correctness issue rather than a cost one:** a shared grid means a
+shared dt, so putting snow in a scene forces sand to run at half its canonical timestep — twice the
+substeps, therefore *more creep than canonical sand exhibits*. **Material behaviour would depend on what
+else is in the scene.** Any four-material demo has to either fix the substep count per material, quote
+behaviour at a stated dt and duration, or accept that mixed scenes are not quantitatively canonical.
+
+**3. Sand is canonical physics as of 2026-08-16** (`phys-bebeaafbe73e`). Drucker-Prager elastoplasticity
+(Klar et al. 2016) on a Hencky log-strain elastic law, `E=300, dt=1e-4, phi=50`. The structural reason it
+differs from snow: sand is *cohesionless*, so its shear strength is proportional to confining pressure — a
+**cone** in stress space — where snow's Stomakhin clamp is a fixed **box** (cohesion). That is why snow can
+stand a vertical wall and sand cannot. Four new golden signatures; all pre-existing ones still green.
+
+**Its measured angle of repose is ~26 degrees, and phi is NOT the repose angle** (phi=50 measures ~25).
+That number is a signature that holds, but it is *not converged* — see the plastic-creep warning above.
+
+**Multi-material is DONE.** Canonical physics now carries a per-particle material id and a runtime branch,
+so one grid holds all four. A single material pushed through that path lands where canonical `simulate`
+lands — at or below the effect of nudging its initial positions by one float32 rounding unit — and that
+equivalence is now itself a golden signature for all four materials, not a one-off check.
 
 ## Why the RTX 4090 lost to one JavaScript thread — and what it means for the GPU
 

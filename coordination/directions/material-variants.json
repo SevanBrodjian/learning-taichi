@@ -281,7 +281,8 @@
       "effort": "deep",
       "tags": [
         "materials"
-      ]
+      ],
+      "budget_minutes": 110
     }
   ]
 }

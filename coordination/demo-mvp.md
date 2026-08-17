@@ -79,10 +79,19 @@ atomically accumulates **mass and momentum as floats**. Options:
    complexity.
 3. Per-cell locking — generally too slow.
 
-**Availability caveat:** the elastic task found **WebGPU unavailable in both browsers it tested** (Chromium
-148 in Electron, Edge 151), so no browser GPU path has been measured at all yet. Confirming availability —
-in the dashboard's Electron pane, in iPad Safari, and in desktop Chrome — is step zero, not an afterthought.
-Plan for a **dual path: WebGPU when present, the existing JS port as fallback.**
+**Availability: RESOLVED 2026-08-16 — WebGPU is present on every device that matters.** Confirmed on the
+Windows desktop (nvidia/lovelace), the iPad, and the MacBook Air M4. The elastic task's claim that WebGPU
+was unavailable was **wrong**, and so was the first capability probe: `navigator.gpu` is only exposed in a
+**secure context**, so reaching the dashboard over plain HTTP from another device hid the API entirely and
+read as "this device has no WebGPU". Fixed by fronting the dev server with a real certificate
+(`tailscale serve --bg --https=443 http://localhost:5174` → `https://sevan-windows-home.tail9a3a96.ts.net`),
+and the Demo tab now distinguishes *hidden* / *unsupported* / *supported* instead of collapsing all three
+into "ABSENT".
+
+**Consequence for the plan:** a JS fallback is **no longer clearly required**. Sevan is inclined to ship
+WebGPU-only, or to keep the JS path behind a flag. Treat WebGPU as the primary target rather than an
+experiment, and do not spend effort on fallback parity unless a device turns up that needs it. The portfolio
+site will be HTTPS, so the production case was never in doubt.
 
 ## Working targets (revise as measurements land)
 

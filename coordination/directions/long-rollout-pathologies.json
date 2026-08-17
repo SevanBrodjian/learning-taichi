@@ -22,10 +22,6 @@
         {
           "id": "softened-wall",
           "dir": "long-rollout-pathologies"
-        },
-        {
-          "id": "jacobian-norms",
-          "dir": "long-rollout-pathologies"
         }
       ]
     },
@@ -44,12 +40,7 @@
           "kind": "extends"
         }
       ],
-      "follow_ups": [
-        {
-          "id": "jacobian-norms",
-          "dir": "long-rollout-pathologies"
-        }
-      ]
+      "follow_ups": []
     },
     {
       "id": "resolution-memory",
@@ -67,27 +58,6 @@
         }
       ],
       "follow_ups": []
-    },
-    {
-      "id": "jacobian-norms",
-      "title": "Per-step Jacobian-norm estimation",
-      "status": "proposed",
-      "note": "Estimate the per-step Jacobian norm via finite differences to see exactly where in the rollout the gradient becomes ill-conditioned. The clearest picture of the amplification, more informative than the forward-state proxy used so far.",
-      "tags": [
-        "gradients"
-      ],
-      "follow_up_of": [
-        {
-          "id": "nan-root-cause",
-          "dir": "long-rollout-pathologies",
-          "kind": "extends"
-        },
-        {
-          "id": "softened-wall",
-          "dir": "long-rollout-pathologies",
-          "kind": "applies"
-        }
-      ]
     }
   ]
 }

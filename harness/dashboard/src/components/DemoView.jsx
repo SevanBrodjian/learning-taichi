@@ -72,6 +72,26 @@ export default function DemoView() {
   // Egg 3: the status readout is *usually* UNDER CONSTRUCTION.
   const [status, setStatus] = useState("UNDER CONSTRUCTION");
 
+  // WebGPU capability probe. This is here so the answer is visible on whatever device is holding the
+  // dashboard -- specifically the iPad, which cannot easily be inspected any other way, and whose support
+  // decides whether the demo needs a JS fallback path at all. Self-contained; no harness dependency.
+  const [gpu, setGpu] = useState("probing…");
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        if (!navigator.gpu) { alive && setGpu("ABSENT"); return; }
+        const a = await navigator.gpu.requestAdapter();
+        if (!a) { alive && setGpu("NO ADAPTER"); return; }
+        const d = await a.requestDevice().catch(() => null);
+        const who = (a.info && (a.info.vendor || a.info.architecture))
+          ? `${a.info.vendor || "?"}/${a.info.architecture || "?"}` : "adapter";
+        alive && setGpu(d ? `YES · ${who}` : `ADAPTER ONLY · ${who}`);
+      } catch (e) { alive && setGpu("ERROR"); }
+    })();
+    return () => { alive = false; };
+  }, []);
+
   useEffect(() => {
     const cv = canvasRef.current;
     const wrap = wrapRef.current;
@@ -247,6 +267,7 @@ export default function DemoView() {
         <span>INTEGRATOR <b>SEMI-IMPLICIT</b></span>
         <span>FPS <b>{fps || "--"}</b></span>
         <span>STATUS <b>{status}</b></span>
+        <span>WEBGPU <b>{gpu}</b></span>
       </div>
       <div className="demo-badge">v0 · PLACEHOLDER</div>
     </div>

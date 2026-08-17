@@ -137,8 +137,8 @@ function TaskModal({ task, onClose, onChanged }) {
 
 // New-task authoring. Directions are gone from the UI entirely — a task is described by its TAGS and its
 // place in the graph, and the storage direction is chosen server-side as an implementation detail.
-const TAGS = ["gradients", "materials", "learned", "rendering"];
-const TAG_COLORS = { gradients: "#4cc2ff", materials: "#ffb037", learned: "#c98bff", rendering: "#5ee0c8" };
+const TAGS = ["gradients", "materials", "learned", "rendering", "demo"];
+const TAG_COLORS = { gradients: "#4cc2ff", materials: "#ffb037", learned: "#c98bff", rendering: "#5ee0c8", demo: "#ff7bb0" };
 
 function AuthorModal({ onClose, onChanged }) {
   const [form, setForm] = useState({ title: "", note: "", tags: [] });

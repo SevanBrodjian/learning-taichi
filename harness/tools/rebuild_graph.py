@@ -20,7 +20,8 @@ import json, os, collections
 DIR = os.path.join("coordination", "directions")
 
 # ── tags ────────────────────────────────────────────────────────────────────────────────────────────
-# Exactly four, multi-tagged. Decided 2026-08-03; do not expand without a decision.
+# Five, multi-tagged. Four decided 2026-08-03; `demo` added 2026-08-16 when the demo track
+# became real work that none of the original four described. Do not expand without a decision.
 TAGS = {
     "throw-to-target":                                   ["gradients"],
     "optimizer-comparison":                              ["gradients"],
@@ -28,8 +29,6 @@ TAGS = {
     "nan-root-cause":                                    ["gradients"],
     "softened-wall":                                     ["gradients"],
     "resolution-memory":                                 ["gradients"],
-    "checkpointing-long-horizon":                        ["gradients"],
-    "jacobian-norms":                                    ["gradients"],
     "implement-nondifferentiable-material-variants":     ["materials"],
     "fluids-snow-and-solids-as-differentiable-simulations": ["materials", "gradients"],
     "varying-liquid-viscosity":                          ["materials"],
@@ -43,7 +42,9 @@ TAGS = {
     "improve-basic-fluid-sim-realism":                   ["rendering", "materials"],
     "gpu-accelerate-fluid-renderer":                     ["rendering"],
     "more-realistic-basic-fluid-sims":                   ["rendering"],
-    "interactive-simulation-of-one-material":            ["materials"],
+    "interactive-simulation-of-one-material":            ["materials", "demo"],
+    "webgpu-port-of-the-interactive-simulation":         ["materials", "demo"],
+    "sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid": ["materials", "demo"],
 }
 
 # ── the derived graph ───────────────────────────────────────────────────────────────────────────────
@@ -62,14 +63,6 @@ GRAPH = {
     "resolution-memory": [
         ("throw-to-target", "extends", "scales the same rollout; measures the memory/throughput wall"),
     ],
-    "checkpointing-long-horizon": [
-        ("resolution-memory", "extends", "attacks the memory wall that task measured"),
-    ],
-    "jacobian-norms": [
-        ("nan-root-cause", "extends", "measures the per-step amplification root-cause argued for"),
-        ("softened-wall", "applies", "needs the smoothed contact to isolate amplification from the branch"),
-    ],
-
     # materials spine
     "fluids-snow-and-solids-as-differentiable-simulations": [
         ("implement-nondifferentiable-material-variants", "extends", "same three materials, now differentiable"),
@@ -121,6 +114,19 @@ GRAPH = {
          "same method - profile where the frame time ACTUALLY goes before optimising - but it lands on the "
          "opposite answer: there the render was the whole cost and the physics free; here draw is 0.15ms and "
          "the 167 substeps are the wall"),
+    ],
+
+    # demo track — PROVISIONAL edges, set at creation. Per CLAUDE.md these get re-derived once each task
+    # has actually run and its result shows what it really was.
+    "webgpu-port-of-the-interactive-simulation": [
+        ("interactive-simulation-of-one-material", "extends",
+         "same port, GPU backend; the JS port's 1150-particle substep budget is exactly what it is trying to beat"),
+    ],
+    "sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid": [
+        ("implement-nondifferentiable-material-variants", "extends",
+         "adds a fourth material to the canonical forward set that task established"),
+        ("interactive-simulation-of-one-material", "applies",
+         "reuses its particle renderer as the visual starting point for the four-material view"),
     ],
 
     "more-realistic-basic-fluid-sims": [

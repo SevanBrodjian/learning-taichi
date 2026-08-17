@@ -39,8 +39,7 @@
           "dir": "long-rollout-pathologies",
           "kind": "extends"
         }
-      ],
-      "follow_ups": []
+      ]
     },
     {
       "id": "resolution-memory",
@@ -56,8 +55,7 @@
           "dir": "differentiable-control",
           "kind": "extends"
         }
-      ],
-      "follow_ups": []
+      ]
     }
   ]
 }

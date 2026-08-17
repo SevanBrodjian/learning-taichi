@@ -94,13 +94,15 @@ The tagging/organization system *"needs fixing"*. Directions stop being containe
 a direction is just a lineage in the follow-up graph.
 **DECIDED 2026-08-03 — execute against this, do not re-ask.**
 
-- **Tags: exactly four**, multi-tagged per task.
+- **Tags: five** (was four), multi-tagged per task. `demo` added 2026-08-16.
   | tag | what it means | tasks |
   | --- | --- | --- |
   | `gradients` | gradient health / optimizing through the rollout | 8 (incl. both proposed) |
   | `materials` | constitutive models and material physics | 9 |
   | `learned` | a network replaces part of the physics | 6 |
   | `rendering` | the visual pipeline | 4 |
+  | `demo` | work aimed at the shippable interactive Demo (see `coordination/demo-mvp.md`) | 3 |
+
   The learned-material chain carries **both** `learned` and `materials`. Rejected: a separate `control`
   tag (only 2 tasks) and a second `kind` axis (two taxonomies to keep current).
 - **Merging: conservative.** Merge only genuine duplicates/superseded pairs — realistically just

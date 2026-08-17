@@ -6,8 +6,8 @@ import VideoPlayer from "./VideoPlayer.jsx";
 import LiveLine from "./LiveLine.jsx";
 
 // The four canonical tags (spec/registry). Directions are no longer user-facing anywhere.
-const GRAPH_TAGS = ["gradients", "materials", "learned", "rendering"];
-const GRAPH_TAG_COLORS = { gradients: "#4cc2ff", materials: "#ffb037", learned: "#c98bff", rendering: "#5ee0c8" };
+const GRAPH_TAGS = ["gradients", "materials", "learned", "rendering", "demo"];
+const GRAPH_TAG_COLORS = { gradients: "#4cc2ff", materials: "#ffb037", learned: "#c98bff", rendering: "#5ee0c8", demo: "#ff7bb0" };
 
 // A loss plot whose series is fetched from a referenced metrics.json.
 function LossResult({ series, log }) {

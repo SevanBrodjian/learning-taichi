@@ -72,22 +72,33 @@ export default function DemoView() {
   // Egg 3: the status readout is *usually* UNDER CONSTRUCTION.
   const [status, setStatus] = useState("UNDER CONSTRUCTION");
 
-  // WebGPU capability probe. This is here so the answer is visible on whatever device is holding the
-  // dashboard -- specifically the iPad, which cannot easily be inspected any other way, and whose support
-  // decides whether the demo needs a JS fallback path at all. Self-contained; no harness dependency.
+  // WebGPU capability probe, visible on whatever device is holding the dashboard -- the iPad and phone
+  // cannot easily be inspected any other way, and their support decides whether a JS fallback is needed.
+  //
+  // IT MUST DISTINGUISH "unsupported" FROM "hidden". navigator.gpu is only exposed in a SECURE CONTEXT.
+  // localhost counts as secure; http://<lan-ip>:5174 does not. So every device reaching this dashboard
+  // over the LAN sees no navigator.gpu at all, regardless of whether its browser supports WebGPU. A probe
+  // that just reports "ABSENT" there is actively misleading -- it blames the device for a transport
+  // problem. (This is a local-dev issue only: a portfolio site on HTTPS is a secure context.)
   const [gpu, setGpu] = useState("probing…");
   useEffect(() => {
     let alive = true;
+    const set = (v) => { if (alive) setGpu(v); };
     (async () => {
       try {
-        if (!navigator.gpu) { alive && setGpu("ABSENT"); return; }
+        if (!navigator.gpu) {
+          set(window.isSecureContext
+            ? "UNSUPPORTED (secure ctx, no API)"
+            : `HIDDEN — needs HTTPS (origin ${location.protocol}//${location.hostname})`);
+          return;
+        }
         const a = await navigator.gpu.requestAdapter();
-        if (!a) { alive && setGpu("NO ADAPTER"); return; }
+        if (!a) { set("NO ADAPTER (API present)"); return; }
         const d = await a.requestDevice().catch(() => null);
         const who = (a.info && (a.info.vendor || a.info.architecture))
           ? `${a.info.vendor || "?"}/${a.info.architecture || "?"}` : "adapter";
-        alive && setGpu(d ? `YES · ${who}` : `ADAPTER ONLY · ${who}`);
-      } catch (e) { alive && setGpu("ERROR"); }
+        set(d ? `YES · ${who}` : `ADAPTER ONLY · ${who}`);
+      } catch (e) { set("ERROR: " + String(e).slice(0, 40)); }
     })();
     return () => { alive = false; };
   }, []);

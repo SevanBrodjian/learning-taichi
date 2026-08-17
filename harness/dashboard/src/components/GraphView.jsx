@@ -41,7 +41,7 @@ const STATUS = {
 };
 const st = (s) => STATUS[s] || STATUS.proposed;
 
-const TAG_COLORS = { gradients: "#4cc2ff", materials: "#ffb037", learned: "#c98bff", rendering: "#5ee0c8" };
+const TAG_COLORS = { gradients: "#4cc2ff", materials: "#ffb037", learned: "#c98bff", rendering: "#5ee0c8", demo: "#ff7bb0" };
 const FALLBACK = ["#7ee787", "#ff7b9c", "#8fa8ff", "#e6a23c"];
 
 const KIND = {

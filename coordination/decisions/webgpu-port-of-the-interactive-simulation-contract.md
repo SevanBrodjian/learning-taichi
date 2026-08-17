@@ -44,3 +44,6 @@ the worker not to spend effort on fallback parity.
 - **Not** 3D, **not** differentiable, **not** a pretty renderer.
 - **Not** wired into the Demo tab.
 - **Not** JS-fallback parity work.
+
+
+**Resolution: APPROVED**

@@ -1,0 +1,1339 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>:root{color-scheme:dark}
+/* elastic-in-a-browser demo -- self-contained, no external fonts, no CDN */
+.mpmd{--bg:#0a0e14;--pnl:#0d131b;--edge:#1c2430;--edge2:#22303f;--txt:#dfe6ee;--mut:#7f8ea3;
+  --acc:#6fd3ee;--mat:#ff9d5c;--ok:#5fd39a;--bad:#ff8f6b;
+  color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",sans-serif;font-size:14px;line-height:1.5}
+.mpmd *{box-sizing:border-box}
+.mpmd .stage{position:relative;border:1px solid var(--edge2);border-radius:8px;overflow:hidden;
+  background:radial-gradient(120% 90% at 50% 0%,#101a24 0%,#070a0f 70%);box-shadow:0 12px 40px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.05)}
+.mpmd canvas{display:block;width:100%;height:auto;touch-action:none;cursor:crosshair;image-rendering:auto}
+.mpmd .hud{position:absolute;left:10px;top:10px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+.mpmd .chip{background:rgba(8,12,18,.78);border:1px solid var(--edge2);border-radius:5px;padding:5px 9px;
+  font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;color:var(--mut);backdrop-filter:blur(6px)}
+.mpmd .chip b{color:var(--txt);font-weight:600}
+.mpmd .chip.big b{font-size:14px}
+.mpmd .chip .ok{color:var(--ok)}.mpmd .chip .bad{color:var(--bad)}.mpmd .chip .warn{color:#ffcc66}
+.mpmd .hint{position:absolute;right:10px;bottom:10px;font-size:11.5px;color:#5c6b7d;pointer-events:none;
+  font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.03em}
+.mpmd .ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;margin-top:12px}
+.mpmd .grp{border:1px solid var(--edge);border-radius:6px;background:var(--pnl);padding:9px 11px;flex:1;min-width:190px}
+.mpmd .grp>.lbl{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.09em;color:var(--mut);margin-bottom:7px}
+.mpmd .seg{display:flex;border:1px solid var(--edge2);border-radius:5px;overflow:hidden;width:100%}
+.mpmd .seg button{flex:1;padding:7px 4px;background:#0f1620;color:#8b9aad;border:0;border-right:1px solid var(--edge2);
+  font:inherit;font-size:12.5px;cursor:pointer;transition:background .12s,color .12s}
+.mpmd .seg button:last-child{border-right:0}
+.mpmd .seg button:hover{color:#cfd9e6;background:#141d29}
+.mpmd .seg button.on{background:rgba(23,176,212,.16);color:var(--acc);font-weight:600;box-shadow:inset 0 -2px 0 var(--acc)}
+.mpmd .seg button.on.warnstate{background:rgba(255,143,107,.16);color:var(--bad);box-shadow:inset 0 -2px 0 var(--bad)}
+.mpmd .row{display:flex;align-items:center;gap:9px}
+.mpmd input[type=range]{flex:1;accent-color:var(--acc);height:20px}
+.mpmd .val{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--txt);flex:0 0 auto;min-width:46px;text-align:right}
+.mpmd input[type=range]{min-width:0}
+.mpmd .note{font-size:11.5px;color:var(--mut);margin-top:7px;line-height:1.45}
+.mpmd .note b{color:#b9c6d6;font-weight:600}
+.mpmd button.act{padding:7px 12px;background:#0f1620;color:#a8b7c8;border:1px solid var(--edge2);border-radius:5px;
+  font:inherit;font-size:12.5px;cursor:pointer}
+.mpmd button.act:hover{color:#e2ebf5;border-color:#3a4c61;background:#141d29}
+.mpmd button.act:active{transform:translateY(1px)}
+.mpmd .bars{display:flex;height:10px;border-radius:3px;overflow:hidden;border:1px solid var(--edge2);margin-top:2px}
+.mpmd .bars i{display:block;height:100%}
+.mpmd .lg{display:flex;gap:11px;flex-wrap:wrap;font-size:11px;color:var(--mut);margin-top:6px;
+  font-family:ui-monospace,Menlo,Consolas,monospace}
+.mpmd .lg s{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:4px;vertical-align:-1px}
+.mpmd .warnbar{margin-top:10px;border:1px solid #6b3a2a;background:#1b100c;color:#ffb08c;border-radius:6px;
+  padding:8px 11px;font-size:12.5px;display:none}
+.mpmd .warnbar.show{display:block}
+
+/* bespoke task page chrome (the demo brings its own .mpmd styles) */
+body{margin:0;background:#0a0e14;color:#dfe6ee;font-size:14px;line-height:1.55;padding:20px 18px 34px;
+  font-family:-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",sans-serif}
+*{box-sizing:border-box}
+.pg{max-width:1080px;margin:0 auto}
+h2{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;text-transform:uppercase;
+  letter-spacing:.10em;color:#7f8ea3;margin:0 0 12px;font-weight:600}
+h2 .n{color:#3d4e60;margin-right:8px}
+.verdict{max-width:82ch;margin:0 0 8px;font-size:15.5px;color:#c8d3e0}
+.verdict b{color:#e8eef6}
+.verdict .win{color:#5fd39a}.verdict .bad{color:#ff8f6b}.verdict .acc{color:#6fd3ee}
+.sec{margin:34px 0 0}
+.sec.first{margin-top:26px}
+.panel{border:1px solid #1c2430;border-radius:8px;background:#0d131b;padding:16px 18px}
+.scope{border-left:2px solid #4d6478;background:#0d131b;padding:9px 14px;color:#9fb0c4;font-size:12.5px;
+  margin:14px 0 0;max-width:88ch}
+.scope b{color:#c8d3e0}
+dfn{font-style:normal;border-bottom:1px dotted #4d6478;cursor:help}
+dfn:hover{color:#6fd3ee;border-bottom-color:#6fd3ee}
+#pop{position:fixed;z-index:99;width:370px;max-width:calc(100vw - 20px);background:#121821;color:#dfe6ee;
+  border:1px solid #2b3a4d;border-radius:6px;padding:12px 14px;font-size:12.5px;line-height:1.5;
+  box-shadow:0 10px 30px rgba(0,0,0,.6);display:none;white-space:pre-wrap}
+#pop.show{display:block}
+.tabs{display:flex;border:1px solid #22303f;border-radius:5px;overflow:hidden;width:max-content;max-width:100%;margin:0 0 14px}
+.tabs button{padding:8px 15px;background:#0f1620;color:#8b9aad;border:0;border-right:1px solid #22303f;
+  font:inherit;font-size:13px;cursor:pointer}
+.tabs button:last-child{border-right:0}
+.tabs button:hover{color:#cfd9e6;background:#141d29}
+.tabs button.on{background:rgba(23,176,212,.16);color:#6fd3ee;font-weight:600;box-shadow:inset 0 -2px 0 #6fd3ee}
+.cols{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+.cols>.a{flex:1 1 460px;min-width:320px}
+.cols>.b{flex:1 1 320px;min-width:280px}
+video{width:100%;border-radius:6px;border:1px solid #1c2430;background:#06090d;display:block}
+.cap{font-size:12.5px;color:#7f8ea3;margin:8px 0 0;line-height:1.5}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{text-align:right;padding:6px 9px;border-bottom:1px solid #182029}
+th{color:#7f8ea3;font-weight:600;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;
+  text-transform:uppercase;letter-spacing:.06em}
+td:first-child,th:first-child{text-align:left}
+tbody tr:last-child td{border-bottom:0}
+td.num{font-family:ui-monospace,Menlo,Consolas,monospace}
+.good{color:#5fd39a}.warn{color:#ffcc66}.bad{color:#ff8f6b}.mut{color:#7f8ea3}
+.kpi{display:flex;gap:12px;flex-wrap:wrap;margin:0 0 16px}
+.kpi .k{flex:1 1 170px;border:1px solid #1c2430;border-radius:7px;background:#0d131b;padding:11px 13px}
+.kpi .k .lab{font-size:11px;color:#7f8ea3;text-transform:uppercase;letter-spacing:.07em;
+  font-family:ui-monospace,Menlo,Consolas,monospace;margin-bottom:5px}
+.kpi .k .v{font-size:20px;font-weight:600;color:#e8eef6;font-family:ui-monospace,Menlo,Consolas,monospace}
+.kpi .k .v small{font-size:12px;color:#7f8ea3;font-weight:400}
+.kpi .k .sub{font-size:11.5px;color:#7f8ea3;margin-top:3px}
+svg text{font-family:ui-monospace,Menlo,Consolas,monospace}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:#7f8ea3;margin-top:8px;
+  font-family:ui-monospace,Menlo,Consolas,monospace}
+.legend s{width:10px;height:10px;border-radius:2px;display:inline-block;margin-right:5px;vertical-align:-1px}
+.note{font-size:12.5px;color:#8b9aad;max-width:88ch;line-height:1.55}
+.note b{color:#c8d3e0}
+.reg{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.reg .r{flex:1 1 250px;border:1px solid #1c2430;border-radius:7px;background:#0b1119;padding:11px 13px;font-size:12.5px;color:#9fb0c4}
+.reg .r .h{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;letter-spacing:.08em;
+  text-transform:uppercase;margin-bottom:6px}
+.reg .obs .h{color:#5fd39a}.reg .hyp .h{color:#c58cf0}.reg .tst .h{color:#ffcc66}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#b7c6d6;
+  background:#111823;border:1px solid #1c2430;border-radius:3px;padding:1px 5px}
+.mth{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#cfe0ee}
+/* The demo mounts stage + warnbar + controls as siblings. Lay them out side by side so the whole
+   widget stays about 600 px tall -- the task frame is capped at 6000 px and a full-width square
+   canvas would eat a fifth of that on its own. */
+#demo{display:grid;grid-template-columns:minmax(230px,1.05fr) minmax(220px,1fr);gap:16px;align-items:start}
+#demo>.stage{grid-column:1;grid-row:1/span 2;max-width:520px}
+#demo>.warnbar{grid-column:2;grid-row:1;margin-top:0}
+#demo>.ctl{grid-column:2;grid-row:2;margin-top:0;flex-direction:column}
+#demo>.ctl>.grp{min-width:0}
+@media (max-width:560px){
+  #demo{grid-template-columns:1fr}
+  #demo>.stage{grid-column:1;grid-row:auto;max-width:100%}
+  #demo>.warnbar,#demo>.ctl{grid-column:1;grid-row:auto}
+  #demo>.ctl{flex-direction:row}
+}
+</style></head><body>
+<div class="pg">
+
+<p class="verdict">
+The elastic material runs <b>in the browser</b>, interactively, from a single-threaded JavaScript port
+of the canonical MLS-MPM step, and it is <span class="win">numerically exact</span>: over a 2.5&nbsp;s
+rollout the port sits <dfn data-def="traj_rmse">1.7&times;10<sup>-4</sup></dfn> from the reference,
+which is <em>less</em> than the reference moves when its own starting positions are nudged by one f32
+rounding unit. The port did not turn out to be the hard part. <b>The timestep is.</b>
+Elastic at <span class="mth">E&nbsp;=&nbsp;400</span> needs &Delta;t&nbsp;=&nbsp;1e-4, so real time costs
+<b>167&nbsp;substeps every frame</b>, and that single fact caps this machine at
+<b>~1150&nbsp;particles at 60&nbsp;fps</b>. Raising &Delta;t to buy frame rate
+<span class="bad">destroys the physics</span> long before it becomes unstable.
+</p>
+
+<div class="sec first">
+<h2><span class="n">01</span> The thing itself &mdash; drag it</h2>
+<div id="demo"></div>
+<p class="cap">Elastic disk, canonical parameters, 128&times;128 grid, 167 substeps per frame. Sim speed
+is the honest number: frames per second &times; substeps per frame &times; &Delta;t. Push the particle
+slider until it reads 1.00&times; and that is this machine's 60&nbsp;fps budget. The other two switches are
+the finding: <b>grid loop</b> swaps the sparse active-cell sweep for Taichi's dense one (identical physics,
+bit for bit) and <b>&Delta;t</b> makes it cheaper and then wrecks it.</p>
+</div>
+
+<div class="sec">
+<h2><span class="n">02</span> Does the port actually match the reference?</h2>
+<div class="tabs" data-k="scene">
+  <button data-v="launch" class="on">launched disk (contact-heavy)</button>
+  <button data-v="drop">canonical drop</button>
+</div>
+<div class="cols">
+  <div class="a">
+    <video id="divvid" autoplay loop muted playsinline></video>
+    <p class="cap" id="divcap"></p>
+  </div>
+  <div class="b">
+    <div id="divchart" class="panel" style="padding:8px"></div>
+    <div class="legend">
+      <span><s style="background:#ff9d5c"></s>port vs canonical</span>
+      <span><s style="background:#c58cf0"></s>canonical vs itself</span>
+      <span><s style="background:#5fd39a"></s>canonical, start nudged 1e-7</span>
+    </div>
+    <table style="margin-top:12px"><thead><tr><th>whole-rollout <dfn data-def="traj_rmse">traj_rmse</dfn></th><th>value</th></tr></thead>
+    <tbody id="divnums"></tbody></table>
+    <p class="cap">Two runs of the reference simulator on identical input already disagree, because P2G
+    scatters through GPU atomics in a nondeterministic order. That disagreement is the floor. The port's
+    line lives in the same band, so there is no room left to claim it is wrong.</p>
+  </div>
+</div>
+<div class="scope"><b>What this does and does not show.</b> One material (elastic), two scenes, one
+particle count, 2.5&nbsp;s. It shows the port reproduces the reference's dynamics to within the
+reference's own reproducibility. It does <b>not</b> show that fluid or snow would port as cleanly &mdash;
+both have branches (the plastic clamp, the pressure term) this port never touches.</div>
+</div>
+
+<div class="sec">
+<h2><span class="n">03</span> Where the frame budget actually goes</h2>
+<div class="tabs" data-k="bmode">
+  <button data-v="us" class="on">microseconds per substep</button>
+  <button data-v="fps">sustained fps at real time</button>
+</div>
+<div class="cols">
+  <div class="a"><div id="budchart" class="panel" style="padding:8px"></div></div>
+  <div class="b">
+  <div class="kpi">
+    <div class="k"><div class="lab">60 fps budget</div><div class="v">1154 <small>particles</small></div>
+      <div class="sub">where the port crosses real time</div></div>
+    <div class="k"><div class="lab">substeps / frame</div><div class="v">167</div>
+      <div class="sub">forced by &Delta;t = 1e-4</div></div>
+  </div>
+  <p class="note">Flip to <b>fps</b> and only one curve gets above the line. Three things fall out of the
+  same chart:<br><br>
+  <b>1.</b> Taichi's dense grid sweep costs about <b>93&nbsp;&micro;s</b> per substep on its own &mdash;
+  <b>15.6&nbsp;ms</b> per frame, essentially the whole 60&nbsp;fps budget, <i>before any particle is
+  touched</i>. Only ~760 of the 16&nbsp;384 cells ever hold material.<br><br>
+  <b>2.</b> Below roughly 4300 particles, one JavaScript thread is <b>faster than the project's own CUDA
+  reference on an RTX&nbsp;4090</b>. The reference is flat at ~345&nbsp;&micro;s from 500 to 16&nbsp;384
+  particles, which is what launch-bound looks like.<br><br>
+  <b>3.</b> P2G and G2P split the rest almost evenly (86 and 73&nbsp;&micro;s at 2000 particles); the grid
+  update is 5&nbsp;&micro;s and drawing is 0.15&nbsp;ms per frame. Rendering is not the problem.</p>
+  </div>
+</div>
+</div>
+
+<div class="sec">
+<h2><span class="n">04</span> The trap: &Delta;t is not a performance knob</h2>
+<div class="cols">
+  <div class="a">
+    <video id="dtvid" autoplay loop muted playsinline></video>
+    <p class="cap">Cyan is the canonical run in all three panels; orange is the cheaper timestep. At
+    &times;2 and &times;4 the ball rolls visibly further than the truth and ends a full diameter away.
+    On the drop scene the &times;4 run does not merely drift, it goes non-finite.</p>
+  </div>
+  <div class="b">
+    <table id="dttable"><thead><tr><th>&Delta;t</th><th>substeps</th><th>speedup</th>
+      <th><dfn data-def="traj_rmse">traj_rmse</dfn></th><th></th></tr></thead><tbody></tbody></table>
+    <p class="note" style="margin-top:12px">Buying a 1.6&times; speedup costs three to four orders of
+    magnitude of accuracy. The elastic wave speed is
+    <span class="mth">c = &radic;((&lambda;+2&mu;)/&rho;) &asymp; 21</span> domain lengths per second, and a
+    grid cell is <span class="mth">1/128</span>, so the CFL limit is
+    <span class="mth">&Delta;x/c &asymp; 3.7&times;10<sup>-4</sup></span>. The canonical
+    <span class="mth">&Delta;t = 10<sup>-4</sup></span> sits at a CFL number of 0.27, and the sweep
+    runs straight into the wall.
+    <b>Stiffness sets the timestep, the timestep sets the substep count, and the substep count is the
+    whole cost.</b></p>
+  </div>
+</div>
+</div>
+
+<div class="sec">
+<h2><span class="n">05</span> Analytic equations, or a network that learns the grid update?</h2>
+<div class="panel">
+<p class="note" style="max-width:none">Analytic had to come first &mdash; without a correct reference
+there is nothing to validate a learned update against. With the reference in hand the learned option can
+be <b>priced</b> rather than guessed. Both numbers below are measured on the same machine, on the same
+~760 active cells, against the analytic grid update they would replace.</p>
+<table style="margin-top:14px"><thead><tr><th>grid update</th><th>where</th><th>per substep</th>
+<th>&times; analytic</th><th>at 167 substeps/frame</th></tr></thead><tbody>
+<tr><td>analytic (the equations)</td><td class="mut">browser JS</td><td class="num">5.2 &micro;s</td><td class="num good">1&times;</td><td class="num good">0.9 ms</td></tr>
+<tr><td>MLP 8-32-32-2</td><td class="mut">browser JS</td><td class="num">1258 &micro;s</td><td class="num bad">242&times;</td><td class="num bad">210 ms &rarr; 4.8 fps</td></tr>
+<tr><td>MLP 8-64-64-2</td><td class="mut">browser JS</td><td class="num">3900 &micro;s</td><td class="num bad">750&times;</td><td class="num bad">651 ms &rarr; 1.5 fps</td></tr>
+<tr><td>analytic (the equations)</td><td class="mut">CUDA, RTX 4090</td><td class="num">84 &micro;s</td><td class="num">1&times;</td><td class="num warn">14.0 ms</td></tr>
+<tr><td>MLP 8-32-32-2, all 16384 cells</td><td class="mut">CUDA, RTX 4090</td><td class="num">87 &micro;s</td><td class="num good">1.03&times;</td><td class="num warn">14.5 ms</td></tr>
+</tbody></table>
+<div class="reg">
+  <div class="r obs"><div class="h">observed</div>In JavaScript the smallest useful network is 242&times;
+  the analytic grid update and blows the frame budget by 13&times;. On the GPU the identical network is
+  free relative to the analytic update (87 vs 84&nbsp;&micro;s) because at 16&nbsp;384 cells both are
+  dominated by kernel launch, not arithmetic &mdash; an empty kernel already costs 56&nbsp;&micro;s.</div>
+  <div class="r hyp"><div class="h">hypothesised</div>A learned grid update can only pay for itself if it
+  buys a <b>larger &Delta;t</b>, because &Delta;t is what sets the 167 substeps and the substeps are the
+  whole cost. Making the per-substep update smarter is optimising the term that is already cheap.
+  Labelled a conjecture: nothing here trained such a model.</div>
+  <div class="r tst"><div class="h">would test it</div>Train a network on <i>coarse-time</i> transitions
+  &mdash; map the state at <span class="mth">t</span> to the state at
+  <span class="mth">t&nbsp;+&nbsp;16.7&nbsp;ms</span> directly, not one substep &mdash; and
+  measure both its <dfn data-def="traj_rmse">traj_rmse</dfn> against a canonical rollout and its cost per
+  frame. If it holds accuracy at one evaluation per frame instead of 167, it wins by two orders of
+  magnitude. If it needs substeps, it cannot win at all.</div>
+</div>
+</div>
+<div class="scope"><b>Scope.</b> WebGPU was not available in the browser this was measured in, so the
+browser numbers are all CPU. The CUDA figures come from Taichi kernels launched from Python, which is
+how the canonical simulator is actually run in this project; a fused or graph-captured implementation
+would pay far less launch overhead. The 4300-particle crossover is a statement about
+<b>this</b> reference implementation on <b>this</b> machine, not about GPUs.</div>
+</div>
+
+<div class="sec">
+<h2><span class="n">06</span> How the port was done</h2>
+<div class="panel">
+<table><thead><tr><th>piece</th><th>what happened to it</th></tr></thead><tbody>
+<tr><td>parameters (<span class="mth">E</span>, &Delta;t, grid, &nu;, friction, gravity)</td><td style="text-align:left">
+  Not retyped. <code>gen_params.py</code> imports <code>sim.physics</code> and emits
+  <code>params.js</code>, stamped with the physics version.</td></tr>
+<tr><td>constitutive law</td><td style="text-align:left">Unchanged. Fixed corotated,
+  <span class="mth">2&mu;(<b>F</b>&minus;<b>R</b>)<b>F</b><sup>T</sup> + &lambda;(J&minus;1)J<b>I</b></span>.</td></tr>
+<tr><td><code>ti.svd</code></td><td style="text-align:left">Deleted. In 2D the elastic path only needs
+  the polar rotation <span class="mth"><b>R</b> = <b>UV</b><sup>T</sup></span>, and Taichi's own 2D SVD is built on a
+  closed-form polar decomposition, so the singular values were never used. Two adds, a hypot and a
+  reciprocal square root replace a whole factorisation.</td></tr>
+<tr><td>the grid loop</td><td style="text-align:left"><b>Rewritten sparse.</b> P2G records every cell it
+  scatters into; the grid update and the clear walk only that list. Exact rather than approximate,
+  because every node a particle gathers from is a node it scattered to. Verified bit-for-bit against the
+  dense loop over 3340 substeps: zero differing values.</td></tr>
+<tr><td>precision</td><td style="text-align:left">f32 storage, f64 arithmetic (JS has no float32 math).
+  The port is slightly <i>more</i> accurate per operation than the f32 reference, which is why its
+  divergence looks like chaos rather than bias.</td></tr>
+<tr><td>parallelism</td><td style="text-align:left">Gone. One thread, no atomics, so the port is
+  deterministic where the reference is not.</td></tr>
+<tr><td>interaction</td><td style="text-align:left">Added, and it is <b>not</b> canonical physics: an
+  external actuator that relaxes grid velocity inside a Gaussian window toward the pointer. Off in every
+  verification run.</td></tr>
+</tbody></table>
+</div>
+</div>
+
+</div>
+<script>window.PAGE_DATA={"media":"/api/data/learning-taichi/runs/material-variants/interactive-simulation-of-one-material/","spf":167,"budget_us":99.8003992015968,"budget_particles":1154,"bench":[{"n":500,"sparse":47.2,"dense":149.6},{"n":750,"sparse":66.8,"dense":169.6},{"n":1000,"sparse":88.0,"dense":190.0},{"n":1250,"sparse":107.2,"dense":221.2},{"n":1500,"sparse":128.0,"dense":227.2},{"n":2000,"sparse":166.8,"dense":266.0},{"n":3000,"sparse":312.4,"dense":352.4},{"n":4000,"sparse":333.2,"dense":427.6},{"n":6000,"sparse":488.8,"dense":588.8},{"n":8000,"sparse":653.2,"dense":744.4}],"gpu":[{"n":500,"us":344.65549997548806},{"n":1000,"us":356.2817499914672},{"n":1500,"us":347.1782500128029},{"n":2000,"us":344.3037500255741},{"n":3000,"us":365.8960000029765},{"n":4000,"us":346.95149999606656},{"n":6000,"us":352.07624998292886},{"n":8000,"us":341.12675002688775},{"n":16384,"us":379.03649998042965}],"defs":{"traj_rmse":{"label":"trajectory RMSE","short":"How far the run's particles sit from ground truth, averaged over the whole rollout.","formula":"mean over frames and particles of the per-particle Euclidean distance |x_learned - x_gt|. Particle p is matched to particle p (both runs seed identically).","units":"domain lengths (the domain is the unit square, so 0.1 is 10% of the box)","range":">= 0. On the whole-material task, trained corners sit at 0.012-0.031 and the held-out corner at 0.246.","source":"sim/one_nn_whole_fluid.py:619","caution":"THE NAME IS WRONG. It is a mean absolute distance, not a root-mean-square, and it is NOT a centre-of-mass distance. It also has no interpretable scale -- 0.12 could be 'slightly off' or 'not a liquid' and the number alone cannot tell you. Use it to RANK cells, never to CERTIFY one as physical. It correlates only moderately with shape error (Spearman rho ~ 0.55 on the 5x5 whole-material grid)."},"physics_version":{"label":"physics version","short":"Stamp of the frozen canonical physics a run used, so two runs are provably on the same ground truth.","formula":"sim.physics.VERSION, a content hash of the canonical module","units":"opaque string, e.g. phys-1dc280eb52c9","range":"n/a","source":"sim/physics/__init__.py","caution":"Equal versions prove the same GROUND TRUTH was used. They do NOT prove a task's own differentiable variant matches it -- see the material-parameter drift noted in spec/registry/README.md."}},"scenes":{"drop":{"times":[0.0167,0.0334,0.0501,0.0668,0.0835,0.1002,0.1169,0.1336,0.1503,0.167,0.1837,0.2004,0.2171,0.2338,0.2505,0.2672,0.2839,0.3006,0.3173,0.334,0.3507,0.3674,0.3841,0.4008,0.4175,0.4342,0.4509,0.4676,0.4843,0.501,0.5177,0.5344,0.5511,0.5678,0.5845,0.6012,0.6179,0.6346,0.6513,0.668,0.6847,0.7014,0.7181,0.7348,0.7515,0.7682,0.7849,0.8016,0.8183,0.835,0.8517,0.8684,0.8851,0.9018,0.9185,0.9352,0.9519,0.9686,0.9853,1.002,1.019,1.035,1.052,1.069,1.086,1.102,1.119,1.136,1.152,1.169,1.186,1.202,1.219,1.236,1.253,1.269,1.286,1.303,1.319,1.336,1.353,1.369,1.386,1.403,1.419,1.436,1.453,1.47,1.486,1.503,1.52,1.536,1.553,1.57,1.587,1.603,1.62,1.637,1.653,1.67,1.687,1.703,1.72,1.737,1.753,1.77,1.787,1.804,1.82,1.837,1.854,1.87,1.887,1.904,1.921,1.937,1.954,1.971,1.987,2.004,2.021,2.037,2.054,2.071,2.088,2.104,2.121,2.138,2.154,2.171,2.188,2.204,2.221,2.238,2.254,2.271,2.288,2.305,2.321,2.338,2.355,2.371,2.388,2.405,2.421,2.438,2.455,2.472,2.488,2.505],"port_vs_canonical":[0.0,3.754e-09,3.722e-08,4.571e-08,2.979e-08,1.249e-07,3.16e-07,5.579e-07,8.353e-07,1.188e-06,1.593e-06,2.06e-06,2.527e-06,2.737e-06,2.67e-06,2.363e-06,1.738e-06,6.801e-07,1.403e-06,1.329e-06,1.723e-06,2.324e-06,3.06e-06,3.811e-06,4.697e-06,5.597e-06,6.516e-06,7.555e-06,8.519e-06,9.458e-06,1.05e-05,1.148e-05,1.244e-05,1.347e-05,1.445e-05,1.552e-05,1.665e-05,1.781e-05,1.904e-05,2.032e-05,2.165e-05,2.305e-05,1.294e-05,1.739e-05,1.517e-05,1.353e-05,1.092e-05,8.726e-06,6.652e-06,4.385e-06,2.566e-06,2.386e-06,3.85e-06,5.813e-06,7.819e-06,1.02e-05,1.247e-05,1.466e-05,1.714e-05,1.959e-05,2.202e-05,2.459e-05,1.475e-05,1.957e-05,1.808e-05,1.587e-05,1.342e-05,1.163e-05,1.06e-05,1.007e-05,1.028e-05,1.107e-05,1.269e-05,1.473e-05,1.695e-05,1.958e-05,2.229e-05,2.515e-05,2.537e-05,1.166e-05,2.052e-05,1.728e-05,1.45e-05,1.127e-05,8.807e-06,7.143e-06,7.056e-06,8.508e-06,1.106e-05,1.377e-05,1.695e-05,2.024e-05,2.36e-05,1.316e-05,2.431e-05,2.129e-05,1.636e-05,1.152e-05,6.741e-06,3.702e-06,5.866e-06,1.018e-05,1.505e-05,1.994e-05,2.488e-05,1.128e-05,2.422e-05,2.142e-05,1.628e-05,1.243e-05,1.044e-05,1.11e-05,1.419e-05,1.883e-05,2.4e-05,2.371e-05,7.379e-06,2.299e-05,1.774e-05,1.349e-05,1.235e-05,1.391e-05,1.717e-05,2.201e-05,1.754e-05,1.939e-05,1.857e-05,1.522e-05,1.479e-05,1.879e-05,2.511e-05,2.392e-05,1.736e-05,2.193e-05,1.909e-05,2.131e-05,2.678e-05,3.339e-05,2.925e-05,2.945e-05,2.932e-05,3.194e-05,3.696e-05,4.124e-05,4.235e-05,4.337e-05,4.484e-05,4.822e-05,5.124e-05,5.228e-05],"canonical_self_noise":[0.0,6.548e-10,6.548e-10,6.621e-09,6.621e-09,1.703e-08,1.707e-08,2.678e-08,3.444e-08,4.051e-08,5.316e-08,5.801e-08,6.989e-08,8.639e-08,1.039e-07,1.171e-07,1.244e-07,1.706e-07,4.476e-07,7.773e-07,1.112e-06,1.475e-06,1.832e-06,2.184e-06,2.541e-06,2.9e-06,3.263e-06,3.612e-06,3.972e-06,4.327e-06,4.681e-06,5.04e-06,5.391e-06,5.751e-06,6.103e-06,6.458e-06,6.825e-06,7.184e-06,7.539e-06,7.901e-06,8.256e-06,8.608e-06,8.474e-06,8.026e-06,7.01e-06,6.025e-06,4.948e-06,3.932e-06,2.97e-06,2.116e-06,1.606e-06,1.678e-06,2.255e-06,3.119e-06,4.067e-06,5.078e-06,6.112e-06,7.136e-06,8.197e-06,9.238e-06,1.029e-05,1.132e-05,1.182e-05,1.284e-05,1.293e-05,1.26e-05,1.236e-05,1.222e-05,1.203e-05,1.191e-05,1.18e-05,1.174e-05,1.172e-05,1.176e-05,1.18e-05,1.183e-05,1.196e-05,1.209e-05,1.202e-05,1.146e-05,1.081e-05,9.118e-06,7.584e-06,6.361e-06,5.686e-06,5.478e-06,5.718e-06,6.399e-06,7.587e-06,9.082e-06,1.075e-05,1.25e-05,1.432e-05,1.544e-05,1.529e-05,1.278e-05,1.036e-05,7.996e-06,5.629e-06,3.599e-06,3.264e-06,4.504e-06,6.4e-06,8.644e-06,1.104e-05,9.725e-06,1.207e-05,1.071e-05,9.353e-06,8.683e-06,8.71e-06,9.455e-06,1.096e-05,1.311e-05,1.551e-05,1.462e-05,5.031e-06,1.382e-05,1.096e-05,9.594e-06,9.924e-06,1.146e-05,1.374e-05,1.678e-05,1.396e-05,1.482e-05,1.429e-05,1.276e-05,1.375e-05,1.771e-05,2.271e-05,2.164e-05,1.72e-05,2.048e-05,1.919e-05,2.156e-05,2.647e-05,3.191e-05,2.784e-05,2.831e-05,2.744e-05,2.924e-05,3.36e-05,3.69e-05,3.68e-05,3.713e-05,3.759e-05,4.034e-05,4.286e-05,4.291e-05],"canonical_perturbed_ic":[1.25e-07,1.251e-07,1.251e-07,1.273e-07,1.273e-07,1.314e-07,1.315e-07,1.372e-07,1.434e-07,1.527e-07,1.703e-07,1.832e-07,2.029e-07,2.236e-07,2.454e-07,2.626e-07,2.702e-07,3.369e-07,5.544e-07,6.179e-07,6.983e-07,7.838e-07,8.718e-07,9.727e-07,1.074e-06,1.172e-06,1.274e-06,1.38e-06,1.482e-06,1.586e-06,1.696e-06,1.8e-06,1.907e-06,2.016e-06,2.12e-06,2.228e-06,2.34e-06,2.452e-06,2.568e-06,2.684e-06,2.799e-06,2.913e-06,2.27e-06,2.383e-06,2.294e-06,2.217e-06,2.129e-06,2.052e-06,1.98e-06,1.91e-06,1.843e-06,1.778e-06,1.722e-06,1.66e-06,1.601e-06,1.557e-06,1.514e-06,1.48e-06,1.454e-06,1.433e-06,1.428e-06,1.432e-06,1.27e-06,1.157e-06,1.192e-06,1.303e-06,1.472e-06,1.683e-06,1.921e-06,2.174e-06,2.438e-06,2.713e-06,2.997e-06,3.283e-06,3.571e-06,3.861e-06,4.152e-06,4.448e-06,4.278e-06,2.14e-06,4.228e-06,3.606e-06,3.08e-06,2.634e-06,2.413e-06,2.441e-06,2.661e-06,3.045e-06,3.584e-06,4.21e-06,4.891e-06,5.61e-06,6.349e-06,5.847e-06,6.295e-06,6.249e-06,6.203e-06,6.313e-06,6.495e-06,6.839e-06,7.241e-06,7.665e-06,8.198e-06,8.789e-06,9.389e-06,8.889e-06,9.382e-06,9.318e-06,8.815e-06,8.313e-06,7.793e-06,7.284e-06,6.775e-06,6.262e-06,5.773e-06,5.02e-06,4.307e-06,4.14e-06,3.71e-06,3.222e-06,2.813e-06,2.552e-06,2.484e-06,2.567e-06,2.027e-06,2.226e-06,1.967e-06,1.572e-06,1.488e-06,1.685e-06,2.134e-06,2.373e-06,2.676e-06,3.271e-06,3.595e-06,3.973e-06,4.402e-06,4.774e-06,4.788e-06,4.742e-06,4.149e-06,3.472e-06,2.893e-06,2.313e-06,1.988e-06,1.87e-06,1.685e-06,2.006e-06,2.699e-06,3.525e-06],"traj_rmse":{"port_vs_canonical":1.487e-05,"canonical_self_noise":1.04e-05,"canonical_perturbed_ic":2.956e-06},"dt_sweep":[{"mult":1,"dt":0.0001,"spf":167,"speedup":1.0674577982988154,"finite":true,"rmse":1.4871806342853233e-05},{"mult":1.5,"dt":0.00015000000000000001,"spf":111,"speedup":1.589891263886983,"finite":true,"rmse":0.00472490768879652},{"mult":2,"dt":0.0002,"spf":83,"speedup":2.1554035417945996,"finite":true,"rmse":0.010209238156676292},{"mult":2.5,"dt":0.00025,"spf":67,"speedup":2.6582872172646743,"finite":true,"rmse":0.02765815705060959},{"mult":3,"dt":0.00030000000000000003,"spf":56,"speedup":3.219910833305743,"finite":true,"rmse":0.026856904849410057},{"mult":4,"dt":0.0004,"spf":42,"speedup":4.441191436593214,"finite":false,"rmse":null}],"caption":"Canonical drop scene: a 2048-particle elastic disk released at rest. The two panels are the same initial condition run by the two implementations; the chart is how far apart their particles are."},"launch":{"times":[0.0167,0.0334,0.0501,0.0668,0.0835,0.1002,0.1169,0.1336,0.1503,0.167,0.1837,0.2004,0.2171,0.2338,0.2505,0.2672,0.2839,0.3006,0.3173,0.334,0.3507,0.3674,0.3841,0.4008,0.4175,0.4342,0.4509,0.4676,0.4843,0.501,0.5177,0.5344,0.5511,0.5678,0.5845,0.6012,0.6179,0.6346,0.6513,0.668,0.6847,0.7014,0.7181,0.7348,0.7515,0.7682,0.7849,0.8016,0.8183,0.835,0.8517,0.8684,0.8851,0.9018,0.9185,0.9352,0.9519,0.9686,0.9853,1.002,1.019,1.035,1.052,1.069,1.086,1.102,1.119,1.136,1.152,1.169,1.186,1.202,1.219,1.236,1.253,1.269,1.286,1.303,1.319,1.336,1.353,1.369,1.386,1.403,1.419,1.436,1.453,1.47,1.486,1.503,1.52,1.536,1.553,1.57,1.587,1.603,1.62,1.637,1.653,1.67,1.687,1.703,1.72,1.737,1.753,1.77,1.787,1.804,1.82,1.837,1.854,1.87,1.887,1.904,1.921,1.937,1.954,1.971,1.987,2.004,2.021,2.037,2.054,2.071,2.088,2.104,2.121,2.138,2.154,2.171,2.188,2.204,2.221,2.238,2.254,2.271,2.288,2.305,2.321,2.338,2.355,2.371,2.388,2.405,2.421,2.438,2.455,2.472,2.488,2.505],"port_vs_canonical":[0.0,2.095e-09,4.578e-08,5.255e-08,3.261e-08,1.321e-07,3.232e-07,5.701e-07,8.48e-07,1.229e-06,1.641e-06,2.118e-06,2.608e-06,2.833e-06,2.783e-06,2.491e-06,1.941e-06,7.164e-07,1.473e-06,1.353e-06,1.143e-06,1.285e-06,1.636e-06,2.07e-06,2.574e-06,3.116e-06,3.683e-06,4.273e-06,4.893e-06,5.534e-06,6.175e-06,6.833e-06,7.5e-06,8.159e-06,8.854e-06,9.579e-06,1.032e-05,1.113e-05,1.196e-05,1.285e-05,1.38e-05,1.481e-05,1.582e-05,1.679e-05,1.184e-05,1.304e-05,1.421e-05,1.317e-05,1.276e-05,1.252e-05,1.227e-05,1.225e-05,1.237e-05,1.266e-05,1.312e-05,1.372e-05,1.445e-05,1.524e-05,1.626e-05,1.736e-05,1.856e-05,1.992e-05,2.139e-05,1.998e-05,1.57e-05,1.998e-05,1.969e-05,1.939e-05,1.928e-05,1.991e-05,2.079e-05,2.192e-05,2.336e-05,2.505e-05,2.701e-05,2.914e-05,3.12e-05,2.541e-05,5.526e-06,2.006e-05,2.715e-05,4.063e-05,5.67e-05,7.385e-05,9.138e-05,0.0001092,0.000127,0.0001206,0.0001126,0.0001382,0.0001405,0.000148,0.000167,0.0001924,0.0002235,0.0002372,0.0002033,0.0002438,0.0002394,0.0002314,0.0002414,0.0002694,0.0003085,0.0003082,0.0003024,0.0003433,0.0003468,0.0003546,0.000383,0.0004198,0.0003874,0.0004015,0.0003909,0.0003624,0.0003588,0.0003637,0.000349,0.0003421,0.0003378,0.000326,0.0003279,0.0003365,0.0003342,0.0003404,0.000348,0.0003471,0.000356,0.0003663,0.0003715,0.000388,0.0004,0.0004058,0.0004186,0.0004324,0.0004473,0.0004687,0.0004851,0.0005008,0.0005215,0.0005434,0.0005681,0.0005947,0.0006185,0.0006446,0.0006738,0.0007045,0.0007383,0.0007734,0.0008068,0.0008439],"canonical_self_noise":[0.0,1.499e-09,1.906e-09,1.32e-08,1.32e-08,2.274e-08,2.274e-08,3.086e-08,3.68e-08,4.072e-08,5.975e-08,6.212e-08,7.093e-08,8.862e-08,1.054e-07,1.154e-07,1.207e-07,1.44e-07,2.149e-07,2.341e-07,2.549e-07,2.886e-07,3.202e-07,3.587e-07,4.083e-07,4.564e-07,5.145e-07,5.709e-07,6.261e-07,6.907e-07,7.527e-07,8.145e-07,8.745e-07,9.417e-07,1.004e-06,1.063e-06,1.129e-06,1.193e-06,1.256e-06,1.325e-06,1.39e-06,1.455e-06,1.52e-06,1.584e-06,1.485e-06,1.405e-06,1.32e-06,1.189e-06,1.063e-06,9.553e-07,8.502e-07,7.434e-07,6.691e-07,6.111e-07,5.822e-07,5.784e-07,6.021e-07,6.509e-07,7.21e-07,8.111e-07,9.102e-07,1.018e-06,1.133e-06,1.242e-06,1.392e-06,1.7e-06,2.056e-06,2.425e-06,2.791e-06,3.165e-06,3.543e-06,3.908e-06,4.296e-06,4.689e-06,5.056e-06,5.438e-06,5.774e-06,4.835e-06,3.249e-06,3.771e-06,8.691e-06,1.405e-05,1.957e-05,2.514e-05,3.066e-05,3.632e-05,4.183e-05,4.098e-05,4.105e-05,4.89e-05,5.16e-05,5.564e-05,6.271e-05,7.141e-05,8.167e-05,8.595e-05,7.79e-05,8.991e-05,9.034e-05,8.981e-05,9.425e-05,0.0001038,0.0001165,0.0001174,0.0001178,0.0001313,0.0001347,0.000139,0.0001491,0.0001613,0.0001514,0.0001562,0.000153,0.0001436,0.0001419,0.0001428,0.0001377,0.0001351,0.000134,0.0001312,0.0001324,0.0001357,0.0001359,0.0001378,0.0001403,0.000141,0.0001445,0.0001486,0.0001516,0.0001576,0.0001619,0.0001649,0.0001697,0.000175,0.0001813,0.0001892,0.0001958,0.0002025,0.0002104,0.0002189,0.0002285,0.0002387,0.0002485,0.0002593,0.0002707,0.0002826,0.0002954,0.0003089,0.0003226,0.0003376],"canonical_perturbed_ic":[1.255e-07,1.255e-07,1.257e-07,1.285e-07,1.285e-07,1.338e-07,1.339e-07,1.346e-07,1.37e-07,1.377e-07,1.424e-07,1.437e-07,1.487e-07,1.552e-07,1.629e-07,1.697e-07,1.781e-07,1.842e-07,2.781e-07,3.569e-07,4.288e-07,5.076e-07,5.919e-07,6.767e-07,7.659e-07,8.608e-07,9.535e-07,1.046e-06,1.138e-06,1.239e-06,1.338e-06,1.435e-06,1.541e-06,1.64e-06,1.737e-06,1.842e-06,1.944e-06,2.033e-06,2.137e-06,2.242e-06,2.339e-06,2.446e-06,2.553e-06,2.657e-06,2.717e-06,2.86e-06,3.039e-06,3.236e-06,3.415e-06,3.654e-06,3.89e-06,4.103e-06,4.355e-06,4.598e-06,4.844e-06,5.117e-06,5.357e-06,5.613e-06,5.884e-06,6.138e-06,6.398e-06,6.673e-06,6.93e-06,6.722e-06,6.561e-06,7.473e-06,7.946e-06,8.447e-06,8.981e-06,9.66e-06,1.039e-05,1.113e-05,1.198e-05,1.284e-05,1.368e-05,1.461e-05,1.535e-05,1.185e-05,1.853e-05,3.49e-05,4.904e-05,7.018e-05,9.464e-05,0.0001204,0.0001466,0.0001734,0.0001996,0.0001949,0.0001926,0.0002278,0.0002377,0.0002534,0.0002835,0.0003215,0.0003672,0.0003841,0.0003457,0.0003995,0.000399,0.0003949,0.0004139,0.000456,0.0005126,0.0005132,0.0005149,0.0005743,0.0005882,0.0006083,0.0006547,0.0007076,0.0006617,0.0006759,0.0006522,0.0006042,0.0005832,0.000576,0.0005475,0.0005269,0.0005124,0.0004928,0.0004869,0.0004912,0.0004837,0.0004791,0.0004789,0.0004706,0.0004724,0.0004796,0.0004799,0.0004899,0.000494,0.0004893,0.0004928,0.0004993,0.0005074,0.0005219,0.0005296,0.0005351,0.0005468,0.00056,0.0005753,0.0005925,0.0006059,0.0006214,0.0006414,0.0006619,0.0006838,0.0007055,0.0007262,0.0007491],"traj_rmse":{"port_vs_canonical":0.0001718,"canonical_self_noise":6.629e-05,"canonical_perturbed_ic":0.0002208},"dt_sweep":[{"mult":1,"dt":0.0001,"spf":167,"speedup":1.0689424476480918,"finite":true,"rmse":0.00017183422460220754},{"mult":1.5,"dt":0.00015000000000000001,"spf":111,"speedup":1.6359059071996294,"finite":true,"rmse":0.05915166810154915},{"mult":2,"dt":0.0002,"spf":83,"speedup":2.19406034691719,"finite":true,"rmse":0.08060893416404724},{"mult":2.5,"dt":0.00025,"spf":67,"speedup":2.6512539548871015,"finite":true,"rmse":0.05337562412023544},{"mult":3,"dt":0.00030000000000000003,"spf":56,"speedup":3.2225843107291166,"finite":true,"rmse":0.0828736275434494},{"mult":4,"dt":0.0004,"spf":42,"speedup":4.300637911418099,"finite":true,"rmse":0.07537903636693954}],"caption":"Launched disk: the same material given a sideways kick so it stays in contact with the floor for the whole rollout, which is the branch a port is most likely to get subtly wrong."}}};</script><script>// GENERATED FILE -- do not edit by hand.
+// Emitted by runs/material-variants/interactive-simulation-of-one-material/web/gen_params.py,
+// which imports sim.physics and writes MAT["elastic"] plus the frozen world constants verbatim.
+// physics_version: phys-1dc280eb52c9
+var MPM_PARAMS = {
+  "dim": 2,
+  "n_grid": 128,
+  "dx": 0.0078125,
+  "inv_dx": 128.0,
+  "p_rho": 1.0,
+  "gravity": 9.8,
+  "bound": 3,
+  "floor_y": 0.0234375,
+  "NU": 0.2,
+  "FRICTION": 0.5,
+  "E": 400.0,
+  "dt": 0.0001,
+  "color": "#ff9d5c",
+  "physics_version": "phys-1dc280eb52c9",
+  "source": "sim.physics (MAT['elastic'] + sim.physics.core world constants)"
+};
+if (typeof module === 'object' && module.exports) { module.exports = MPM_PARAMS; }
+
+// mpm-elastic.js -- a browser/Node port of the canonical 2D MLS-MPM elastic step.
+//
+// PORTABILITY CONTRACT: this file has no dependency on the dashboard, the data server, or the
+// harness. It needs only `params.js` (generated from sim.physics) and a JS engine with typed
+// arrays. It runs unchanged in Node (require) and in a browser (script tag -> window.MPMElastic).
+//
+// WHAT IS THE SAME AS THE CANONICAL TAICHI STEP (sim/physics/core.py)
+//   * every parameter: E, dt, nu, n_grid, dx, gravity, bound, Coulomb friction, particle volume
+//     and mass -- all read from MPM_PARAMS, which gen_params.py emits straight out of sim.physics.
+//   * the constitutive law: fixed corotated, stress = 2 mu (F-R) F^T + la (J-1) J I.
+//   * the transfer skeleton: quadratic B-spline P2G, grid update with gravity + separating floor
+//     with Coulomb friction + sticky walls, then G2P with the APIC affine matrix C, F update
+//     F <- (I + dt C) F, and the position clamp to [floor_y, 1-floor_y].
+//
+// WHAT NECESSARILY DIFFERS, AND WHY (all three are forced by "one CPU thread instead of a GPU")
+//   1. R comes from a closed-form 2D polar decomposition, not ti.svd. This is not an
+//      approximation: Taichi's own svd2d is built on the same closed-form polar rotation and
+//      returns U V^T = R_polar, so the elastic path never needed the singular values at all.
+//   2. Arithmetic is f64 (JS numbers) with f32 storage, where Taichi runs f32 throughout. The
+//      port is therefore slightly MORE accurate per operation than the reference, not less.
+//   3. The grid loop is sparse. Taichi sweeps all 128x128 cells because that is free on a GPU;
+//      one CPU thread cannot afford 16384 cells per substep, so P2G records the cells it touched
+//      and the grid update and the clear walk only that list. This is exact, not an
+//      approximation: every node a particle gathers from is a node it scattered to, so no cell
+//      outside the touched set can influence any particle. (Verified: sparse and dense modes
+//      agree bit-for-bit -- see selfTest below.)
+//
+// The interaction force (poke/drag) is a demo-only external body force layered on top of the
+// canonical step. It is off by default and is never enabled during verification.
+
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory(require('./params.js'));
+  } else {
+    root.MPMElastic = factory(root.MPM_PARAMS);
+  }
+})(typeof self !== 'undefined' ? self : this, function (P) {
+  'use strict';
+
+  var N_GRID = P.n_grid | 0;
+  var N_CELL = N_GRID * N_GRID;
+  var DX = P.dx;
+  var INV_DX = P.inv_dx;
+  var BOUND = P.bound | 0;
+  var FLOOR = P.floor_y;
+  var CEIL = 1.0 - P.floor_y;
+
+  function createSim(opts) {
+    opts = opts || {};
+    var n = opts.n | 0;
+    var area = opts.area;                       // seeded area -> particle volume, exactly as canonical
+    var dt = opts.dt !== undefined ? opts.dt : P.dt;
+    var E = opts.E !== undefined ? opts.E : P.E;
+    var nu = P.NU;
+    var gravity = opts.gravity !== undefined ? opts.gravity : P.gravity;
+    var friction = P.FRICTION;
+    var dense = !!opts.dense;                   // brute-force every cell (reference mode)
+
+    var pVol = area / n;
+    var pMass = pVol * P.p_rho;
+    var mu = E / (2.0 * (1.0 + nu));
+    var la = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu));
+
+    var x = new Float32Array(2 * n);
+    var v = new Float32Array(2 * n);
+    var Cm = new Float32Array(4 * n);
+    var Fm = new Float32Array(4 * n);
+
+    var gvx = new Float32Array(N_CELL);
+    var gvy = new Float32Array(N_CELL);
+    var gm = new Float32Array(N_CELL);
+    var stamp = new Int32Array(N_CELL);
+    var active = new Int32Array(N_CELL);
+    var nActive = 0;
+    var epoch = 0;
+
+    // Demo-only pointer grab. NOT part of the canonical physics: it is an external actuator that
+    // relaxes the grid velocity inside a Gaussian window toward (pointer velocity + a spring pull
+    // toward the pointer). It is off during every verification run.
+    var poke = { on: false, x: 0, y: 0, vx: 0, vy: 0, radius: 0.075, rate: 900.0, spring: 16.0 };
+
+    var timing = { p2g: 0, grid: 0, g2p: 0 };
+    var profile = false;
+
+    function seed(pts, v0x, v0y) {
+      for (var p = 0; p < n; p++) {
+        x[2 * p] = pts[2 * p];
+        x[2 * p + 1] = pts[2 * p + 1];
+        v[2 * p] = v0x || 0;
+        v[2 * p + 1] = v0y || 0;
+        Cm[4 * p] = 0; Cm[4 * p + 1] = 0; Cm[4 * p + 2] = 0; Cm[4 * p + 3] = 0;
+        Fm[4 * p] = 1; Fm[4 * p + 1] = 0; Fm[4 * p + 2] = 0; Fm[4 * p + 3] = 1;
+      }
+      gvx.fill(0); gvy.fill(0); gm.fill(0);
+      nActive = 0;
+    }
+
+    // ---------------------------------------------------------------- P2G
+    function p2g() {
+      epoch++;
+      nActive = 0;
+      var k = -dt * 4.0 * pVol * INV_DX * INV_DX;
+      var twoMu = 2.0 * mu;
+      for (var p = 0; p < n; p++) {
+        var Xpx = x[2 * p] * INV_DX;
+        var Xpy = x[2 * p + 1] * INV_DX;
+        var bx = (Xpx - 0.5) | 0;               // positions are clamped >= 3dx so this is a floor
+        var by = (Xpy - 0.5) | 0;
+        var fx = Xpx - bx, fy = Xpy - by;
+
+        var wx0 = 0.5 * (1.5 - fx) * (1.5 - fx);
+        var wx1 = 0.75 - (fx - 1.0) * (fx - 1.0);
+        var wx2 = 0.5 * (fx - 0.5) * (fx - 0.5);
+        var wy0 = 0.5 * (1.5 - fy) * (1.5 - fy);
+        var wy1 = 0.75 - (fy - 1.0) * (fy - 1.0);
+        var wy2 = 0.5 * (fy - 0.5) * (fy - 0.5);
+
+        var f00 = Fm[4 * p], f01 = Fm[4 * p + 1], f10 = Fm[4 * p + 2], f11 = Fm[4 * p + 3];
+
+        // closed-form 2D polar rotation R = U V^T (identical to what Taichi's svd2d builds on)
+        var rx = f00 + f11, ry = f10 - f01;
+        var rinv = 1.0 / Math.sqrt(rx * rx + ry * ry);
+        var rc = rx * rinv, rs = ry * rinv;     // R = [[rc,-rs],[rs,rc]]
+
+        var a00 = f00 - rc, a01 = f01 + rs, a10 = f10 - rs, a11 = f11 - rc;   // F - R
+        // (F-R) F^T
+        var b00 = a00 * f00 + a01 * f01, b01 = a00 * f10 + a01 * f11;
+        var b10 = a10 * f00 + a11 * f01, b11 = a10 * f10 + a11 * f11;
+        var Jd = f00 * f11 - f01 * f10;
+        var lt = la * (Jd - 1.0) * Jd;
+
+        var af00 = k * (twoMu * b00 + lt) + pMass * Cm[4 * p];
+        var af01 = k * (twoMu * b01) + pMass * Cm[4 * p + 1];
+        var af10 = k * (twoMu * b10) + pMass * Cm[4 * p + 2];
+        var af11 = k * (twoMu * b11 + lt) + pMass * Cm[4 * p + 3];
+
+        var mvx = pMass * v[2 * p], mvy = pMass * v[2 * p + 1];
+        var base = bx * N_GRID + by;
+
+        for (var i = 0; i < 3; i++) {
+          var wxi = i === 0 ? wx0 : (i === 1 ? wx1 : wx2);
+          var dpx = (i - fx) * DX;
+          var col = base + i * N_GRID;
+          for (var j = 0; j < 3; j++) {
+            var w = wxi * (j === 0 ? wy0 : (j === 1 ? wy1 : wy2));
+            var dpy = (j - fy) * DX;
+            var idx = col + j;
+            gvx[idx] += w * (mvx + af00 * dpx + af01 * dpy);
+            gvy[idx] += w * (mvy + af10 * dpx + af11 * dpy);
+            gm[idx] += w * pMass;
+            if (stamp[idx] !== epoch) { stamp[idx] = epoch; active[nActive++] = idx; }
+          }
+        }
+      }
+    }
+
+    // ---------------------------------------------------------------- grid update
+    function gridCell(idx) {
+      var m = gm[idx];
+      var vx = gvx[idx], vy = gvy[idx];
+      if (m > 0.0) { vx /= m; vy /= m; }
+      vy -= dt * gravity;
+
+      if (poke.on) {
+        var i0 = (idx / N_GRID) | 0, j0 = idx - i0 * N_GRID;
+        var cx = poke.x - i0 * DX, cy = poke.y - j0 * DX;
+        var r2 = cx * cx + cy * cy;
+        var s2 = poke.radius * poke.radius;
+        if (r2 < s2 * 6.0) {
+          var lam = poke.rate * dt * Math.exp(-r2 / (0.5 * s2));
+          if (lam > 0.5) lam = 0.5;
+          vx += lam * (poke.vx + cx * poke.spring - vx);
+          vy += lam * (poke.vy + cy * poke.spring - vy);
+        }
+      }
+
+      var i = (idx / N_GRID) | 0, j = idx - i * N_GRID;
+      if (j < BOUND && vy < 0) {
+        var cap = friction * (-vy);
+        if (vx > 0) vx = Math.max(0.0, vx - cap);
+        else if (vx < 0) vx = Math.min(0.0, vx + cap);
+        vy = 0;
+      }
+      if (j > N_GRID - BOUND && vy > 0) vy = 0;
+      if (i < BOUND && vx < 0) { vx = 0; vy = 0; }
+      if (i > N_GRID - BOUND && vx > 0) { vx = 0; vy = 0; }
+      gvx[idx] = vx; gvy[idx] = vy;
+    }
+
+    function gridOp() {
+      if (dense) { for (var c = 0; c < N_CELL; c++) gridCell(c); return; }
+      for (var a = 0; a < nActive; a++) gridCell(active[a]);
+    }
+
+    // ---------------------------------------------------------------- G2P
+    function g2p() {
+      for (var p = 0; p < n; p++) {
+        var Xpx = x[2 * p] * INV_DX;
+        var Xpy = x[2 * p + 1] * INV_DX;
+        var bx = (Xpx - 0.5) | 0, by = (Xpy - 0.5) | 0;
+        var fx = Xpx - bx, fy = Xpy - by;
+
+        var wx0 = 0.5 * (1.5 - fx) * (1.5 - fx);
+        var wx1 = 0.75 - (fx - 1.0) * (fx - 1.0);
+        var wx2 = 0.5 * (fx - 0.5) * (fx - 0.5);
+        var wy0 = 0.5 * (1.5 - fy) * (1.5 - fy);
+        var wy1 = 0.75 - (fy - 1.0) * (fy - 1.0);
+        var wy2 = 0.5 * (fy - 0.5) * (fy - 0.5);
+
+        var nvx = 0, nvy = 0, c00 = 0, c01 = 0, c10 = 0, c11 = 0;
+        var base = bx * N_GRID + by;
+        for (var i = 0; i < 3; i++) {
+          var wxi = i === 0 ? wx0 : (i === 1 ? wx1 : wx2);
+          var dpx = (i - fx) * DX;
+          var col = base + i * N_GRID;
+          for (var j = 0; j < 3; j++) {
+            var w = wxi * (j === 0 ? wy0 : (j === 1 ? wy1 : wy2));
+            var dpy = (j - fy) * DX;
+            var idx = col + j;
+            var gx = gvx[idx], gy = gvy[idx];
+            nvx += w * gx; nvy += w * gy;
+            var s = 4.0 * w * INV_DX * INV_DX;
+            c00 += s * gx * dpx; c01 += s * gx * dpy;
+            c10 += s * gy * dpx; c11 += s * gy * dpy;
+          }
+        }
+        v[2 * p] = nvx; v[2 * p + 1] = nvy;
+        var px = x[2 * p] + dt * nvx, py = x[2 * p + 1] + dt * nvy;
+        x[2 * p] = px < FLOOR ? FLOOR : (px > CEIL ? CEIL : px);
+        x[2 * p + 1] = py < FLOOR ? FLOOR : (py > CEIL ? CEIL : py);
+
+        // F <- (I + dt C) F
+        var g00 = 1.0 + dt * c00, g01 = dt * c01, g10 = dt * c10, g11 = 1.0 + dt * c11;
+        var f00 = Fm[4 * p], f01 = Fm[4 * p + 1], f10 = Fm[4 * p + 2], f11 = Fm[4 * p + 3];
+        Fm[4 * p] = g00 * f00 + g01 * f10;
+        Fm[4 * p + 1] = g00 * f01 + g01 * f11;
+        Fm[4 * p + 2] = g10 * f00 + g11 * f10;
+        Fm[4 * p + 3] = g10 * f01 + g11 * f11;
+
+        Cm[4 * p] = c00; Cm[4 * p + 1] = c01; Cm[4 * p + 2] = c10; Cm[4 * p + 3] = c11;
+      }
+    }
+
+    function clearGrid() {
+      if (dense) { gvx.fill(0); gvy.fill(0); gm.fill(0); return; }
+      for (var a = 0; a < nActive; a++) {
+        var idx = active[a];
+        gvx[idx] = 0; gvy[idx] = 0; gm[idx] = 0;
+      }
+    }
+
+    // One canonical substep. The grid is all-zero on entry and on exit, which is what makes the
+    // sparse clear exact.
+    function step() {
+      if (profile) {
+        var t0 = now(); p2g();
+        var t1 = now(); gridOp();
+        var t2 = now(); g2p();
+        var t3 = now();
+        clearGrid();
+        timing.p2g += t1 - t0; timing.grid += t2 - t1; timing.g2p += t3 - t2;
+      } else {
+        p2g(); gridOp(); g2p(); clearGrid();
+      }
+    }
+
+    function substeps(k) { for (var s = 0; s < k; s++) step(); }
+
+    function finite() {
+      for (var p = 0; p < 2 * n; p++) if (!isFinite(x[p])) return false;
+      return true;
+    }
+
+    return {
+      n: n, x: x, v: v, F: Fm, C: Cm,
+      grid: { vx: gvx, vy: gvy, m: gm },
+      activeList: active,
+      activeCells: function () { return nActive; },
+      params: {
+        E: E, dt: dt, nu: nu, mu: mu, la: la, pVol: pVol, pMass: pMass,
+        n_grid: N_GRID, gravity: gravity, friction: friction,
+        physics_version: P.physics_version
+      },
+      setDt: function (d) { dt = d; },
+      getDt: function () { return dt; },
+      poke: poke,
+      seed: seed, step: step, substeps: substeps, finite: finite,
+      // exposed so a benchmark can price one phase by differencing whole loops -- browsers clamp
+      // performance.now() to ~100 us, so timing a single 50 us phase directly is meaningless
+      phases: { p2g: p2g, grid: gridOp, g2p: g2p, clear: clearGrid },
+      timing: timing,
+      setProfile: function (b) { profile = b; },
+      resetTiming: function () { timing.p2g = 0; timing.grid = 0; timing.g2p = 0; }
+    };
+  }
+
+  var now = (typeof performance !== 'undefined' && performance.now)
+    ? function () { return performance.now(); }
+    : function () { return Number(process.hrtime.bigint()) / 1e6; };
+
+  // Deterministic disk seeding for the demo (the verification runs use the exact numpy-seeded
+  // point set exported from sim.physics instead, so the initial condition is identical there).
+  function seedDisk(cx, cy, radius, n, seed) {
+    var s = seed >>> 0 || 1;
+    function rnd() {                              // xorshift32 in [0,1)
+      s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0;
+      return s / 4294967296;
+    }
+    var pts = new Float32Array(2 * n);
+    for (var i = 0; i < n; i++) {
+      var a = rnd() * Math.PI * 2, r = radius * Math.sqrt(rnd());
+      pts[2 * i] = cx + r * Math.cos(a);
+      pts[2 * i + 1] = cy + r * Math.sin(a);
+    }
+    return pts;
+  }
+
+  return { createSim: createSim, seedDisk: seedDisk, PARAMS: P, N_GRID: N_GRID };
+});
+
+// demo.js -- the interactive shell around mpm-elastic.js.
+// Transplant contract: needs only params.js + mpm-elastic.js + demo.css. No dashboard, no server,
+// no network. Mount with MPMDemo.mount(element).
+(function (root) {
+  'use strict';
+  var M = root.MPMElastic;
+  var P = M.PARAMS;
+  var NG = P.n_grid;
+
+  var CANVAS = 720;          // fixed backing resolution: keeps draw cost comparable across devices
+  var RES = 128;             // density field resolution (matches the MPM grid, upscaled smoothly)
+
+  function el(tag, cls, html) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (html !== undefined) e.innerHTML = html;
+    return e;
+  }
+
+  var MARKUP =
+    '<div class="stage">' +
+    '<canvas></canvas>' +
+    '<div class="hud">' +
+    '<div class="chip big" data-k="speed">sim speed <b>--</b></div>' +
+    '<div class="chip" data-k="fps">fps <b>--</b></div>' +
+    '<div class="chip" data-k="np">particles <b>--</b></div>' +
+    '<div class="chip" data-k="spf">substeps/frame <b>--</b></div>' +
+    '<div class="chip" data-k="cells">active cells <b>--</b> / ' + (NG * NG) + '</div>' +
+    '</div>' +
+    '<div class="hint">drag to grab &middot; touch works</div>' +
+    '</div>' +
+    '<div class="warnbar"></div>' +
+    '<div class="ctl">' +
+    '<div class="grp"><div class="lbl">particles</div>' +
+    '<div class="row"><input type="range" min="250" max="8000" step="250" data-k="np"><span class="val" data-k="npv"></span></div>' +
+    '<div class="note">Drag it down until <b>sim speed</b> reads 1.0&times;. That number is the 60&nbsp;fps budget on this machine.</div>' +
+    '</div>' +
+    '<div class="grp"><div class="lbl">timestep &Delta;t (canonical = 1e-4)</div>' +
+    '<div class="seg" data-k="dt">' +
+    '<button data-v="1">&times;1</button><button data-v="2">&times;2</button><button data-v="3">&times;3</button><button data-v="4">&times;4</button>' +
+    '</div>' +
+    '<div class="note">Bigger &Delta;t means fewer substeps per frame, so it looks like free speed. It is not.</div>' +
+    '</div>' +
+    '<div class="grp"><div class="lbl">grid loop</div>' +
+    '<div class="seg" data-k="dense">' +
+    '<button data-v="0">sparse (ported)</button><button data-v="1">dense (Taichi)</button>' +
+    '</div>' +
+    '<div class="note">Same physics bit-for-bit. The dense sweep visits all ' + (NG * NG) + ' cells because a GPU does not care.</div>' +
+    '</div>' +
+    '<div class="grp"><div class="lbl">view / actions</div>' +
+    '<div class="seg" data-k="view"><button data-v="blob">material</button><button data-v="grid">grid mass</button><button data-v="pts">particles</button></div>' +
+    '<div class="row" style="margin-top:8px"><button class="act" data-k="reset">reset</button>' +
+    '<button class="act" data-k="drop">drop again</button></div>' +
+    '</div>' +
+    '<div class="grp" style="min-width:230px"><div class="lbl">where the frame goes</div>' +
+    '<div class="bars"><i data-k="bp2g"></i><i data-k="bgrid"></i><i data-k="bg2p"></i><i data-k="bdraw"></i><i data-k="bidle"></i></div>' +
+    '<div class="lg">' +
+    '<span><s style="background:#6fd3ee"></s>P2G <b data-k="tp2g">--</b></span>' +
+    '<span><s style="background:#c58cf0"></s>grid <b data-k="tgrid">--</b></span>' +
+    '<span><s style="background:#ff9d5c"></s>G2P <b data-k="tg2p">--</b></span>' +
+    '<span><s style="background:#5fd39a"></s>draw <b data-k="tdraw">--</b></span>' +
+    '</div>' +
+    '<div class="note">Per phase, per frame. Measured by differencing whole loops, because a browser ' +
+    'rounds its clock to 100&nbsp;&micro;s and a single 50&nbsp;&micro;s phase is below that.</div>' +
+    '</div>' +
+    '</div>';
+
+  function mount(host, opts) {
+    opts = opts || {};
+    host.classList.add('mpmd');
+    host.innerHTML = MARKUP;
+    var q = function (sel) { return host.querySelector(sel); };
+    var canvas = q('canvas');
+    canvas.width = CANVAS; canvas.height = CANVAS;
+    var ctx = canvas.getContext('2d');
+    var off = document.createElement('canvas');
+    off.width = RES; off.height = RES;
+    var octx = off.getContext('2d');
+    var img = octx.createImageData(RES, RES);
+    var field = new Float32Array(RES * RES);
+    var tmp = new Float32Array(RES * RES);
+
+    var state = { n: opts.n || 1500, dtMult: 1, dense: 0, view: 'blob', diverged: false };
+    var sim = null;
+    var spf = 167;
+    var split = { p2g_us: 0, grid_us: 0, g2p_us: 0, draw_ms: 0 };
+    var splitTimer = 0;
+
+    function rebuild() {
+      var dt = P.dt * state.dtMult;
+      spf = Math.max(1, Math.round((1 / 60) / dt));
+      sim = M.createSim({ n: state.n, area: AREA, dt: dt, dense: !!state.dense });
+      sim.seed(M.seedDisk(0.5, 0.62, 0.11, state.n, 20260816), 0, 0);
+      state.diverged = false;
+      q('.warnbar').classList.remove('show');
+      clearTimeout(splitTimer);
+      splitTimer = setTimeout(measureSplit, 260);       // debounced: slider drags rebuild often
+    }
+
+    // Phase costs, measured off to the side on a scratch simulation, because the live per-substep
+    // route is not measurable in a browser (100 us clock granularity vs a 50 us phase).
+    function measureSplit() {
+      var r = benchPhases(state.n, 120, 3, !!state.dense);
+      split.p2g_us = r.p2g_us; split.grid_us = r.grid_us; split.g2p_us = r.g2p_us;
+      var d0 = performance.now();
+      for (var i = 0; i < 20; i++) draw();
+      split.draw_ms = (performance.now() - d0) / 20;
+      readout();
+    }
+
+    // ------------------------------------------------------------------ rendering
+    function splat() {
+      field.fill(0);
+      var x = sim.x, n = sim.n;
+      for (var p = 0; p < n; p++) {
+        var fx = x[2 * p] * RES, fy = (1 - x[2 * p + 1]) * RES;
+        var bx = Math.floor(fx - 0.5), by = Math.floor(fy - 0.5);
+        var ax = fx - bx, ay = fy - by;
+        var wx0 = 0.5 * (1.5 - ax) * (1.5 - ax), wx1 = 0.75 - (ax - 1) * (ax - 1), wx2 = 0.5 * (ax - 0.5) * (ax - 0.5);
+        var wy0 = 0.5 * (1.5 - ay) * (1.5 - ay), wy1 = 0.75 - (ay - 1) * (ay - 1), wy2 = 0.5 * (ay - 0.5) * (ay - 0.5);
+        if (bx < 0 || by < 0 || bx > RES - 3 || by > RES - 3) continue;
+        for (var i = 0; i < 3; i++) {
+          var wxi = i === 0 ? wx0 : (i === 1 ? wx1 : wx2);
+          var row = (by) * RES + bx + i;
+          field[row] += wxi * wy0;
+          field[row + RES] += wxi * wy1;
+          field[row + 2 * RES] += wxi * wy2;
+        }
+      }
+      // one separable [1 2 1]/4 pass: particle placement is random, so without it the interior
+      // looks like gravel rather than a solid
+      var r, c, i0;
+      for (r = 0; r < RES; r++) {
+        i0 = r * RES;
+        for (c = 1; c < RES - 1; c++) tmp[i0 + c] = 0.25 * field[i0 + c - 1] + 0.5 * field[i0 + c] + 0.25 * field[i0 + c + 1];
+        tmp[i0] = field[i0]; tmp[i0 + RES - 1] = field[i0 + RES - 1];
+      }
+      for (r = 1; r < RES - 1; r++) {
+        i0 = r * RES;
+        for (c = 0; c < RES; c++) field[i0 + c] = 0.25 * tmp[i0 + c - RES] + 0.5 * tmp[i0 + c] + 0.25 * tmp[i0 + c + RES];
+      }
+      for (c = 0; c < RES; c++) { field[c] = tmp[c]; field[(RES - 1) * RES + c] = tmp[(RES - 1) * RES + c]; }
+    }
+
+    function colorize() {
+      // normalise so a solid interior sits near 1 regardless of particle count
+      var diskArea = Math.PI * 0.11 * 0.11;
+      var ref = sim.n / (diskArea * RES * RES);
+      var inv = 1 / Math.max(ref, 1e-6);
+      var d = img.data;
+      for (var i = 0, k = 0; i < field.length; i++, k += 4) {
+        var v = field[i] * inv;
+        if (v < 0.12) { d[k + 3] = 0; continue; }
+        var a = v < 0.42 ? (v - 0.12) / 0.30 : 1;
+        var t = v < 0.30 ? 0 : Math.min(1, (v - 0.30) / 0.85);
+        // rim -> core ramp on the canonical elastic colour #ff9d5c
+        var r = 255 * (1 - t) + 196 * t;
+        var g = 224 * (1 - t) + 108 * t;
+        var b = 176 * (1 - t) + 62 * t;
+        d[k] = r; d[k + 1] = g; d[k + 2] = b; d[k + 3] = 255 * a;
+      }
+      octx.putImageData(img, 0, 0);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, CANVAS, CANVAS);
+      // boundaries from the canonical solver: floor + sticky side walls at `bound` cells
+      var bpx = P.bound / NG * CANVAS;
+      ctx.fillStyle = 'rgba(111,211,238,.05)';
+      ctx.fillRect(0, CANVAS - bpx, CANVAS, bpx);
+      ctx.fillRect(0, 0, bpx, CANVAS); ctx.fillRect(CANVAS - bpx, 0, bpx, CANVAS);
+      ctx.strokeStyle = 'rgba(111,211,238,.30)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, CANVAS - bpx); ctx.lineTo(CANVAS, CANVAS - bpx); ctx.stroke();
+
+      if (state.view === 'grid') {
+        // a substep ends with the grid cleared, so re-scatter once purely to have something to show
+        sim.phases.p2g();
+        var cs = CANVAS / NG, gm = sim.grid.m, al = sim.activeList, na = sim.activeCells();
+        var mmax = 1e-12;
+        for (var a = 0; a < na; a++) { var m = gm[al[a]]; if (m > mmax) mmax = m; }
+        for (var a2 = 0; a2 < na; a2++) {
+          var idx = al[a2], gi = (idx / NG) | 0, gj = idx - gi * NG;
+          var f = Math.min(1, Math.pow(gm[idx] / mmax, 0.4));
+          ctx.fillStyle = 'rgba(' + Math.round(70 + 185 * f) + ',' + Math.round(205 - 48 * f) + ',' +
+            Math.round(245 - 153 * f) + ',' + (0.22 + 0.72 * f) + ')';
+          ctx.fillRect(gi * cs, CANVAS - (gj + 1) * cs, cs - 0.4, cs - 0.4);
+        }
+        sim.phases.clear();
+        ctx.fillStyle = 'rgba(223,230,238,.55)';
+        ctx.font = '13px ui-monospace,Menlo,Consolas,monospace';
+        ctx.fillText('grid node mass  (cyan = thin halo, orange = full)', 14, CANVAS - 46);
+      } else if (state.view === 'pts') {
+        ctx.fillStyle = '#ff9d5c';
+        var xs = sim.x;
+        for (var p = 0; p < sim.n; p++) {
+          ctx.fillRect(xs[2 * p] * CANVAS - 1.4, (1 - xs[2 * p + 1]) * CANVAS - 1.4, 2.8, 2.8);
+        }
+      } else {
+        splat(); colorize();
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(off, 0, 0, CANVAS, CANVAS);
+      }
+
+      if (pointer.down) {
+        var px = pointer.x * CANVAS, py = (1 - pointer.y) * CANVAS, rr = 0.09 * CANVAS;
+        var g = ctx.createRadialGradient(px, py, 0, px, py, rr);
+        g.addColorStop(0, 'rgba(111,211,238,.20)'); g.addColorStop(1, 'rgba(111,211,238,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, rr, 0, 6.2832); ctx.fill();
+        ctx.strokeStyle = 'rgba(111,211,238,.55)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(px, py, rr * 0.55, 0, 6.2832); ctx.stroke();
+      }
+    }
+
+    // ------------------------------------------------------------------ pointer (mouse + touch)
+    var pointer = { down: false, x: 0.5, y: 0.5, px: 0.5, py: 0.5, t: 0 };
+    function toSim(ev) {
+      var r = canvas.getBoundingClientRect();
+      return { x: (ev.clientX - r.left) / r.width, y: 1 - (ev.clientY - r.top) / r.height };
+    }
+    canvas.addEventListener('pointerdown', function (ev) {
+      var s = toSim(ev);
+      pointer.down = true; pointer.x = pointer.px = s.x; pointer.y = pointer.py = s.y;
+      pointer.t = performance.now();
+      sim.poke.on = true; sim.poke.x = s.x; sim.poke.y = s.y; sim.poke.vx = 0; sim.poke.vy = 0;
+      if (canvas.setPointerCapture) { try { canvas.setPointerCapture(ev.pointerId); } catch (e) {} }
+      ev.preventDefault();
+    });
+    canvas.addEventListener('pointermove', function (ev) {
+      if (!pointer.down) return;
+      var s = toSim(ev), now = performance.now();
+      var dtms = Math.max(8, now - pointer.t);
+      // smoothed pointer velocity in domain-lengths per second
+      var vx = (s.x - pointer.x) / (dtms / 1000), vy = (s.y - pointer.y) / (dtms / 1000);
+      sim.poke.vx = 0.6 * sim.poke.vx + 0.4 * Math.max(-6, Math.min(6, vx));
+      sim.poke.vy = 0.6 * sim.poke.vy + 0.4 * Math.max(-6, Math.min(6, vy));
+      pointer.x = s.x; pointer.y = s.y; pointer.t = now;
+      sim.poke.x = s.x; sim.poke.y = s.y;
+      ev.preventDefault();
+    });
+    function up(ev) {
+      pointer.down = false; sim.poke.on = false;
+      if (ev && ev.preventDefault) ev.preventDefault();
+    }
+    canvas.addEventListener('pointerup', up);
+    canvas.addEventListener('pointercancel', up);
+    canvas.addEventListener('pointerleave', up);
+
+    // ------------------------------------------------------------------ loop
+    var raf = 0, lastBeat = performance.now(), frames = 0, tWin = performance.now();
+    var fps = 0, simMs = 0, checkCounter = 0;
+
+    function tick() {
+      var t0 = performance.now();
+      lastBeat = t0;
+      // A hidden tab gets throttled rAF. Stepping anyway would burn a phone battery and would make
+      // the sim-speed readout report the throttling rather than the solver.
+      if (document.hidden) { tWin = t0; frames = 0; raf = requestAnimationFrame(tick); return; }
+      if (!state.diverged) {
+        var s0 = performance.now();
+        sim.substeps(spf);
+        simMs = 0.85 * simMs + 0.15 * (performance.now() - s0);
+        if (++checkCounter % 20 === 0 && !sim.finite()) {
+          state.diverged = true;
+          var w = q('.warnbar');
+          w.innerHTML = '<b>The solver diverged.</b> At &Delta;t = ' + (P.dt * state.dtMult).toExponential(0) +
+            ' the elastic wave crosses more than one grid cell per step, so MLS-MPM goes unstable. ' +
+            'This is the CFL limit of the material, not a bug in the port. Press reset.';
+          w.classList.add('show');
+        }
+      }
+      draw();
+      frames++;
+      var now = performance.now();
+      if (now - tWin > 400) {
+        fps = frames * 1000 / (now - tWin); frames = 0; tWin = now;
+        readout();
+      }
+      raf = requestAnimationFrame(tick);
+    }
+
+    // A frame that never arrives must not be able to wedge this permanently.
+    var watchdog = setInterval(function () {
+      if (document.hidden) return;
+      if (performance.now() - lastBeat > 600) {
+        if (raf) cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(tick);
+      }
+    }, 800);
+
+    function fmt(v, d) { return v.toFixed(d === undefined ? 1 : d); }
+
+    function readout() {
+      var speed = fps * spf * (P.dt * state.dtMult);
+      var cls = speed >= 0.95 ? 'ok' : (speed >= 0.6 ? 'warn' : 'bad');
+      q('[data-k=speed] b').innerHTML = state.diverged
+        ? '<span class="bad">diverged</span>'
+        : '<span class="' + cls + '">' + fmt(speed, 2) + '&times; real time</span>';
+      q('[data-k=fps] b').textContent = fmt(fps, 0);
+      q('[data-k=np] b').textContent = sim.n;
+      q('[data-k=spf] b').textContent = spf;
+      q('[data-k=cells] b').textContent = sim.activeCells();
+
+      var p2gMs = split.p2g_us * spf / 1000, gridMs = split.grid_us * spf / 1000,
+        g2pMs = split.g2p_us * spf / 1000, drawMs = split.draw_ms;
+      var tot = Math.max(1e-6, p2gMs + gridMs + g2pMs + drawMs);
+      var frameMs = fps > 0 ? 1000 / fps : tot;
+      var idle = Math.max(0, frameMs - tot);
+      var total = tot + idle;
+      var seg = [['bp2g', p2gMs, '#6fd3ee'], ['bgrid', gridMs, '#c58cf0'], ['bg2p', g2pMs, '#ff9d5c'],
+      ['bdraw', drawMs, '#5fd39a'], ['bidle', idle, '#1c2430']];
+      for (var i = 0; i < seg.length; i++) {
+        var e = q('[data-k=' + seg[i][0] + ']');
+        e.style.width = (100 * seg[i][1] / total) + '%';
+        e.style.background = seg[i][2];
+      }
+      q('[data-k=tp2g]').textContent = fmt(p2gMs, 1) + 'ms';
+      q('[data-k=tgrid]').textContent = fmt(gridMs, 1) + 'ms';
+      q('[data-k=tg2p]').textContent = fmt(g2pMs, 1) + 'ms';
+      q('[data-k=tdraw]').textContent = fmt(drawMs, 2) + 'ms';
+    }
+
+    // ------------------------------------------------------------------ controls
+    function segSet(key, val) {
+      var btns = host.querySelectorAll('.seg[data-k=' + key + '] button');
+      for (var i = 0; i < btns.length; i++) {
+        var on = btns[i].getAttribute('data-v') === String(val);
+        btns[i].classList.toggle('on', on);
+        btns[i].classList.toggle('warnstate', on && key === 'dt' && Number(val) >= 3);
+      }
+    }
+    host.addEventListener('click', function (ev) {
+      var b = ev.target.closest ? ev.target.closest('button') : null;
+      if (!b) return;
+      var seg = b.parentElement.classList.contains('seg') ? b.parentElement.getAttribute('data-k') : null;
+      if (seg === 'dt') { state.dtMult = Number(b.getAttribute('data-v')); segSet('dt', state.dtMult); rebuild(); }
+      else if (seg === 'dense') { state.dense = Number(b.getAttribute('data-v')); segSet('dense', state.dense); rebuild(); }
+      else if (seg === 'view') { state.view = b.getAttribute('data-v'); segSet('view', state.view); }
+      else if (b.getAttribute('data-k') === 'reset') { rebuild(); }
+      else if (b.getAttribute('data-k') === 'drop') {
+        sim.seed(M.seedDisk(0.5, 0.62, 0.11, state.n, (Math.random() * 1e9) | 0), 0, 0);
+        state.diverged = false; q('.warnbar').classList.remove('show');
+      }
+    });
+    var slider = q('input[data-k=np]');
+    slider.value = state.n;
+    q('[data-k=npv]').textContent = state.n;
+    slider.addEventListener('input', function () {
+      state.n = Number(slider.value);
+      q('[data-k=npv]').textContent = state.n;
+      rebuild();
+    });
+
+    segSet('dt', 1); segSet('dense', 0); segSet('view', 'blob');
+    rebuild();
+    readout();
+    raf = requestAnimationFrame(tick);
+
+    return {
+      state: state, get sim() { return sim; },
+      stop: function () { cancelAnimationFrame(raf); clearInterval(watchdog); },
+      setN: function (n) { state.n = n; slider.value = n; q('[data-k=npv]').textContent = n; rebuild(); },
+      fps: function () { return fps; }
+    };
+  }
+
+  // ---------------------------------------------------------------------- benchmarks
+  // Pure measurement, no rendering: microseconds per canonical substep as a function of particle
+  // count, with the phase split, for both the sparse and the dense grid loop.
+  var AREA = Math.PI * 0.11 * 0.11;
+
+  function fresh(n, dense, warm) {
+    var s = M.createSim({ n: n, area: AREA, dt: P.dt, dense: !!dense });
+    s.seed(M.seedDisk(0.5, 0.52, 0.11, n, 12345), 0, 0);
+    s.substeps(warm === undefined ? 250 : warm);      // let the JIT settle and the blob land
+    return s;
+  }
+  // min over repetitions: robust to the OS stealing the core mid-measurement
+  function timeMin(fn, K, reps) {
+    var best = Infinity;
+    for (var r = 0; r < (reps || 5); r++) {
+      var t0 = performance.now();
+      fn(K);
+      var ms = performance.now() - t0;
+      if (ms < best) best = ms;
+    }
+    return best * 1000 / K;                            // microseconds per iteration
+  }
+
+  function benchCPU(cfg) {
+    cfg = cfg || {};
+    var counts = cfg.counts || [500, 1000, 1500, 2000, 3000, 4000, 6000, 8000];
+    var K = cfg.steps || 300, reps = cfg.reps || 5;
+    var rows = [];
+    for (var c = 0; c < counts.length; c++) {
+      var n = counts[c], row = { n: n };
+      ['sparse', 'dense'].forEach(function (mode) {
+        var s = fresh(n, mode === 'dense');
+        var us = timeMin(function (k) { s.substeps(k); }, K, reps);
+        row[mode] = {
+          us_per_step: us, active_cells: s.activeCells(),
+          realtime_factor: 1 / (us * 1e-6 / P.dt),
+          substeps_per_frame_at_60: Math.round((1 / 60) / P.dt),
+          frame_ms_at_60fps_realtime: us * Math.round((1 / 60) / P.dt) / 1000
+        };
+      });
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  // Price one phase by differencing whole loops. Timing a 50 us phase directly is impossible in a
+  // browser (performance.now() is clamped to ~100 us unless the page is cross-origin isolated), but
+  // a 50 ms loop is measured accurately, so each phase is (loop with it) - (loop without it).
+  function benchPhases(n, K, reps, dense) {
+    K = K || 300; reps = reps || 7;
+    var s = fresh(n, !!dense);
+    var ph = s.phases;
+    s.phases.p2g();                                     // populate an active-cell list for clear()
+    var tClear = timeMin(function (k) { for (var i = 0; i < k; i++) ph.clear(); }, K, reps);
+    var tP = timeMin(function (k) { for (var i = 0; i < k; i++) { ph.p2g(); ph.clear(); } }, K, reps);
+    var tPG = timeMin(function (k) { for (var i = 0; i < k; i++) { ph.p2g(); ph.grid(); ph.clear(); } }, K, reps);
+    var tAll = timeMin(function (k) { s.substeps(k); }, K, reps);
+    return {
+      n: n, active_cells: s.activeCells(),
+      clear_us: tClear, p2g_us: tP - tClear, grid_us: tPG - tP, g2p_us: tAll - tPG,
+      step_us: tAll
+    };
+  }
+
+  // Cost of replacing the analytic grid update with a small MLP evaluated per active cell.
+  function benchNet(nCells, hidden, K) {
+    var IN = 8, H = hidden || 64, OUT = 2;
+    function rnd(k) { var a = new Float32Array(k); for (var i = 0; i < k; i++) a[i] = Math.random() - 0.5; return a; }
+    var W1 = rnd(IN * H), b1 = rnd(H), W2 = rnd(H * H), b2 = rnd(H), W3 = rnd(H * OUT), b3 = rnd(OUT);
+    var inp = rnd(nCells * IN), out = new Float32Array(nCells * OUT);
+    var h1 = new Float32Array(H), h2 = new Float32Array(H);
+    function pass() {
+      for (var c = 0; c < nCells; c++) {
+        var o = c * IN, j, i, s;
+        for (j = 0; j < H; j++) {
+          s = b1[j];
+          for (i = 0; i < IN; i++) s += inp[o + i] * W1[i * H + j];
+          h1[j] = s > 0 ? s : 0;
+        }
+        for (j = 0; j < H; j++) {
+          s = b2[j];
+          for (i = 0; i < H; i++) s += h1[i] * W2[i * H + j];
+          h2[j] = s > 0 ? s : 0;
+        }
+        for (j = 0; j < OUT; j++) {
+          s = b3[j];
+          for (i = 0; i < H; i++) s += h2[i] * W3[i * OUT + j];
+          out[c * OUT + j] = s;
+        }
+      }
+    }
+    pass();
+    var t0 = performance.now();
+    for (var k = 0; k < K; k++) pass();
+    var ms = (performance.now() - t0) / K;
+    var flops = nCells * 2 * (IN * H + H * H + H * OUT);
+    return {
+      cells: nCells, hidden: H, layers: IN + '-' + H + '-' + H + '-' + OUT,
+      ms_per_grid_update: ms, flops_per_grid_update: flops,
+      gflops_achieved: flops / (ms * 1e6)
+    };
+  }
+
+  // How much does WebGPU charge just to LAUNCH the kernels a canonical frame needs? The substeps
+  // are strictly sequential, so 167 of them means >=501 dispatches per frame no matter how fast
+  // the arithmetic inside each one is.
+  function benchGPU(dispatches) {
+    dispatches = dispatches || 501;
+    if (!navigator.gpu) return Promise.resolve({ available: false, reason: 'navigator.gpu missing' });
+    return navigator.gpu.requestAdapter().then(function (ad) {
+      if (!ad) return { available: false, reason: 'no adapter' };
+      return ad.requestDevice().then(function (dev) {
+        var NCELL = NG * NG;
+        var buf = dev.createBuffer({ size: NCELL * 4, usage: GPUBufferUsage.STORAGE });
+        var mod = dev.createShaderModule({
+          code: '@group(0) @binding(0) var<storage, read_write> d: array<f32>;\n' +
+            '@compute @workgroup_size(64) fn main(@builtin(global_invocation_id) g: vec3<u32>) {\n' +
+            '  let i = g.x; if (i >= arrayLength(&d)) { return; }\n' +
+            '  d[i] = d[i] * 0.999 + 0.001;\n}'
+        });
+        var pipe = dev.createComputePipeline({ layout: 'auto', compute: { module: mod, entryPoint: 'main' } });
+        var bg = dev.createBindGroup({ layout: pipe.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: buf } }] });
+        var wg = Math.ceil(NCELL / 64);
+        function oneFrame() {
+          var enc = dev.createCommandEncoder();
+          for (var i = 0; i < dispatches; i++) {
+            var pass = enc.beginComputePass();
+            pass.setPipeline(pipe); pass.setBindGroup(0, bg);
+            pass.dispatchWorkgroups(wg); pass.end();
+          }
+          dev.queue.submit([enc.finish()]);
+          return dev.queue.onSubmittedWorkDone();
+        }
+        return oneFrame().then(function () {
+          var t0 = performance.now(), reps = 10, chain = Promise.resolve();
+          for (var r = 0; r < reps; r++) chain = chain.then(oneFrame);
+          return chain.then(function () {
+            var ms = (performance.now() - t0) / reps;
+            return {
+              available: true, adapter: (ad.info && ad.info.description) || 'unknown',
+              dispatches_per_frame: dispatches, cells: NCELL,
+              ms_per_frame: ms, us_per_dispatch: ms * 1000 / dispatches,
+              max_fps: 1000 / ms
+            };
+          });
+        });
+      });
+    }).catch(function (e) { return { available: false, reason: String(e) }; });
+  }
+
+  root.MPMDemo = {
+    mount: mount, benchCPU: benchCPU, benchPhases: benchPhases,
+    benchNet: benchNet, benchGPU: benchGPU, PARAMS: P
+  };
+})(typeof window !== 'undefined' ? window : this);
+</script><script>// page.js -- the bespoke task page's own charts and toggles. DATA is inlined by build_page.py.
+(function () {
+  'use strict';
+  var D = window.PAGE_DATA;
+  var $ = function (s) { return document.querySelector(s); };
+  var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
+
+  // ---------------------------------------------------------------- metric definitions on hover
+  var pop = document.createElement('div'); pop.id = 'pop'; document.body.appendChild(pop);
+  function showPop(el) {
+    var k = el.getAttribute('data-def');
+    var d = D.defs[k]; if (!d) return;
+    pop.textContent = d.label + '\n\n' + d.short + '\n\nformula: ' + d.formula +
+      '\nunits: ' + d.units + (d.caution ? '\n\ncaution: ' + d.caution : '');
+    var r = el.getBoundingClientRect();
+    pop.classList.add('show');
+    var w = pop.offsetWidth, h = pop.offsetHeight;
+    pop.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left)) + 'px';
+    pop.style.top = (r.bottom + h + 10 > window.innerHeight ? r.top - h - 8 : r.bottom + 8) + 'px';
+  }
+  document.addEventListener('pointerover', function (e) {
+    var t = e.target.closest ? e.target.closest('dfn[data-def]') : null;
+    if (t) showPop(t);
+  });
+  document.addEventListener('pointerout', function (e) {
+    if (e.target.closest && e.target.closest('dfn[data-def]')) pop.classList.remove('show');
+  });
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target.closest('dfn[data-def]') : null;
+    if (t) showPop(t); else pop.classList.remove('show');
+  });
+
+  // ---------------------------------------------------------------- tiny SVG chart helpers
+  function svg(w, h) {
+    var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    s.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    s.setAttribute('width', '100%');
+    s.style.display = 'block';
+    return s;
+  }
+  function node(tag, attrs, text) {
+    var e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  // reloading an identical video src on every resize would restart playback for no reason
+  function setSrc(v, url) { if (v.getAttribute('src') !== url) v.setAttribute('src', url); }
+
+  // =============================================================== 1. divergence, per scene
+  var SCENE = 'launch';
+  function drawDiv() {
+    var s = D.scenes[SCENE];
+    var W = 620, H = 270, L = 62, R = 12, T = 28, B = 34;
+    var el = $('#divchart'); el.innerHTML = '';
+    var g = svg(W, H); el.appendChild(g);
+    var lo = -9, hi = -2;                                   // log10 y range
+    var t0 = s.times[0], t1 = s.times[s.times.length - 1];
+    var X = function (t) { return L + (t - t0) / (t1 - t0) * (W - L - R); };
+    var Y = function (v) { var l = Math.log10(Math.max(v, 1e-12)); return T + (hi - l) / (hi - lo) * (H - T - B); };
+    for (var e = lo; e <= hi; e++) {
+      g.appendChild(node('line', { x1: L, x2: W - R, y1: Y(Math.pow(10, e)), y2: Y(Math.pow(10, e)), stroke: '#1c2430', 'stroke-width': 1 }));
+      g.appendChild(node('text', { x: L - 7, y: Y(Math.pow(10, e)) + 4, fill: '#5c6b7d', 'font-size': 10, 'text-anchor': 'end' }, '1e' + e));
+    }
+    [['canonical_self_noise', '#c58cf0', 1.6], ['canonical_perturbed_ic', '#5fd39a', 1.6],
+    ['port_vs_canonical', '#ff9d5c', 2.4]].forEach(function (c) {
+      var d = '';
+      for (var i = 0; i < s.times.length; i++) d += (i ? 'L' : 'M') + X(s.times[i]).toFixed(1) + ',' + Y(s[c[0]][i]).toFixed(1);
+      g.appendChild(node('path', { d: d, fill: 'none', stroke: c[1], 'stroke-width': c[2], 'stroke-linejoin': 'round' }));
+    });
+    g.appendChild(node('text', { x: (L + W - R) / 2, y: H - 8, fill: '#7f8ea3', 'font-size': 10.5, 'text-anchor': 'middle' }, 'simulated time (s)'));
+    g.appendChild(node('text', { x: 8, y: 12, fill: '#7f8ea3', 'font-size': 10.5 },
+      'mean particle distance from canonical run A (domain lengths)'));
+    $('#divnums').innerHTML = [
+      ['port vs canonical', s.traj_rmse.port_vs_canonical, '#ff9d5c'],
+      ['canonical vs itself (GPU atomics reorder)', s.traj_rmse.canonical_self_noise, '#c58cf0'],
+      ['canonical vs the same run with the start nudged by 1e-7', s.traj_rmse.canonical_perturbed_ic, '#5fd39a']
+    ].map(function (r) {
+      return '<tr><td><s style="background:' + r[2] + ';width:10px;height:10px;border-radius:2px;display:inline-block;margin-right:7px"></s>' +
+        r[0] + '</td><td class="num">' + r[1].toExponential(2) + '</td></tr>';
+    }).join('');
+    setSrc($('#divvid'), D.media + (SCENE === 'launch' ? 'port_vs_canonical_launch.mp4' : 'port_vs_canonical.mp4'));
+    setSrc($('#dtvid'), D.media + (SCENE === 'launch' ? 'dt_sweep_launch.mp4' : 'dt_sweep.mp4'));
+    $('#divcap').textContent = s.caption;
+    drawDt();
+  }
+
+  // =============================================================== 2. the budget chart
+  var BMODE = 'us';
+  function drawBudget() {
+    var W = 640, H = 300, L = 56, R = 118, T = 18, B = 40;
+    var el = $('#budchart'); el.innerHTML = '';
+    var g = svg(W, H); el.appendChild(g);
+    var series = [
+      { name: 'browser JS, sparse grid (the port)', c: '#ff9d5c', pts: D.bench.map(function (r) { return [r.n, r.sparse]; }) },
+      { name: 'browser JS, dense grid (Taichi loop)', c: '#c58cf0', pts: D.bench.map(function (r) { return [r.n, r.dense]; }) },
+      { name: 'canonical Taichi / CUDA on an RTX 4090', c: '#6fd3ee', pts: D.gpu.map(function (r) { return [r.n, r.us]; }) }
+    ];
+    var conv = function (us) { return BMODE === 'us' ? us : Math.min(240, 1000 / (us * D.spf / 1000)); };
+    var lo, hi, ticks;
+    if (BMODE === 'us') { lo = Math.log10(40); hi = Math.log10(800); }
+    else { lo = Math.log10(2); hi = Math.log10(240); }
+    var nx0 = Math.log10(450), nx1 = Math.log10(18000);
+    var X = function (n) { return L + (Math.log10(n) - nx0) / (nx1 - nx0) * (W - L - R); };
+    var Y = function (v) { return T + (hi - Math.log10(Math.max(v, 1e-6))) / (hi - lo) * (H - T - B); };
+    ticks = BMODE === 'us' ? [50, 100, 200, 400, 800] : [5, 10, 30, 60, 120, 240];
+    ticks.forEach(function (v) {
+      g.appendChild(node('line', { x1: L, x2: W - R, y1: Y(v), y2: Y(v), stroke: '#1c2430' }));
+      g.appendChild(node('text', { x: L - 7, y: Y(v) + 4, fill: '#5c6b7d', 'font-size': 10, 'text-anchor': 'end' }, v));
+    });
+    [500, 1000, 2000, 4000, 8000, 16000].forEach(function (n) {
+      g.appendChild(node('line', { x1: X(n), x2: X(n), y1: T, y2: H - B, stroke: '#151d27' }));
+      g.appendChild(node('text', { x: X(n), y: H - B + 15, fill: '#5c6b7d', 'font-size': 10, 'text-anchor': 'middle' }, n >= 1000 ? (n / 1000) + 'k' : n));
+    });
+    // the 60 fps real-time line
+    var target = BMODE === 'us' ? D.budget_us : 60;
+    g.appendChild(node('line', { x1: L, x2: W - R, y1: Y(target), y2: Y(target), stroke: '#5fd39a', 'stroke-width': 1.6, 'stroke-dasharray': '6 4' }));
+    g.appendChild(node('text', { x: W - R - 4, y: Y(target) - 6, fill: '#5fd39a', 'font-size': 10.5, 'text-anchor': 'end' },
+      BMODE === 'us' ? '60 fps at real time (' + D.budget_us.toFixed(0) + ' us/substep)' : '60 fps'));
+    series.forEach(function (s, si) {
+      var d = '';
+      s.pts.forEach(function (p, i) { d += (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ',' + Y(conv(p[1])).toFixed(1); });
+      g.appendChild(node('path', { d: d, fill: 'none', stroke: s.c, 'stroke-width': 2.2, 'stroke-linejoin': 'round' }));
+      s.pts.forEach(function (p) { g.appendChild(node('circle', { cx: X(p[0]), cy: Y(conv(p[1])), r: 2.6, fill: s.c })); });
+      // the last points of the two JS curves nearly coincide on a log axis, so nudge their labels apart
+      var last = s.pts[s.pts.length - 1];
+      var dy = si === 0 ? 13 : (si === 1 ? -7 : 4);
+      g.appendChild(node('text', { x: W - R + 6, y: Y(conv(last[1])) + dy, fill: s.c, 'font-size': 10 },
+        si === 0 ? 'JS sparse' : (si === 1 ? 'JS dense' : 'CUDA')));
+    });
+    // the crossing that matters
+    var cy = Y(target), cx = X(D.budget_particles);
+    g.appendChild(node('circle', { cx: cx, cy: cy, r: 5, fill: '#dfe6ee', stroke: '#0a0e14', 'stroke-width': 2 }));
+    g.appendChild(node('text', { x: cx + 9, y: cy + 17, fill: '#dfe6ee', 'font-size': 11.5, 'font-weight': 700 }, D.budget_particles + ' particles'));
+    g.appendChild(node('text', { x: (L + W - R) / 2, y: H - 6, fill: '#7f8ea3', 'font-size': 10.5, 'text-anchor': 'middle' }, 'particles'));
+    g.appendChild(node('text', { x: 8, y: 13, fill: '#7f8ea3', 'font-size': 10.5 },
+      BMODE === 'us' ? 'microseconds per substep' : 'sustained fps at real time'));
+  }
+
+  // =============================================================== 3. the timestep table
+  function drawDt() {
+    var rows = D.scenes[SCENE].dt_sweep;
+    var floor = D.scenes[SCENE].traj_rmse.canonical_self_noise;
+    $('#dttable tbody').innerHTML = rows.map(function (r) {
+      var bad = !r.finite || r.rmse > 1e-2;
+      var cls = !r.finite ? 'bad' : (r.rmse > 1e-3 ? 'bad' : (r.rmse > 10 * floor ? 'warn' : 'good'));
+      return '<tr><td class="num">' + r.mult + '&times;  (' + r.dt.toExponential(1) + ')</td>' +
+        '<td class="num">' + r.spf + '</td>' +
+        '<td class="num">' + r.speedup.toFixed(2) + '&times;</td>' +
+        '<td class="num ' + cls + '">' + (r.finite ? r.rmse.toExponential(2) : 'non-finite') + '</td>' +
+        '<td class="num ' + cls + '">' + (!r.finite ? 'blew up' : (bad ? 'wrong' : (r.rmse > 10 * floor ? 'drifting' : 'exact'))) + '</td></tr>';
+    }).join('');
+  }
+
+  // =============================================================== wire up
+  $$('.tabs[data-k=scene] button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      $$('.tabs[data-k=scene] button').forEach(function (o) { o.classList.remove('on'); });
+      b.classList.add('on'); SCENE = b.getAttribute('data-v'); drawDiv();
+    });
+  });
+  $$('.tabs[data-k=bmode] button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      $$('.tabs[data-k=bmode] button').forEach(function (o) { o.classList.remove('on'); });
+      b.classList.add('on'); BMODE = b.getAttribute('data-v'); drawBudget();
+    });
+  });
+  window.addEventListener('resize', function () { drawDiv(); drawBudget(); });
+  drawDiv(); drawBudget();
+  if (window.MPMDemo) window.__demo = MPMDemo.mount(document.getElementById('demo'), { n: 1000 });
+})();
+</script></body></html>

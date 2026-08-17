@@ -117,6 +117,11 @@
      "id": "fluid-color-mixing",
      "title": "Two liquids in one solver: advecting a color",
      "file": "core/13-fluid-color-mixing.md"
+    },
+    {
+     "id": "real-time-cost",
+     "title": "What a real-time step costs",
+     "file": "core/14-real-time-cost.md"
     }
    ]
   }

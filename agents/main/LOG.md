@@ -35,3 +35,29 @@ them). Workers repeatedly ended their turn on long background GPU jobs (a runtim
 resumed them via `SendMessage(agentId)`; the reliable fix was constraining a resume to narrative-only. Ran
 the GPU-renderer benchmark alone to avoid GPU-timing contention. Durable ops lessons recorded in
 `coordination/shared_memory/orchestration-lessons.md`.
+
+## worker: interactive-simulation-of-one-material (material-variants)
+Ported the canonical elastic MLS-MPM step to single-threaded JavaScript so it runs interactively in a
+browser, verified it against `sim.physics`, and measured what interactive rates cost.
+- **Port is exact.** traj_rmse 1.7e-4 (launched-disk, 2.5 s) against canonical, versus 0.7e-4 self-noise
+  and 2.2e-4 for a 1e-7 initial-condition nudge, so the divergence is chaos, not bias. Verified on two
+  scenes; drop scene 1.5e-5 vs 1.0e-5 self-noise.
+- **Parameters generated, never retyped** (`web/gen_params.py` imports `sim.physics` -> `web/params.js`,
+  physics-version stamped). Constitutive law unchanged.
+- **Three forced changes:** `ti.svd` deleted (2D elastic needs only the closed-form polar rotation, which
+  is what Taichi's own svd2d is built on); dense grid loop rewritten sparse (exact, bit-identical over
+  3340 substeps); f64 arithmetic with f32 storage.
+- **The cost finding:** dt=1e-4 forces 167 substeps/frame, capping the machine at ~1154 particles at
+  60 fps. Taichi's dense grid sweep alone is 15.6 ms/frame of empty cells. Canonical CUDA is *flat* at
+  ~345 us/substep from 500 to 16384 particles (launch-bound), so one JS thread beats an RTX 4090 below
+  ~4300 particles. Raising dt 1.5x costs 3 orders of magnitude of accuracy while still looking stable.
+- **Learned grid update priced, not trained:** smallest useful MLP is 242x the analytic update in JS
+  (13x over the frame budget); on GPU it is free relative to analytic but only because both hide under a
+  56 us kernel launch. Conjecture recorded: only a coarse-time (once-per-frame) learned update could win.
+- Two engine gotchas worth remembering: `performance.now()` is clamped to 100 us in Chromium, so
+  per-substep phase profiling is garbage and phases must be priced by differencing whole loops; and the
+  dashboard renders every manifest prose field as **plain text**, so markdown tables belong in
+  `results[]` as `type: "table"`, never in `full_report`.
+- Textbook: new core page `real-time-cost`; revised `svd-polar` (added the 2D closed-form polar rotation
+  and corrected the claim that the SVD is the numerically stable route to R) and `material-stiffness`
+  (the CFL wall is now measured; accuracy dies before stability does).

@@ -1,0 +1,45 @@
+/* elastic-in-a-browser demo -- self-contained, no external fonts, no CDN */
+.mpmd{--bg:#0a0e14;--pnl:#0d131b;--edge:#1c2430;--edge2:#22303f;--txt:#dfe6ee;--mut:#7f8ea3;
+  --acc:#6fd3ee;--mat:#ff9d5c;--ok:#5fd39a;--bad:#ff8f6b;
+  color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",sans-serif;font-size:14px;line-height:1.5}
+.mpmd *{box-sizing:border-box}
+.mpmd .stage{position:relative;border:1px solid var(--edge2);border-radius:8px;overflow:hidden;
+  background:radial-gradient(120% 90% at 50% 0%,#101a24 0%,#070a0f 70%);box-shadow:0 12px 40px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.05)}
+.mpmd canvas{display:block;width:100%;height:auto;touch-action:none;cursor:crosshair;image-rendering:auto}
+.mpmd .hud{position:absolute;left:10px;top:10px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+.mpmd .chip{background:rgba(8,12,18,.78);border:1px solid var(--edge2);border-radius:5px;padding:5px 9px;
+  font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;color:var(--mut);backdrop-filter:blur(6px)}
+.mpmd .chip b{color:var(--txt);font-weight:600}
+.mpmd .chip.big b{font-size:14px}
+.mpmd .chip .ok{color:var(--ok)}.mpmd .chip .bad{color:var(--bad)}.mpmd .chip .warn{color:#ffcc66}
+.mpmd .hint{position:absolute;right:10px;bottom:10px;font-size:11.5px;color:#5c6b7d;pointer-events:none;
+  font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.03em}
+.mpmd .ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;margin-top:12px}
+.mpmd .grp{border:1px solid var(--edge);border-radius:6px;background:var(--pnl);padding:9px 11px;flex:1;min-width:190px}
+.mpmd .grp>.lbl{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.09em;color:var(--mut);margin-bottom:7px}
+.mpmd .seg{display:flex;border:1px solid var(--edge2);border-radius:5px;overflow:hidden;width:100%}
+.mpmd .seg button{flex:1;padding:7px 4px;background:#0f1620;color:#8b9aad;border:0;border-right:1px solid var(--edge2);
+  font:inherit;font-size:12.5px;cursor:pointer;transition:background .12s,color .12s}
+.mpmd .seg button:last-child{border-right:0}
+.mpmd .seg button:hover{color:#cfd9e6;background:#141d29}
+.mpmd .seg button.on{background:rgba(23,176,212,.16);color:var(--acc);font-weight:600;box-shadow:inset 0 -2px 0 var(--acc)}
+.mpmd .seg button.on.warnstate{background:rgba(255,143,107,.16);color:var(--bad);box-shadow:inset 0 -2px 0 var(--bad)}
+.mpmd .row{display:flex;align-items:center;gap:9px}
+.mpmd input[type=range]{flex:1;accent-color:var(--acc);height:20px}
+.mpmd .val{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--txt);flex:0 0 auto;min-width:46px;text-align:right}
+.mpmd input[type=range]{min-width:0}
+.mpmd .note{font-size:11.5px;color:var(--mut);margin-top:7px;line-height:1.45}
+.mpmd .note b{color:#b9c6d6;font-weight:600}
+.mpmd button.act{padding:7px 12px;background:#0f1620;color:#a8b7c8;border:1px solid var(--edge2);border-radius:5px;
+  font:inherit;font-size:12.5px;cursor:pointer}
+.mpmd button.act:hover{color:#e2ebf5;border-color:#3a4c61;background:#141d29}
+.mpmd button.act:active{transform:translateY(1px)}
+.mpmd .bars{display:flex;height:10px;border-radius:3px;overflow:hidden;border:1px solid var(--edge2);margin-top:2px}
+.mpmd .bars i{display:block;height:100%}
+.mpmd .lg{display:flex;gap:11px;flex-wrap:wrap;font-size:11px;color:var(--mut);margin-top:6px;
+  font-family:ui-monospace,Menlo,Consolas,monospace}
+.mpmd .lg s{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:4px;vertical-align:-1px}
+.mpmd .warnbar{margin-top:10px;border:1px solid #6b3a2a;background:#1b100c;color:#ffb08c;border-radius:6px;
+  padding:8px 11px;font-size:12.5px;display:none}
+.mpmd .warnbar.show{display:block}

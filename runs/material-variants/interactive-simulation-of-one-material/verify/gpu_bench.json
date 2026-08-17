@@ -1,0 +1,71 @@
+{
+  "n_grid": 128,
+  "n_cells": 16384,
+  "physics_version": "phys-1dc280eb52c9",
+  "arch": "Arch.cuda",
+  "hidden": 32,
+  "mlp_shape": "8-32-32-2",
+  "substeps_per_frame_at_60fps": 167,
+  "per_n": [
+    {
+      "n": 500,
+      "us_per_step": 344.65549997548806,
+      "realtime_factor": 0.2901447967814586,
+      "frame_ms_at_60fps_realtime": 57.557468495906505
+    },
+    {
+      "n": 1000,
+      "us_per_step": 356.2817499914672,
+      "realtime_factor": 0.28067673969378154,
+      "frame_ms_at_60fps_realtime": 59.499052248575026
+    },
+    {
+      "n": 1500,
+      "us_per_step": 347.1782500128029,
+      "realtime_factor": 0.2880364769288177,
+      "frame_ms_at_60fps_realtime": 57.97876775213808
+    },
+    {
+      "n": 2000,
+      "us_per_step": 344.3037500255741,
+      "realtime_factor": 0.2904412164914621,
+      "frame_ms_at_60fps_realtime": 57.49872625427088
+    },
+    {
+      "n": 3000,
+      "us_per_step": 365.8960000029765,
+      "realtime_factor": 0.27330170321399117,
+      "frame_ms_at_60fps_realtime": 61.10463200049708
+    },
+    {
+      "n": 4000,
+      "us_per_step": 346.95149999606656,
+      "realtime_factor": 0.2882247230553369,
+      "frame_ms_at_60fps_realtime": 57.940900499343115
+    },
+    {
+      "n": 6000,
+      "us_per_step": 352.07624998292886,
+      "realtime_factor": 0.28402938285342655,
+      "frame_ms_at_60fps_realtime": 58.79673374714912
+    },
+    {
+      "n": 8000,
+      "us_per_step": 341.12675002688775,
+      "realtime_factor": 0.29314616925268383,
+      "frame_ms_at_60fps_realtime": 56.968167254490254
+    },
+    {
+      "n": 16384,
+      "us_per_step": 379.03649998042965,
+      "realtime_factor": 0.2638268346324515,
+      "frame_ms_at_60fps_realtime": 63.29909549673175
+    }
+  ],
+  "noop_launch_us": 56.43087501084665,
+  "grid_op_only_us": 84.02000001296983,
+  "mlp_us_760cells": 80.64533331586668,
+  "mlp_us_16384cells": 86.55400000861846,
+  "mlp_frame_ms_760cells": 13.467770663749736,
+  "mlp_frame_ms_16384cells": 14.454518001439283
+}

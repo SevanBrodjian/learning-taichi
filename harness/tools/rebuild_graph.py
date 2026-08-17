@@ -43,6 +43,7 @@ TAGS = {
     "improve-basic-fluid-sim-realism":                   ["rendering", "materials"],
     "gpu-accelerate-fluid-renderer":                     ["rendering"],
     "more-realistic-basic-fluid-sims":                   ["rendering"],
+    "interactive-simulation-of-one-material":            ["materials"],
 }
 
 # ── the derived graph ───────────────────────────────────────────────────────────────────────────────
@@ -113,6 +114,15 @@ GRAPH = {
     "gpu-accelerate-fluid-renderer": [
         ("improve-basic-fluid-sim-realism", "extends", "ports that exact pipeline to the GPU, parity-checked"),
     ],
+    "interactive-simulation-of-one-material": [
+        ("implement-nondifferentiable-material-variants", "applies",
+         "ports that forward elastic material out of Taichi into the browser; forward sim, no gradients"),
+        ("gpu-accelerate-fluid-renderer", "applies",
+         "same method - profile where the frame time ACTUALLY goes before optimising - but it lands on the "
+         "opposite answer: there the render was the whole cost and the physics free; here draw is 0.15ms and "
+         "the 167 substeps are the wall"),
+    ],
+
     "more-realistic-basic-fluid-sims": [
         ("gpu-accelerate-fluid-renderer", "applies", "only affordable because the GPU port made it ~130x faster"),
         ("improve-basic-fluid-sim-realism", "extends", "showcases the realism work at length"),

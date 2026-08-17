@@ -77,6 +77,13 @@ without bound, the exact overflow-to-NaN blow-up that [[failure-modes]] dissects
 up for free. A stiffer material is also a more expensive one, because holding it stable demands more, and
 finer, steps to cover the same simulated time.
 
+Approaching that limit from the other side is more instructive than crossing it. Raising $\Delta t$ on a
+stiff elastic solid destroys the trajectory **long before** it destroys stability: at 1.5 times a
+CFL-number-0.27 timestep the material is still stable, still looks like rubber, and has already drifted
+three orders of magnitude from the reference trajectory. Blow-up only arrives past four times. The
+dangerous regime is therefore the stable-looking one, and the cost of staying inside it, measured in
+substeps per displayed frame, is what [[real-time-cost]] works out.
+
 ## Gradients: a stiffer material needs a smaller learning rate
 
 The reason $E$ belongs in the core rather than a physics footnote is what it does to the loss landscape a
@@ -103,6 +110,7 @@ The relations above are the scalings the model equations force, read off the str
 mass-spring and CFL arguments, not constants measured from a sweep. They fix the exponents, that
 equilibrium compression goes as $1/E$, frequency and wave speed as $\sqrt{E}$, stable timestep as
 $1/\sqrt{E}$, and usable learning rate as about $1/E$, but the proportionality constants depend on
-resolution, Poisson ratio, and blob geometry. Pinning those constants, and checking that the $1/E$ step-size
-scaling holds across a real control task rather than only in the local-curvature argument, is a concrete
-measurement a stiffness sweep would settle.
+resolution, Poisson ratio, and blob geometry. The timestep exponent now has one measured point against it,
+a single stiffness whose CFL wall sits where the argument says, but a sweep over $E$ would be needed to
+confirm the exponent rather than the location. Checking that the $1/E$ step-size scaling holds across a real
+control task, rather than only in the local-curvature argument, is still entirely untested.

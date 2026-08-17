@@ -1,0 +1,62 @@
+{
+  "_note": "Measured in-page by MPMDemo.benchCPU / benchPhases / benchNet (web/demo.js). Every number is a MINIMUM over 5 repetitions of a 250-substep loop, which is robust to the OS stealing the core mid-measurement. Per-phase costs come from differencing whole loops because this engine quantises performance.now() to 0.1 ms.",
+  "measured": "2026-08-16",
+  "machine": {
+    "cpu": "Intel64 Family 6 Model 183 (Raptor Lake), 32 logical cores, Windows 11 Pro 26200",
+    "gpu_for_reference_sim": "NVIDIA GeForce RTX 4090, driver 591.86 (used only by the canonical Taichi/CUDA simulator)",
+    "note": "the JS port is single-threaded and uses no GPU compute at all"
+  },
+  "engine": {
+    "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Claude/1.30096.5 Chrome/148.0.7778.280 Electron/42.7.0 Safari/537.36 MSIX",
+    "engine_short": "Chromium 148 / V8 (Electron 42 embedded browser)",
+    "cores_reported": 32,
+    "webgpu_available": false,
+    "clock_resolution_ms": 0.1
+  },
+  "canonical_dt": 0.0001,
+  "substeps_per_frame_at_60fps": 167,
+  "us_per_substep_budget_at_60fps_realtime": 99.8,
+  "cpu_sweep": [
+    {"n": 500,  "sparse": {"us_per_step": 47.2,  "active_cells": 717, "realtime_factor": 2.119, "frame_ms_at_60fps_realtime": 7.88},
+                 "dense":  {"us_per_step": 149.6, "active_cells": 717, "realtime_factor": 0.668, "frame_ms_at_60fps_realtime": 24.98}},
+    {"n": 750,  "sparse": {"us_per_step": 66.8,  "active_cells": 735, "realtime_factor": 1.497, "frame_ms_at_60fps_realtime": 11.16},
+                 "dense":  {"us_per_step": 169.6, "active_cells": 735, "realtime_factor": 0.590, "frame_ms_at_60fps_realtime": 28.32}},
+    {"n": 1000, "sparse": {"us_per_step": 88.0,  "active_cells": 741, "realtime_factor": 1.136, "frame_ms_at_60fps_realtime": 14.70},
+                 "dense":  {"us_per_step": 190.0, "active_cells": 741, "realtime_factor": 0.526, "frame_ms_at_60fps_realtime": 31.73}},
+    {"n": 1250, "sparse": {"us_per_step": 107.2, "active_cells": 749, "realtime_factor": 0.933, "frame_ms_at_60fps_realtime": 17.90},
+                 "dense":  {"us_per_step": 221.2, "active_cells": 749, "realtime_factor": 0.452, "frame_ms_at_60fps_realtime": 36.94}},
+    {"n": 1500, "sparse": {"us_per_step": 128.0, "active_cells": 757, "realtime_factor": 0.781, "frame_ms_at_60fps_realtime": 21.38},
+                 "dense":  {"us_per_step": 227.2, "active_cells": 757, "realtime_factor": 0.440, "frame_ms_at_60fps_realtime": 37.94}},
+    {"n": 2000, "sparse": {"us_per_step": 166.8, "active_cells": 761, "realtime_factor": 0.600, "frame_ms_at_60fps_realtime": 27.86},
+                 "dense":  {"us_per_step": 266.0, "active_cells": 761, "realtime_factor": 0.376, "frame_ms_at_60fps_realtime": 44.42}},
+    {"n": 3000, "sparse": {"us_per_step": 312.4, "active_cells": 768, "realtime_factor": 0.320, "frame_ms_at_60fps_realtime": 52.17},
+                 "dense":  {"us_per_step": 352.4, "active_cells": 768, "realtime_factor": 0.284, "frame_ms_at_60fps_realtime": 58.85}},
+    {"n": 4000, "sparse": {"us_per_step": 333.2, "active_cells": 778, "realtime_factor": 0.300, "frame_ms_at_60fps_realtime": 55.64},
+                 "dense":  {"us_per_step": 427.6, "active_cells": 778, "realtime_factor": 0.234, "frame_ms_at_60fps_realtime": 71.41}},
+    {"n": 6000, "sparse": {"us_per_step": 488.8, "active_cells": 783, "realtime_factor": 0.205, "frame_ms_at_60fps_realtime": 81.63},
+                 "dense":  {"us_per_step": 588.8, "active_cells": 783, "realtime_factor": 0.170, "frame_ms_at_60fps_realtime": 98.33}},
+    {"n": 8000, "sparse": {"us_per_step": 653.2, "active_cells": 786, "realtime_factor": 0.153, "frame_ms_at_60fps_realtime": 109.08},
+                 "dense":  {"us_per_step": 744.4, "active_cells": 786, "realtime_factor": 0.134, "frame_ms_at_60fps_realtime": 124.31}}
+  ],
+  "phases": [
+    {"mode": "sparse", "n": 1000, "active_cells": 741, "clear_us": 0.40, "p2g_us": 44.0, "grid_us": 5.6, "g2p_us": 36.0, "step_us": 86.0},
+    {"mode": "sparse", "n": 2000, "active_cells": 761, "clear_us": 0.40, "p2g_us": 86.0, "grid_us": 5.2, "g2p_us": 72.8, "step_us": 164.4},
+    {"mode": "dense",  "n": 1000, "active_cells": 741, "clear_us": 2.00, "p2g_us": 43.6, "grid_us": 104.0, "g2p_us": 36.0, "step_us": 185.6}
+  ],
+  "net": [
+    {"cells": 760, "hidden": 32,  "layers": "8-32-32-2",   "ms_per_grid_update": 1.2575, "flops_per_grid_update": 2042880,  "gflops_achieved": 1.62},
+    {"cells": 760, "hidden": 64,  "layers": "8-64-64-2",   "ms_per_grid_update": 3.900,  "flops_per_grid_update": 7198720,  "gflops_achieved": 1.85},
+    {"cells": 760, "hidden": 128, "layers": "8-128-128-2", "ms_per_grid_update": 13.340, "flops_per_grid_update": 26849280, "gflops_achieved": 2.01}
+  ],
+  "live_demo_reading": {
+    "n": 1500, "fps": 45, "sim_speed_x_realtime": 0.76, "substeps_per_frame": 167,
+    "active_cells": 725, "p2g_ms": 11.3, "grid_ms": 1.0, "g2p_ms": 9.3, "draw_ms": 0.15,
+    "note": "read off the running page at a normal window size; the dense-grid toggle at the same settings gave fps 25 / 0.42x with grid_ms 17.7"
+  },
+  "second_engine_check": {
+    "engine": "Microsoft Edge 151 (Chromium 151 / V8 15.1), headless, same machine",
+    "n": 1000, "fps": 60, "sim_speed_x_realtime": 1.00, "substeps_per_frame": 167,
+    "active_cells": 759, "p2g_ms": 7.4, "grid_ms": 0.7, "g2p_ms": 6.1, "draw_ms": 0.10,
+    "note": "read off the rendered task page. A newer V8 than the Electron build above, and it holds a full 60 fps at real time with 1000 particles, which is the same budget the sweep predicts. 60 fps is the rAF ceiling here, so this is a floor on what the engine could do, not its limit."
+  }
+}

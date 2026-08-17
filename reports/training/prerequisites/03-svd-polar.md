@@ -54,10 +54,55 @@ energy.
 
 That split is why $R = U V^{\top}$ appears in the corotated stress $2\mu (F - R)$ in [[constitutive-models]].
 Subtracting the rotation $R$ from $F$ leaves only the non-rotational part, the actual stretching and
-shearing, so a particle that merely spins ($F = R$, $S = I$) develops zero stress. Computing $R$ straight
-from the polar decomposition is possible but ill-conditioned near $\det F = 0$. Going through the SVD and
-forming $U V^{\top}$ is the numerically stable route, which is why the code (and the model) reaches for
-`ti.svd`.
+shearing, so a particle that merely spins ($F = R$, $S = I$) develops zero stress.
+
+## In 2D the rotation has a closed form, and no SVD is needed
+
+An elastic solid never uses $\Sigma$ or $V$ on their own. It uses $F$, and it uses $R$. In two dimensions
+$R$ can be written down directly, with no factorisation at all, which is worth deriving because it
+demystifies what the SVD is doing.
+
+The polar rotation is by definition the rotation closest to $F$, the one minimising
+$\lVert F - R \rVert_F^2 = \lVert F \rVert_F^2 - 2\operatorname{tr}(R^{\top} F) + 2$. Only the middle term
+depends on $R$, so the closest rotation is the one **maximising $\operatorname{tr}(R^{\top} F)$**. Write a
+2D rotation as
+
+$$
+R = \begin{bmatrix} c & -s \\ s & c \end{bmatrix}, \qquad c^2 + s^2 = 1,
+$$
+
+where $c = \cos\theta$ and $s = \sin\theta$ for the rotation angle $\theta$. Expanding the trace against
+$F = \begin{bmatrix} F_{11} & F_{12} \\ F_{21} & F_{22}\end{bmatrix}$ gives
+
+$$
+\operatorname{tr}(R^{\top} F) = c\,(F_{11} + F_{22}) + s\,(F_{21} - F_{12}).
+$$
+
+This is a dot product of the unit vector $(c, s)$ with the fixed vector $(x, y) = (F_{11}+F_{22},\;
+F_{21}-F_{12})$, and a dot product with a unit vector is largest when the unit vector points the same way.
+So the answer is immediate,
+
+$$
+c = \frac{x}{\sqrt{x^2+y^2}}, \qquad s = \frac{y}{\sqrt{x^2+y^2}}.
+$$
+
+Two adds, a subtraction, and one reciprocal square root replace an entire matrix factorisation. Note what
+$x$ and $y$ are: $x$ is the trace of $F$, the part of $F$ that looks like the identity, and $y$ is twice
+the antisymmetric part, the part that looks like an infinitesimal rotation. The formula reads "point the
+rotation along the symmetric-plus-antisymmetric signature of $F$," which is exactly what a polar
+decomposition means.
+
+Two consequences matter in practice. First, `ti.svd` in 2D is **built on this formula**: Taichi's 2D
+routine computes the polar rotation first and then diagonalises the leftover symmetric factor, so
+$U V^{\top}$ returns precisely the closed-form $R$. Reaching for the SVD to get $R$ is not a more stable
+route to it, it is the same route with a diagonalisation stapled on. Second, the formula degenerates only
+when $x^2 + y^2 = 0$, which requires both the trace and the antisymmetric part to vanish at once. That is a
+genuinely degenerate deformation, not merely $\det F = 0$, so the closed form is well behaved through the
+flattening a solid actually experiences.
+
+In three dimensions no such closed form exists and the SVD (or an iterative polar solve) is unavoidable.
+The plastic models are the other reason to keep the full factorisation, since the snow clamp below operates
+on $\Sigma$ itself.
 
 ## The snow clamp is surgery on the singular values
 

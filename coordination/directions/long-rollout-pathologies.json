@@ -52,24 +52,6 @@
       ]
     },
     {
-      "id": "checkpointing-long-horizon",
-      "title": "Gradient checkpointing for 1024+ step horizons",
-      "status": "proposed",
-      "note": "Storing every intermediate state caps the horizon at memory. Implement gradient checkpointing (recompute instead of store) to reach 1024+ steps, and measure the real compute/memory trade-off on the GPU.",
-      "tags": [
-        "gradients"
-      ],
-      "follow_up_of": [
-        {
-          "id": "resolution-memory",
-          "dir": "long-rollout-pathologies",
-          "kind": "extends"
-        }
-      ],
-      "effort": "standard",
-      "budget_minutes": 40
-    },
-    {
       "id": "resolution-memory",
       "title": "Gradient memory and throughput vs resolution",
       "status": "done",
@@ -84,12 +66,7 @@
           "kind": "extends"
         }
       ],
-      "follow_ups": [
-        {
-          "id": "checkpointing-long-horizon",
-          "dir": "long-rollout-pathologies"
-        }
-      ]
+      "follow_ups": []
     },
     {
       "id": "jacobian-norms",

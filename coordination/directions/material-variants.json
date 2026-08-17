@@ -306,7 +306,7 @@
         "materials",
         "demo"
       ],
-      "budget_minutes": 110,
+      "budget_minutes": 140,
       "follow_up_of": [
         {
           "id": "implement-nondifferentiable-material-variants",

@@ -36,3 +36,6 @@ lands **before** the port generates its constants, so that coupling disappears i
 - **Not** rendering polish. Dots and colour; the visual pass is a later task.
 - **Not** interactive, **not** in the browser, **not** differentiable. Forward Taichi only.
 - **Not** wired into the Demo tab.
+
+
+**Resolution: APPROVED**

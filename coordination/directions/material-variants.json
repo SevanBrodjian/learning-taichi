@@ -348,7 +348,7 @@
     {
       "id": "the-demo-mvp-four-materials-on-webgpu-live-on-the-demo-page",
       "title": "The Demo MVP: four materials on WebGPU, live on the Demo page",
-      "status": "proposed",
+      "status": "queued",
       "note": "Develop a first instantiation of the demo, by combining all four materials (sand, water, elastic solid, snow) in one interactive grid running in real time using WebGPU. The user should be able to add them to the grid and watch them interact / watch the simulation unfold. And at a minimum a reset button. The user should also be able to drag and interact with the scene.",
       "effort": "deep",
       "tags": [

@@ -46,8 +46,10 @@ and push it forward step by step. Cost scales with the number of *inputs* you di
 
 **Reverse mode** runs the simulation forward, then walks backward from the loss:
 
-$$\frac{\partial \mathcal L}{\partial S_s}
-= \frac{\partial \mathcal L}{\partial S_{s+1}}\cdot\frac{\partial S_{s+1}}{\partial S_s}.$$
+$$
+\frac{\partial \mathcal L}{\partial S_s}
+= \frac{\partial \mathcal L}{\partial S_{s+1}}\cdot\frac{\partial S_{s+1}}{\partial S_s}.
+$$
 
 Cost scales with the number of *outputs*. You have one scalar loss and potentially millions of
 parameters (every weight of a network), so reverse mode wins by orders of magnitude. This is the same
@@ -110,8 +112,10 @@ So check it against something that cannot lie: the definition of a derivative.
 Perturb one parameter component by a small $\varepsilon$, rerun the *forward* simulation twice, and
 compare the central difference against the autodiff value:
 
-$$\frac{\partial \mathcal L}{\partial \theta_i} \;\approx\;
-\frac{\mathcal L(\theta + \varepsilon e_i) - \mathcal L(\theta - \varepsilon e_i)}{2\varepsilon}.$$
+$$
+\frac{\partial \mathcal L}{\partial \theta_i} \;\approx\;
+\frac{\mathcal L(\theta + \varepsilon e_i) - \mathcal L(\theta - \varepsilon e_i)}{2\varepsilon}.
+$$
 
 If those agree to a few significant figures, the gradient is real. If they diverge, something is wrong
 and no amount of pretty loss curves will fix it. Several tasks in this project run exactly this check

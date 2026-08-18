@@ -582,10 +582,14 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
             {resultsBody}
           </section>
         );
+        // Markdown, not <p>{body}</p>. These fields are authored as Markdown (numbered limitations, bold
+        // scope warnings, $KaTeX$) and rendering them as plain text showed the syntax literally, which
+        // pushed at least one worker into writing flatter prose to work around the bug. Same component the
+        // training pages use, so task prose and textbook prose finally render identically.
         const prose = detail.map(([h, body], i) => (
           <section className="task-block" key={i}>
             <h2>{h}</h2>
-            <p>{body}</p>
+            <MarkdownReport markdown={body} />
           </section>
         ));
 
@@ -594,7 +598,7 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
             {summaryText && (
               <section className="task-block">
                 <h2>Summary</h2>
-                <p>{summaryText}</p>
+                <MarkdownReport markdown={summaryText} />
               </section>
             )}
 

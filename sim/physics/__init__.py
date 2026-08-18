@@ -27,10 +27,19 @@ from .core import (MAT, MAT_ID, circularity, dp_alpha, pile_height, repose_angle
 
 
 def _version() -> str:
+    """Content hash of the frozen physics, used to prove two runs shared one ground truth.
+
+    LINE ENDINGS ARE NORMALISED, and that is load-bearing rather than tidiness. Hashing raw bytes made
+    the stamp depend on how git happened to materialise the file: on Windows a plain `git checkout` of
+    an unchanged `core.py` rewrote LF to CRLF and moved the version, so byte-identical physics stamped
+    two different versions and a fresh worktree could disagree with main for no reason at all. A version
+    that changes when nothing changed is worse than no version, because it silently converts "provably
+    the same ground truth" into noise. Normalising makes the stamp a function of CONTENT only.
+    """
     h = hashlib.sha256()
     d = pathlib.Path(__file__).parent
     for name in ("core.py", "signatures.py"):
-        h.update((d / name).read_bytes())
+        h.update((d / name).read_bytes().replace(b"\r\n", b"\n"))
     return "phys-" + h.hexdigest()[:12]
 
 

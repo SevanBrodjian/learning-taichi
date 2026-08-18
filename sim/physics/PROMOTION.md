@@ -53,6 +53,25 @@ when all three gates are met, as a deliberate, reviewed commit:
 Trigger to consider promotion: a second task needs the same physics, **or** a task establishes a new
 canonical material/model future tasks should share. The orchestrator proposes it; the golden tests gate it.
 
+## Two traps in this module — read before "fixing" either
+
+**1. `Vt` is misnamed, and that is not a bug.** `ti.svd` returns `(U, S, V)` with $A = U S V^\top$, so
+the third value is **V**, not $V^\top$. The plastic reconstructions therefore assemble `U @ S' @ Vt`
+= $U \Sigma' V$, not $U \Sigma' V^\top$. That is a **gauge** choice: it right-multiplies $F$ by the
+rotation $VV$, and an isotropic material cannot see a rotation of its reference configuration. Verified
+numerically over 4000 random $F$ — Kirchhoff stress, $\det F$ and the singular values are invariant to
+1e-13, and no golden signature moves. Note that `corotated_PFt` **does** transpose it
+(`U @ Vt.transpose()`), which is correct *there* because a rotation is not gauge-free. The two uses look
+inconsistent and both are right. Changing the convention would silently invalidate every state-for-state
+port comparison for zero physical gain. Explained in full in `reports/training/core/16-svd-in-practice.md`.
+
+**2. `VERSION` normalises line endings, deliberately.** It is a content hash of `core.py` +
+`signatures.py`. Hashing *raw bytes* made the stamp depend on how git materialised the file: on Windows a
+plain `git checkout` of an unchanged `core.py` rewrote LF to CRLF and moved the version, so byte-identical
+physics stamped two different versions and a fresh worktree could disagree with `main` for no reason. A
+version that changes when nothing changed converts "provably the same ground truth" into noise, which is
+worse than having no version. Do not revert the normalisation.
+
 ## Ground truth is a *forward* sim
 Ground truth never needs gradients. If you are generating observations to fit or evaluate a network, use
 `core.simulate` (forward, cheap, stable). A task that must optimize *through* the physics builds its own

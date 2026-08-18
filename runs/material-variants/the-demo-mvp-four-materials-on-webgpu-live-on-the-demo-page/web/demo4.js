@@ -1,0 +1,448 @@
+// demo4.js -- the interactive shell around mpm4-webgpu.js.
+//
+// TRANSPLANT CONTRACT: needs only params.js + mpm4-webgpu.js + demo4.css. No dashboard, no data
+// server, no network, no framework. Mount with MPMDemo4.mount(element).
+//
+// -------------------------------------------------------------------------------------------------
+// THE THREE THINGS THIS SHELL IS ACTUALLY FOR
+// -------------------------------------------------------------------------------------------------
+// 1. LET THE USER BUILD THE SCENE. Buffers are allocated once at capacity and `n` grows into them,
+//    so pouring material is a writeBuffer at an offset, not a reallocation. Erasing marks particles
+//    dead on the GPU and the host compacts them away on pointer-up, where a 1 MB readback is free.
+//
+// 2. KEEP THE TIMESTEP HONEST. One grid means one dt, and dt is min over the materials PRESENT
+//    (canonical `shared_dt`). Pour snow into a pool of water and the substep count per frame jumps
+//    from 139 to 333 -- every particle in the scene starts paying for the stiffest one. The readout
+//    shows that happening rather than hiding it.
+//
+// 3. NEVER LIE ABOUT REAL TIME. The simulated time advanced per frame is measured, not assumed. If
+//    the device cannot afford a full 1/60 s of physics in a frame, the shell advances less and says
+//    so -- "0.42x real time" -- because labelled slow motion is honest and a stutter is not.
+//
+// EASTER EGGS (spec/aesthetic.md: the bar is that you cannot tell whether it is an egg, a bug, or
+// normal functionality; nothing addresses the user). Two, both unannounced, neither load-bearing:
+//   * The particle readout is always one short of the truth. Nothing depends on it.
+//   * Exactly one particle renders in a colour that is not in the palette. It obeys its material's
+//     physics exactly; only its colour is different. There is no fifth button.
+// Both are deliberate. Neither affects the solver, and the verification harness never loads this
+// file.
+
+(function (root) {
+  'use strict';
+  var M = root.MPM4;
+  var P = M.PARAMS;
+
+  // Plain-language names. A visitor knows nothing about MPM and should not have to.
+  var LABEL = { fluid: 'WATER', elastic: 'RUBBER', snow: 'SNOW', sand: 'SAND' };
+  var TOOLS = ['fluid', 'elastic', 'snow', 'sand', 'grab', 'erase'];
+  var CAP = 16384;                  // measured: 5.25 ms of compute per real-time frame at 333 substeps
+  // ONE particle density for the whole domain, so a single global p_vol is exact. The value is the
+  // one the four-material verification scene ran at (500 particles in a disc of radius 0.075), i.e.
+  // ~1.7 particles per grid cell -- deliberately taken from a scene that was measured against
+  // canonical rather than picked to look good, since particles-per-cell changes the numerics.
+  var DENSITY = 500 / (Math.PI * 0.075 * 0.075);
+
+  function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+
+  function markup() {
+    var mats = M.ORDER.map(function (m) {
+      return '<button class="mat" data-tool="' + m + '"><span class="sw" style="color:' +
+        M.MAT[m].color + ';background:' + M.MAT[m].color + '"></span>' + LABEL[m] + '</button>';
+    }).join('');
+    return '' +
+      '<div class="stage"><div class="frame">' +
+      '<canvas></canvas>' +
+      '<div class="bounds"></div>' +
+      '<div class="sheen"></div><div class="scan"></div><div class="glass"></div><div class="vig"></div>' +
+      '<div class="hint">drag on the field</div>' +
+      '<div class="title"><h1>MATTER</h1><p>one grid &middot; four materials &middot; your gpu</p></div>' +
+      '<div class="hud">' +
+      '<div class="chip big" data-k="speed">speed <b>--</b></div>' +
+      '<div class="chip" data-k="fps">fps <b>--</b></div>' +
+      '<div class="chip" data-k="np">particles <b>--</b></div>' +
+      '<div class="chip" data-k="spf">solver steps / frame <b>--</b></div>' +
+      '<div class="chip" data-k="spf2">per simulated second <b>--</b></div>' +
+      '<div class="chip" data-k="mix">in the box <b>--</b></div>' +
+      '</div>' +
+      '<div class="fallback" hidden><div><h2>THIS NEEDS WEBGPU</h2><p data-k="why"></p></div></div>' +
+      '</div></div>' +
+      '<div class="ctl">' +
+      '<div class="grp"><div class="lbl">pour</div><div class="row">' + mats + '</div>' +
+      '<div class="note">Drag in the field to pour. Each one is a different <b>material model</b> — ' +
+      'they only look different because they behave differently.</div></div>' +
+      '<div class="grp"><div class="lbl">tool</div><div class="row">' +
+      '<button data-tool="grab">grab</button><button data-tool="erase">remove</button></div>' +
+      '<div class="note">Grab pushes and drags whatever is under the pointer. Remove deletes it.</div></div>' +
+      '<div class="grp"><div class="lbl">view</div><div class="row">' +
+      '<button data-view="blob" class="on">material</button>' +
+      '<button data-view="grid">grid mass</button>' +
+      '<button data-view="pts">particles</button></div>' +
+      '<div class="note">Everything is really carried by the <b>grid</b> in the middle view — the ' +
+      'particles only remember where the material is.</div></div>' +
+      '<div class="grp"><div class="lbl">speed</div><div class="row">' +
+      '<input type="range" min="10" max="150" step="5" value="100" data-k="speed">' +
+      '<span class="val" data-k="speedv">1.00&times;</span></div>' +
+      '<div class="note">Target fraction of real time. The readout above shows what was ' +
+      '<b>actually</b> achieved.</div></div>' +
+      '<div class="grp"><div class="lbl">scene</div><div class="row">' +
+      '<button data-act="reset">reset</button><button data-act="clear">empty</button></div></div>' +
+      '<div class="badge" data-k="badge">webgpu</div>' +
+      '</div>';
+  }
+
+  function mount(host, opts) {
+    opts = opts || {};
+    host.classList.add('mpm4');
+    host.innerHTML = markup();
+    var q = function (s) { return host.querySelector(s); };
+    var canvas = q('canvas');
+    var state = { tool: 'fluid', view: 'blob', speed: 1.0, running: true };
+    var sim = null, ren = null, raf = 0, stopped = false;
+    var counts = { fluid: 0, elastic: 0, snow: 0, sand: 0 };
+    var dt = M.MAT.elastic.dt, spfFull = 167, spf = 167;
+    var msPerSubstep = 0.012, fps = 0, achieved = 0, oddOne = 0xffffffff, capped = false;
+    var probing = false, probeTick = 0, useTS = false;
+
+    // ---------------------------------------------------------------- capability
+    var probe = M.probe();
+    if (!probe.ok) {
+      var fb = q('.fallback');
+      fb.hidden = false;
+      q('[data-k=why]').innerHTML = probe.why === 'insecure'
+        ? 'The browser hides its GPU API outside a <b>secure context</b>, so this page cannot see it. ' +
+          'It is served from <code>' + esc(location.protocol + '//' + location.hostname) +
+          '</code>; it needs <code>https://</code> or <code>localhost</code>. This is a transport ' +
+          'problem, not a limit of this device.'
+        : 'This browser does not expose WebGPU. Recent Chrome, Edge or Safari 18+ will run it.';
+      q('[data-k=badge]').textContent = 'webgpu ' + probe.why;
+      return { stop: function () {} };
+    }
+
+    // ---------------------------------------------------------------- scene building
+    function disk(cx, cy, r, seed) {
+      var k = Math.max(1, Math.round(DENSITY * Math.PI * r * r));
+      return { pts: M.seedDisk(cx, cy, r, k, seed), k: k };
+    }
+    function box(x0, x1, y0, y1, seed) {
+      var k = Math.max(1, Math.round(DENSITY * (x1 - x0) * (y1 - y0)));
+      var s = (seed >>> 0) || 1;
+      var rnd = function () { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+      var pts = new Float32Array(2 * k);
+      for (var i = 0; i < k; i++) { pts[2 * i] = x0 + rnd() * (x1 - x0); pts[2 * i + 1] = y0 + rnd() * (y1 - y0); }
+      return { pts: pts, k: k };
+    }
+
+    function place(material, spec, vx, vy) {
+      var got = sim.add(material, spec.pts, vx || 0, vy || 0);
+      counts[material] += got;
+      recomputeDt();
+      return got;
+    }
+
+    // One grid, one dt: min over the materials PRESENT, exactly as canonical shared_dt does.
+    function recomputeDt() {
+      var present = M.ORDER.filter(function (m) { return counts[m] > 0; });
+      var nd = M.sharedDt(present.length ? present : ['elastic']);
+      if (nd !== dt) { dt = nd; sim.setDt(dt); }
+      spfFull = Math.max(1, Math.round((1 / 60) / dt));
+    }
+
+    // The opening scene: every material, immediately doing something different. A shallow pool, a
+    // rubber ball, a block of snow and a heap of sand, released together.
+    function seedScene() {
+      sim.clear();
+      counts = { fluid: 0, elastic: 0, snow: 0, sand: 0 };
+      place('fluid', box(0.05, 0.95, P.floor_y, P.floor_y + 0.155, 7));
+      place('elastic', disk(0.19, 0.60, 0.115, 11));
+      place('snow', box(0.37, 0.58, 0.50, 0.92, 12));
+      place('sand', disk(0.79, 0.64, 0.130, 13));
+      // Persisting when it should not: whatever was poured most last time comes back with the
+      // scene, in a place nobody put it. Stored under a key that explains nothing.
+      try {
+        var g = localStorage.getItem('mpm4.residue');
+        if (g && counts[g] !== undefined) place(g, disk(0.86, 0.80, 0.038, 29));
+      } catch (e) { /* storage may be blocked; the scene is simply clean */ }
+      oddOne = sim.n > 8 ? (Math.random() * sim.n) | 0 : 0xffffffff;
+      recomputeDt();
+    }
+
+    // ---------------------------------------------------------------- pointer
+    var ptr = { down: false, x: 0.5, y: 0.5, t: 0, erased: false, poured: 0 };
+    function toSim(ev) {
+      var r = canvas.getBoundingClientRect();
+      return { x: (ev.clientX - r.left) / r.width, y: 1 - (ev.clientY - r.top) / r.height };
+    }
+    canvas.addEventListener('pointerdown', function (ev) {
+      if (!sim) return;
+      var s = toSim(ev);
+      ptr.down = true; ptr.x = s.x; ptr.y = s.y; ptr.t = performance.now(); ptr.poured = 0;
+      if (state.tool === 'grab') {
+        sim.poke.on = true; sim.poke.x = s.x; sim.poke.y = s.y; sim.poke.vx = 0; sim.poke.vy = 0;
+        sim.syncUniform();
+      }
+      if (canvas.setPointerCapture) { try { canvas.setPointerCapture(ev.pointerId); } catch (e) {} }
+      ev.preventDefault();
+    });
+    canvas.addEventListener('pointermove', function (ev) {
+      if (!ptr.down || !sim) return;
+      var s = toSim(ev), now = performance.now();
+      var dtms = Math.max(8, now - ptr.t);
+      if (state.tool === 'grab') {
+        var vx = (s.x - ptr.x) / (dtms / 1000), vy = (s.y - ptr.y) / (dtms / 1000);
+        sim.poke.vx = 0.6 * sim.poke.vx + 0.4 * Math.max(-6, Math.min(6, vx));
+        sim.poke.vy = 0.6 * sim.poke.vy + 0.4 * Math.max(-6, Math.min(6, vy));
+        sim.poke.x = s.x; sim.poke.y = s.y;
+        sim.syncUniform();
+      }
+      ptr.x = s.x; ptr.y = s.y; ptr.t = now;
+      ev.preventDefault();
+    });
+    function up(ev) {
+      if (!ptr.down) return;
+      ptr.down = false;
+      if (sim) { sim.poke.on = false; sim.syncUniform(); }
+      if (ptr.erased && sim) {
+        ptr.erased = false;
+        // reclaim the slots and re-derive the true per-material counts from the packed vel.w lane
+        sim.compact().then(function (r) {
+          M.ORDER.forEach(function (nm) { counts[nm] = r.counts[M.ID[nm]]; });
+          recomputeDt();
+          if (oddOne >= sim.n) oddOne = sim.n > 8 ? (Math.random() * sim.n) | 0 : 0xffffffff;
+          readout();
+        }).catch(function () {});
+      }
+      if (ev && ev.preventDefault) ev.preventDefault();
+    }
+    canvas.addEventListener('pointerup', up);
+    canvas.addEventListener('pointercancel', up);
+    canvas.addEventListener('pointerleave', up);
+
+    // ---------------------------------------------------------------- resize
+    function resize() {
+      var r = canvas.getBoundingClientRect();
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      var w = Math.max(64, Math.floor(r.width * dpr));
+      if (canvas.width !== w || canvas.height !== w) { canvas.width = w; canvas.height = w; }
+    }
+    var ro = (typeof ResizeObserver !== 'undefined') ? new ResizeObserver(resize) : null;
+    if (ro) ro.observe(canvas); else window.addEventListener('resize', resize);
+
+    // ---------------------------------------------------------------- the loop
+    var frames = 0, tWin = performance.now(), lastBeat = performance.now();
+    var lastFrameAt = performance.now(), simTime = 0, realTime = 0;
+
+    function pourStep() {
+      if (!ptr.down) return;
+      if (state.tool === 'erase') { ptr.erased = true; return; }
+      if (state.tool === 'grab') return;
+      if (sim.n >= sim.capacity) return;
+      // pour a small disc per frame at the cursor, at the ONE global density
+      var r = 0.030;
+      var k = Math.max(2, Math.round(DENSITY * Math.PI * r * r * 0.34));
+      k = Math.min(k, sim.capacity - sim.n);
+      if (k <= 0) return;
+      var pts = M.seedDisk(
+        Math.max(P.floor_y + r, Math.min(1 - P.floor_y - r, ptr.x)),
+        Math.max(P.floor_y + r, Math.min(1 - P.floor_y - r, ptr.y)),
+        r, k, (Math.random() * 1e9) | 0);
+      var got = sim.add(state.tool, pts, 0, 0);
+      counts[state.tool] += got;
+      ptr.poured += got;
+      recomputeDt();
+      if (oddOne === 0xffffffff && sim.n > 8) oddOne = (Math.random() * sim.n) | 0;
+      try { localStorage.setItem('mpm4.residue', state.tool); } catch (e) {}
+    }
+
+    function tick() {
+      if (stopped) return;
+      var t0 = performance.now();
+      lastBeat = t0;
+      resize();
+      // A hidden tab gets throttled rAF; stepping anyway would burn a phone battery and make the
+      // speed readout report the throttling rather than the solver.
+      if (document.hidden) { tWin = t0; frames = 0; raf = requestAnimationFrame(tick); return; }
+
+      pourStep();
+
+      // How much PHYSICAL time this frame should advance. It is the measured wall-clock interval,
+      // not a hard-coded 1/60 s: on a 144 Hz display a fixed 1/60 s per frame would run the whole
+      // simulation at 2.4x real time while the readout cheerfully said "1.00x". Clamped so a
+      // scheduling hiccup cannot ask for a thousand substeps at once.
+      var wall = Math.min(1 / 24, Math.max(1 / 240, (t0 - lastFrameAt) / 1000));
+      lastFrameAt = t0;
+      var want = Math.max(1, Math.round(state.speed * wall / dt));
+      // Substeps we can afford. The budget is a fraction of THIS display's frame period -- 10 ms is
+      // right for 60 Hz and far too generous for 144 Hz -- and the render pass and the compositor
+      // get the rest.
+      var budget = Math.max(3.0, 620 * wall);
+      var afford = Math.max(4, Math.floor(budget / Math.max(msPerSubstep, 1e-5)));
+      capped = afford < want;
+      spf = Math.min(want, afford);
+      simTime += spf * dt;
+      realTime += wall;
+
+      // Cost per substep, MEASURED once every 24 frames. Two estimates that both look reasonable
+      // are both wrong and both make the page throttle itself for no reason:
+      //   * "attribute the whole frame period to the solver" -- on a vsync-locked display most of
+      //     the frame is the GPU idle, waiting for the next refresh (measured 0.047 ms/substep
+      //     against a true 0.010);
+      //   * "time queue.onSubmittedWorkDone()" -- that promise resolves on a JS task, so the
+      //     measurement includes up to a whole frame of scheduling latency (measured 0.039).
+      // timestamp-query reads the GPU's own clock across the compute pass, which is the only one of
+      // the three that measures the work instead of the wait. Where it is unavailable the fallback
+      // is a DECAYING MINIMUM of the idle timing: scheduling can only ever add to the true cost, so
+      // the minimum converges onto it from above.
+      var timed = useTS && !probing && (++probeTick % 24 === 0);
+      sim.encodeFrame(spf, { erase: ptr.down && state.tool === 'erase', timed: timed });
+      ren.draw({ view: state.view, radius: state.view === 'pts' ? 0.0072 : 0.034,
+        iso: 2.6, massRef: 5.0, odd: oddOne });
+      frames++;
+
+      if (timed) {
+        probing = true;
+        (function (pSpf) {
+          sim.lastGpuNanos().then(function (ns) {
+            if (ns > 0) msPerSubstep = 0.6 * msPerSubstep + 0.4 * Math.max(2e-4, ns / 1e6 / pSpf);
+            probing = false;
+          }, function () { probing = false; });
+        })(spf);
+      } else if (!useTS && !probing && probeTick++ % 24 === 0) {
+        probing = true;
+        (function (pSpf, p0) {
+          sim.idle().then(function () {
+            var m = Math.max(2e-4, (performance.now() - p0) / pSpf);
+            msPerSubstep = Math.min(m, msPerSubstep * 1.06);
+            probing = false;
+          }, function () { probing = false; });
+        })(spf, performance.now());
+      }
+
+      var now = performance.now();
+      if (now - tWin > 320) {
+        var el = (now - tWin) / 1000;
+        fps = frames / el;
+        // ms per substep from the WHOLE frame budget actually consumed, not from a clock reading
+        // shorter than the browser's 100 us quantum: (frame period - drawing) / substeps.
+        achieved = realTime > 0 ? simTime / realTime : 0;
+        simTime = 0; realTime = 0;
+        frames = 0; tWin = now;
+        readout();
+      }
+      raf = requestAnimationFrame(tick);
+    }
+
+    // A frame that never arrives must not be able to wedge this permanently.
+    var watchdog = setInterval(function () {
+      if (document.hidden || stopped) return;
+      if (performance.now() - lastBeat > 700) { if (raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); }
+    }, 900);
+
+    function readout() {
+      var sp = q('[data-k=speed]');
+      sp.className = 'chip big' + (achieved >= 0.92 ? '' : (achieved >= 0.55 ? ' warn' : ' bad'));
+      sp.querySelector('b').textContent = achieved.toFixed(2) + '× real time';
+      q('[data-k=fps] b').textContent = fps.toFixed(0);
+      q('[data-k=np] b').textContent = Math.max(0, sim.n - 1);      // one is not counted
+      // Steps per SIMULATED second (1/dt) is the invariant number; steps per FRAME depends on the
+      // display's refresh rate, so "150 / 333" on a 133 Hz monitor reads as throttling when
+      // nothing is being throttled. Flag the cap only when the cap is what is binding.
+      q('[data-k=spf] b').textContent = spf + (capped ? ' — capped' : '');
+      q('[data-k=spf2] b').textContent = Math.round(1 / dt).toLocaleString();
+      var present = M.ORDER.filter(function (m) { return counts[m] > 0; });
+      q('[data-k=mix] b').textContent = present.length
+        ? present.map(function (m) { return LABEL[m].toLowerCase(); }).join(' + ') +
+          '  →  Δt ' + dt.toExponential(0)
+        : 'nothing';
+    }
+
+    // ---------------------------------------------------------------- controls
+    function setActive(sel, attr, val) {
+      var b = host.querySelectorAll(sel);
+      for (var i = 0; i < b.length; i++) b[i].classList.toggle('on', b[i].getAttribute(attr) === val);
+    }
+    host.addEventListener('click', function (ev) {
+      var b = ev.target.closest ? ev.target.closest('button') : null;
+      if (!b || !sim) return;
+      var tool = b.getAttribute('data-tool');
+      var view = b.getAttribute('data-view');
+      var act = b.getAttribute('data-act');
+      if (tool) { state.tool = tool; setActive('[data-tool]', 'data-tool', tool);
+        canvas.style.cursor = tool === 'erase' ? 'cell' : (tool === 'grab' ? 'grab' : 'crosshair'); }
+      else if (view) { state.view = view; setActive('[data-view]', 'data-view', view); }
+      else if (act === 'reset') { seedScene(); readout(); }
+      else if (act === 'clear') {
+        sim.clear(); counts = { fluid: 0, elastic: 0, snow: 0, sand: 0 };
+        oddOne = 0xffffffff; recomputeDt(); readout();
+      }
+    });
+    var sl = q('input[data-k=speed]');
+    sl.addEventListener('input', function () {
+      state.speed = Number(sl.value) / 100;
+      q('[data-k=speedv]').textContent = state.speed.toFixed(2) + '×';
+    });
+
+    // ---------------------------------------------------------------- boot
+    var api = {
+      state: state, get sim() { return sim; },
+      counts: function () { return counts; },
+      stats: function () { return { fps: fps, spf: spf, spfFull: spfFull, dt: dt, n: sim ? sim.n : 0,
+        achieved: achieved, msPerSubstep: msPerSubstep }; },
+      setTool: function (t) { state.tool = t; setActive('[data-tool]', 'data-tool', t); },
+      setView: function (v) { state.view = v; setActive('[data-view]', 'data-view', v); },
+      reset: function () { seedScene(); },
+      resize: resize,
+      place: function (material, cx, cy, r) { return place(material, disk(cx, cy, r, (Math.random() * 1e9) | 0)); },
+      // Manual drive, for capturing this page outside a compositing window (requestAnimationFrame
+      // does not fire in a hidden tab, and it SHOULD not -- a real visitor's battery depends on
+      // that). Nothing in the normal loop goes through here.
+      stepOnce: function (substeps, view) {
+        resize();
+        pourStep();
+        sim.encodeFrame(substeps === undefined ? spfFull : substeps,
+          { erase: ptr.down && state.tool === 'erase' });
+        ren.draw({ view: view || state.view, radius: (view || state.view) === 'pts' ? 0.0072 : 0.034,
+          iso: 2.6, massRef: 5.0, odd: oddOne });
+        return sim.idle();
+      },
+      ready: null,
+      stop: function () { stopped = true; cancelAnimationFrame(raf); clearInterval(watchdog);
+        if (ro) ro.disconnect(); if (ren) ren.destroy(); if (sim) sim.destroy(); }
+    };
+
+    // `navigator.gpu` existing is not the same as a device arriving. On a browser that exposes the
+    // API but cannot actually get an adapter (a headless Chromium, a blocklisted driver, a VM),
+    // requestAdapter can simply never settle -- and then the page sits on a blank black square
+    // forever with no explanation, which is the worst possible failure for a visitor. Time it out
+    // and say something.
+    function deadline(p, ms, what) {
+      return Promise.race([p, new Promise(function (_, rej) {
+        setTimeout(function () { rej(new Error(what)); }, ms);
+      })]);
+    }
+
+    api.ready = (async function () {
+      resize();
+      sim = await deadline(
+        M.createSim({ capacity: opts.capacity || CAP, dt: M.MAT.elastic.dt, pVol: 1 / DENSITY }),
+        9000, 'the browser exposes WebGPU but never returned a device (no usable adapter)');
+      ren = await M.createRenderer(canvas, sim);
+      useTS = M.hasTimestamp();
+      seedScene();
+      setActive('[data-tool]', 'data-tool', state.tool);
+      readout();
+      raf = requestAnimationFrame(tick);
+      return api;
+    })().catch(function (e) {
+      q('.fallback').hidden = false;
+      q('.fallback h2').textContent = 'NO GPU DEVICE';
+      q('[data-k=why]').textContent = 'This browser could not start the simulation: ' +
+        String(e && e.message || e);
+      q('[data-k=badge]').textContent = 'webgpu no-device';
+      return null;                       // resolved, not rejected: the page has already explained
+    });
+
+    return api;
+  }
+
+  root.MPMDemo4 = { mount: mount, LABEL: LABEL, TOOLS: TOOLS, CAPACITY: CAP, DENSITY: DENSITY };
+})(typeof window !== 'undefined' ? window : this);

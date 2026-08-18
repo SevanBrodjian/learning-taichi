@@ -1,0 +1,1105 @@
+// mpm4-webgpu.js -- a WebGPU compute port of the canonical 2D MLS-MPM step for ALL FOUR canonical
+// materials (fluid, elastic, snow, sand) on ONE shared grid.
+//
+// PORTABILITY CONTRACT: no dependency on the dashboard, the data server, or the harness. It needs
+// only `params.js` (generated from sim.physics by gen_params.py) and a WebGPU-capable browser.
+// Load it with a <script> tag -> window.MPM4.
+//
+// =================================================================================================
+// WHAT THIS ADDS OVER THE ELASTIC-ONLY PORT, AND WHAT IT COST
+// =================================================================================================
+//
+// 1. A REAL 2x2 SVD IN WGSL. The elastic path never needs singular values -- the corotated stress
+//    only wants the polar rotation R, which has a closed form. Snow and sand both need the singular
+//    values themselves: snow CLAMPS them into a box (Stomakhin), sand projects the log of them onto
+//    a CONE (Drucker-Prager). `svd2()` below is a line-for-line port of Taichi's `_svd2d` (polar
+//    decomposition + one Jacobi rotation), not a lookalike, because the return maps are written
+//    against Taichi's exact conventions -- descending singular values, U = R V, and A = U S V^T.
+//    It is unit-tested against `ti.svd` on adversarial matrices before it is trusted (verify/).
+//
+// 2. PER-PARTICLE STATE WITHOUT NEW BUFFERS. The device guarantees only 8 storage buffers per
+//    shader stage and the elastic layout already used 7. A per-particle material id and a per-
+//    particle plastic record `Jp` are two more -> 9, which produces a silently INVALID BIND GROUP:
+//    every dispatch is dropped, the sim "runs" at the speed of doing nothing, and the timing curve
+//    looks spectacular over trajectories of pure zeros. So both are packed into the velocity
+//    buffer, widened from vec2 to vec4:
+//        vel[p] = (vx, vy, Jp, matId)
+//    Still 7 storage buffers. The fluid's scalar volume ratio J rides in Fm[p].x, which the fluid
+//    path does not otherwise use, so it costs nothing either.
+//
+// 3. ONE GRID MEANS ONE TIMESTEP. `sharedDt()` reproduces canonical `sim.physics.shared_dt`:
+//    min(dt) over the materials actually present. Adding snow (dt = 5e-5) to any scene doubles the
+//    substep count for every particle in it. That is a physical consequence of a shared grid, not a
+//    tuning choice, and it is why a plastic material in a mixed scene creeps MORE than canonical
+//    (plastic strain accumulates per substep, not per unit of physical time).
+//
+// The interaction force (poke/drag) is a demo-only external body force layered on the grid update.
+// It is off by default and is never enabled during verification.
+
+// Params always come from `root.MPM_PARAMS` -- set by a <script src="params.js"> tag in the
+// standalone page, or by the generated ES-module wrapper in a bundled one. There is deliberately no
+// CommonJS import here: a bundler that sees one in a dead branch still tries to resolve it, and this
+// file has to survive being dropped into a build system it knows nothing about.
+(function (root, factory) {
+  var api = factory(root.MPM_PARAMS);
+  root.MPM4 = api;
+  if (typeof module === 'object' && module.exports) { module.exports = api; }
+})(typeof self !== 'undefined' ? self : this, function (P) {
+  'use strict';
+
+  var N_GRID = P.n_grid | 0;
+  var N_CELL = N_GRID * N_GRID;
+  var WG_P = 64;                 // particles per workgroup
+  var WG_G = 64;                 // cells per workgroup
+  var GRID_WG = Math.ceil(N_CELL / WG_G);
+
+  var MAT = P.materials;
+  var ORDER = P.mat_order;                       // ['fluid','elastic','snow','sand']
+  var ID = P.mat_id;                             // {fluid:0, elastic:1, snow:2, sand:3}
+  var DEAD = 4;                                  // erased particle: no mass, no motion, not drawn
+
+  function f(x) {                                // emit a float literal WGSL will accept
+    var s = String(x);
+    if (!/[.eE]/.test(s)) s += '.0';
+    return s;
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // The 2x2 SVD, ported from taichi/_funcs.py::_svd2d and ::_polar_decompose2d.
+  //
+  // Returned as a flat struct because WGSL has no multiple return. Row-major throughout:
+  // a vec4 (m00, m01, m10, m11) is the matrix [[x, y], [z, w]].
+  //
+  // Conventions that MATTER downstream and are therefore reproduced exactly:
+  //   * A = U * diag(s) * V^T  (V, not V^T, is the third factor -- the same as ti.svd)
+  //   * s.x >= s.y  (descending), enforced by the same swap Taichi does
+  //   * the polar factor handles det(A) < 0 (a reflection) with the second B, so a particle that
+  //     inverts does not silently get a rotation with the wrong handedness
+  // The ONE deliberate deviation: `sqrt(adetB)` is floored at 1e-30 rather than left to divide by
+  // zero. Taichi's comment argues det(B) != 0 for any non-zero A, which is true in exact arithmetic;
+  // in f32 a near-degenerate A can still round it to zero, and an inf here would poison a particle.
+  // -----------------------------------------------------------------------------------------------
+  var SVD_WGSL = [
+    'struct Svd2 { u : vec4<f32>, s : vec2<f32>, v : vec4<f32> };',
+    '',
+    // U diag(s) V -- reconstruction exactly as canonical sim/physics/core.py writes it (g2p:330,
+    // dp_return_map:224). NOTE: canonical names ti.svd's third return `Vt`, but ti.svd returns V
+    // (A = U S V^T), so canonical reconstructs U S V, i.e. the textbook F right-multiplied by V^2.
+    // For an ISOTROPIC constitutive model that is unobservable -- right-multiplying F by any
+    // rotation leaves the singular values, the corotated stress (F-R)F^T and the Hencky stress
+    // U(...)U^T all exactly invariant -- so it is a choice of reference frame, not a physics
+    // difference. It is reproduced verbatim so the port matches canonical state-for-state, not
+    // merely observable-for-observable.
+    'fn mul_usv(u : vec4<f32>, s : vec2<f32>, v : vec4<f32>) -> vec4<f32> {',
+    '  let a = u.x * s.x; let b = u.y * s.y;',
+    '  let c = u.z * s.x; let d = u.w * s.y;',
+    '  return vec4<f32>(a * v.x + b * v.z, a * v.y + b * v.w,',
+    '                   c * v.x + d * v.z, c * v.y + d * v.w);',
+    '}',
+    '',
+    'fn svd2(a : vec4<f32>) -> Svd2 {',
+    '  let a00 = a.x; let a01 = a.y; let a10 = a.z; let a11 = a.w;',
+    '  var r = vec4<f32>(1.0, 0.0, 0.0, 1.0);',      // polar rotation R
+    '  var p = a;',                                   // symmetric factor P (A = R P)
+    '  if (!(a00 == 0.0 && a01 == 0.0 && a10 == 0.0 && a11 == 0.0)) {',
+    '    let detA = a00 * a11 - a10 * a01;',
+    '    let adetA = abs(detA);',
+    '    var b = vec4<f32>(a00 + a11, a01 - a10, a10 - a01, a11 + a00);',
+    '    if (detA < 0.0) { b = vec4<f32>(a00 - a11, a01 + a10, a10 + a01, a11 - a00); }',
+    '    let adetB = abs(b.x * b.w - b.z * b.y);',
+    '    let k = 1.0 / max(sqrt(adetB), 1e-30);',
+    '    r = b * k;',
+    '    let t00 = a00 * a00 + a10 * a10;',           // A^T A
+    '    let t01 = a00 * a01 + a10 * a11;',
+    '    let t11 = a01 * a01 + a11 * a11;',
+    '    p = vec4<f32>((t00 + adetA) * k, t01 * k, t01 * k, (t11 + adetA) * k);',
+    '  }',
+    '  var c = 1.0; var s = 0.0;',
+    '  var s1 = p.x; var s2 = p.w;',
+    '  if (abs(p.y) >= 1e-5) {',                      // one Jacobi rotation diagonalises P
+    '    let tao = 0.5 * (p.x - p.w);',
+    '    let w = sqrt(tao * tao + p.y * p.y);',
+    '    var t = 0.0;',
+    '    if (tao > 0.0) { t = p.y / (tao + w); } else { t = p.y / (tao - w); }',
+    '    c = 1.0 / sqrt(t * t + 1.0);',
+    '    s = -t * c;',
+    '    s1 = c * c * p.x - 2.0 * c * s * p.y + s * s * p.w;',
+    '    s2 = s * s * p.x + 2.0 * c * s * p.y + c * c * p.w;',
+    '  }',
+    '  var v = vec4<f32>(c, s, -s, c);',
+    '  if (s1 < s2) { let tmp = s1; s1 = s2; s2 = tmp; v = vec4<f32>(-s, c, -c, -s); }',
+    '  var o : Svd2;',
+    '  o.u = vec4<f32>(r.x * v.x + r.y * v.z, r.x * v.y + r.y * v.w,',
+    '                  r.z * v.x + r.w * v.z, r.z * v.y + r.w * v.w);',
+    '  o.s = vec2<f32>(s1, s2);',
+    '  o.v = v;',
+    '  return o;',
+    '}',
+    '',
+    // The polar rotation on its own: what the corotated (elastic/snow) stress needs, and all it
+    // needs. Identical to svd2's `r`, so elastic and snow never pay for the Jacobi step.
+    'fn polar_r(a : vec4<f32>) -> vec4<f32> {',
+    '  let a00 = a.x; let a01 = a.y; let a10 = a.z; let a11 = a.w;',
+    '  if (a00 == 0.0 && a01 == 0.0 && a10 == 0.0 && a11 == 0.0) { return vec4<f32>(1.0, 0.0, 0.0, 1.0); }',
+    '  let detA = a00 * a11 - a10 * a01;',
+    '  var b = vec4<f32>(a00 + a11, a01 - a10, a10 - a01, a11 + a00);',
+    '  if (detA < 0.0) { b = vec4<f32>(a00 - a11, a01 + a10, a10 + a01, a11 - a00); }',
+    '  let adetB = abs(b.x * b.w - b.z * b.y);',
+    '  return b * (1.0 / max(sqrt(adetB), 1e-30));',
+    '}'
+  ].join('\n');
+
+  // ------------------------------------------------------------------ WGSL source
+  function buildShader() {
+    var Mf = MAT.fluid, Me = MAT.elastic, Ms = MAT.snow, Ma = MAT.sand;
+    return [
+      '// GENERATED from params.js (physics_version ' + P.physics_version + ')',
+      'const N_GRID : i32 = ' + N_GRID + ';',
+      'const N_CELL : i32 = ' + N_CELL + ';',
+      'const DX : f32 = ' + f(P.dx) + ';',
+      'const INV_DX : f32 = ' + f(P.inv_dx) + ';',
+      'const BOUND : i32 = ' + P.bound + ';',
+      'const FLOOR : f32 = ' + f(P.floor_y) + ';',
+      'const CEIL : f32 = ' + f(1.0 - P.floor_y) + ';',
+      '',
+      '// --- canonical material ids (sim.physics.core.MAT_ID) ---',
+      'const M_FLUID : i32 = ' + ID.fluid + ';',
+      'const M_ELASTIC : i32 = ' + ID.elastic + ';',
+      'const M_SNOW : i32 = ' + ID.snow + ';',
+      'const M_SAND : i32 = ' + ID.sand + ';',
+      '',
+      '// --- FROZEN canonical parameters, emitted from sim.physics.MAT ---',
+      'const E_FLUID : f32 = ' + f(Mf.E) + ';',
+      'const MU_E : f32 = ' + f(Me.mu) + ';   const LA_E : f32 = ' + f(Me.la) + ';',
+      'const MU_S : f32 = ' + f(Ms.mu) + ';   const LA_S : f32 = ' + f(Ms.la) + ';',
+      'const XI_S : f32 = ' + f(Ms.xi) + ';   const TC_S : f32 = ' + f(Ms.tc) + ';',
+      'const TS_S : f32 = ' + f(Ms.ts) + ';',
+      'const MU_A : f32 = ' + f(Ma.mu) + ';   const LA_A : f32 = ' + f(Ma.la) + ';',
+      'const ALPHA_A : f32 = ' + f(Ma.alpha) + ';',
+      '',
+      SVD_WGSL,
+      '',
+      'struct Params {',
+      '  dt : f32, pMass : f32, pVol : f32, gravity : f32, friction : f32,',
+      '  massScale : f32, invMassScale : f32, momScale : f32, invMomScale : f32,',
+      '  n : u32, pokeOn : u32,',
+      '  pokeX : f32, pokeY : f32, pokeVX : f32, pokeVY : f32,',
+      '  pokeRadius : f32, pokeRate : f32, pokeSpring : f32,',
+      '  eraseR : f32, pad0 : f32, pad1 : f32, pad2 : f32,',
+      '};',
+      '',
+      '@group(0) @binding(0) var<uniform> PR : Params;',
+      '@group(0) @binding(1) var<storage, read_write> pos : array<vec2<f32>>;',
+      // vel.xy = velocity, vel.z = Jp (snow: plastic volume ratio, starts 1; sand: plastic
+      // volumetric log-strain, starts 0), vel.w = material id as f32. Packed here rather than in
+      // two new buffers because 9 storage buffers per stage silently invalidates the bind group.
+      '@group(0) @binding(2) var<storage, read_write> vel : array<vec4<f32>>;',
+      '@group(0) @binding(3) var<storage, read_write> Cm  : array<vec4<f32>>;',
+      // Fm = deformation gradient (row major) for elastic/snow/sand; Fm.x = J for fluid.
+      '@group(0) @binding(4) var<storage, read_write> Fm  : array<vec4<f32>>;',
+      '@group(0) @binding(5) var<storage, read_write> gm  : array<atomic<u32>>;',
+      '@group(0) @binding(6) var<storage, read_write> gp  : array<atomic<i32>>;',
+      // gv.xy = node velocity (what G2P gathers). gv.z = node mass in PARTICLE MASSES, gv.w =
+      // |node momentum| in particle-mass*velocity -- the two quantities the mass heatmap and the
+      // fixed-point headroom probe need, carried for free instead of a 9th buffer.
+      '@group(0) @binding(7) var<storage, read_write> gv  : array<vec4<f32>>;',
+      '',
+      // ---------------------------------------------------------------- clear
+      '@compute @workgroup_size(' + WG_G + ')',
+      'fn clear_grid(@builtin(global_invocation_id) gid : vec3<u32>) {',
+      '  let idx = i32(gid.x);',
+      '  if (idx >= N_CELL) { return; }',
+      '  atomicStore(&gm[idx], 0u);',
+      '  atomicStore(&gp[2 * idx], 0);',
+      '  atomicStore(&gp[2 * idx + 1], 0);',
+      '  gv[idx] = vec4<f32>(0.0, 0.0, 0.0, 0.0);',
+      '}',
+      '',
+      // ---------------------------------------------------------------- P2G
+      '@compute @workgroup_size(' + WG_P + ')',
+      'fn p2g(@builtin(global_invocation_id) gid : vec3<u32>) {',
+      '  let p = gid.x;',
+      '  if (p >= PR.n) { return; }',
+      '  let vp = vel[p];',
+      '  let mid = i32(round(vp.w));',
+      '  if (mid > M_SAND) { return; }',                       // erased: contributes no mass
+      '  let Xp = pos[p] * INV_DX;',
+      '  let base = vec2<i32>(Xp - vec2<f32>(0.5, 0.5));',
+      '  let fx = Xp - vec2<f32>(base);',
+      '  let w0 = 0.5 * (vec2<f32>(1.5, 1.5) - fx) * (vec2<f32>(1.5, 1.5) - fx);',
+      '  let w1 = vec2<f32>(0.75, 0.75) - (fx - vec2<f32>(1.0, 1.0)) * (fx - vec2<f32>(1.0, 1.0));',
+      '  let w2 = 0.5 * (fx - vec2<f32>(0.5, 0.5)) * (fx - vec2<f32>(0.5, 0.5));',
+      '',
+      '  let Fp = Fm[p];',
+      '  let kk = -PR.dt * 4.0 * PR.pVol * INV_DX * INV_DX;',
+      '  var st = vec4<f32>(0.0, 0.0, 0.0, 0.0);',             // -dt*4*pVol*inv_dx^2 * (P F^T)
+      '  if (mid == M_FLUID) {',
+      // weakly compressible: sigma = E (J - 1) I
+      '    let pres = E_FLUID * (Fp.x - 1.0);',
+      '    st = vec4<f32>(kk * pres, 0.0, 0.0, kk * pres);',
+      '  } else if (mid == M_SAND) {',
+      // Hencky (log-strain) Kirchhoff stress: tau = U diag(2 mu e + la tr(e)) U^T. Needs the
+      // singular values themselves, hence the SVD, and no 1/sigma survives into the transfer.
+      '    let sv = svd2(Fp);',
+      '    let e0 = log(max(sv.s.x, 1e-4));',
+      '    let e1 = log(max(sv.s.y, 1e-4));',
+      '    let tr = e0 + e1;',
+      '    let t0 = 2.0 * MU_A * e0 + LA_A * tr;',
+      '    let t1 = 2.0 * MU_A * e1 + LA_A * tr;',
+      '    let u = sv.u;',
+      // U diag(t0,t1) U^T
+      '    let m00 = u.x * t0 * u.x + u.y * t1 * u.y;',
+      '    let m01 = u.x * t0 * u.z + u.y * t1 * u.w;',
+      '    let m11 = u.z * t0 * u.z + u.w * t1 * u.w;',
+      '    st = vec4<f32>(kk * m00, kk * m01, kk * m01, kk * m11);',
+      '  } else {',
+      // corotated: 2 mu (F - R) F^T + la (J-1) J I, with snow's hardening h = exp(xi (1 - Jp))
+      '    var mu = MU_E; var la = LA_E;',
+      '    if (mid == M_SNOW) {',
+      '      let h = exp(XI_S * (1.0 - vp.z));',
+      '      mu = MU_S * h; la = LA_S * h;',
+      '    }',
+      '    let r = polar_r(Fp);',
+      '    let a00 = Fp.x - r.x; let a01 = Fp.y - r.y;',
+      '    let a10 = Fp.z - r.z; let a11 = Fp.w - r.w;',
+      '    let b00 = a00 * Fp.x + a01 * Fp.y; let b01 = a00 * Fp.z + a01 * Fp.w;',
+      '    let b10 = a10 * Fp.x + a11 * Fp.y; let b11 = a10 * Fp.z + a11 * Fp.w;',
+      '    let Jd = Fp.x * Fp.w - Fp.y * Fp.z;',
+      '    let lt = la * (Jd - 1.0) * Jd;',
+      '    st = vec4<f32>(kk * (2.0 * mu * b00 + lt), kk * (2.0 * mu * b01),',
+      '                   kk * (2.0 * mu * b10),      kk * (2.0 * mu * b11 + lt));',
+      '  }',
+      '',
+      '  let Cp = Cm[p];',
+      '  let af00 = st.x + PR.pMass * Cp.x; let af01 = st.y + PR.pMass * Cp.y;',
+      '  let af10 = st.z + PR.pMass * Cp.z; let af11 = st.w + PR.pMass * Cp.w;',
+      '  let mv = PR.pMass * vp.xy;',
+      '',
+      '  for (var i = 0; i < 3; i = i + 1) {',
+      '    let wxi = select(select(w0.x, w1.x, i == 1), w2.x, i == 2);',
+      '    let dpx = (f32(i) - fx.x) * DX;',
+      '    for (var j = 0; j < 3; j = j + 1) {',
+      '      let wyj = select(select(w0.y, w1.y, j == 1), w2.y, j == 2);',
+      '      let dpy = (f32(j) - fx.y) * DX;',
+      '      let w = wxi * wyj;',
+      '      let gi = (base.x + i) * N_GRID + (base.y + j);',
+      '      let wm  = w * PR.pMass;',
+      '      let mvx = w * (mv.x + af00 * dpx + af01 * dpy);',
+      '      let mvy = w * (mv.y + af10 * dpx + af11 * dpy);',
+      // round(), not truncation: truncating a signed momentum biases it toward zero, which is a
+      // systematic numerical drag rather than noise.
+      '      atomicAdd(&gm[gi], u32(round(wm * PR.massScale)));',
+      '      atomicAdd(&gp[2 * gi], i32(round(mvx * PR.momScale)));',
+      '      atomicAdd(&gp[2 * gi + 1], i32(round(mvy * PR.momScale)));',
+      '    }',
+      '  }',
+      '}',
+      '',
+      // ---------------------------------------------------------------- grid op (+ fused clear)
+      '@compute @workgroup_size(' + WG_G + ')',
+      'fn grid_op(@builtin(global_invocation_id) gid : vec3<u32>) {',
+      '  let idx = i32(gid.x);',
+      '  if (idx >= N_CELL) { return; }',
+      '  let m = f32(atomicLoad(&gm[idx])) * PR.invMassScale;',
+      '  let momx = f32(atomicLoad(&gp[2 * idx])) * PR.invMomScale;',
+      '  let momy = f32(atomicLoad(&gp[2 * idx + 1])) * PR.invMomScale;',
+      '  atomicStore(&gm[idx], 0u);',                 // fused clear: grid_op is the only reader
+      '  atomicStore(&gp[2 * idx], 0);',
+      '  atomicStore(&gp[2 * idx + 1], 0);',
+      '  var vx = momx; var vy = momy;',
+      '  if (m > 0.0) { vx = vx / m; vy = vy / m; }',
+      '  vy = vy - PR.dt * PR.gravity;',
+      '  let i = idx / N_GRID;',
+      '  let j = idx - i * N_GRID;',
+      '  if (PR.pokeOn == 1u) {',
+      '    let cx = PR.pokeX - f32(i) * DX;',
+      '    let cy = PR.pokeY - f32(j) * DX;',
+      '    let r2 = cx * cx + cy * cy;',
+      '    let s2 = PR.pokeRadius * PR.pokeRadius;',
+      '    if (r2 < s2 * 6.0) {',
+      '      let lam = min(0.5, PR.pokeRate * PR.dt * exp(-r2 / (0.5 * s2)));',
+      '      vx = vx + lam * (PR.pokeVX + cx * PR.pokeSpring - vx);',
+      '      vy = vy + lam * (PR.pokeVY + cy * PR.pokeSpring - vy);',
+      '    }',
+      '  }',
+      '  if (j < BOUND && vy < 0.0) {',              // floor: separating + Coulomb friction
+      '    let cap = PR.friction * (-vy);',
+      '    if (vx > 0.0) { vx = max(0.0, vx - cap); } else if (vx < 0.0) { vx = min(0.0, vx + cap); }',
+      '    vy = 0.0;',
+      '  }',
+      '  if (j > N_GRID - BOUND && vy > 0.0) { vy = 0.0; }',
+      '  if (i < BOUND && vx < 0.0) { vx = 0.0; vy = 0.0; }',
+      '  if (i > N_GRID - BOUND && vx > 0.0) { vx = 0.0; vy = 0.0; }',
+      '  let ipm = 1.0 / max(PR.pMass, 1e-30);',
+      '  gv[idx] = vec4<f32>(vx, vy, m * ipm, length(vec2<f32>(momx, momy)) * ipm);',
+      '}',
+      '',
+      // ---------------------------------------------------------------- G2P
+      '@compute @workgroup_size(' + WG_P + ')',
+      'fn g2p(@builtin(global_invocation_id) gid : vec3<u32>) {',
+      '  let p = gid.x;',
+      '  if (p >= PR.n) { return; }',
+      '  var vp = vel[p];',
+      '  let mid = i32(round(vp.w));',
+      '  if (mid > M_SAND) { return; }',
+      '  let Xp = pos[p] * INV_DX;',
+      '  let base = vec2<i32>(Xp - vec2<f32>(0.5, 0.5));',
+      '  let fx = Xp - vec2<f32>(base);',
+      '  let w0 = 0.5 * (vec2<f32>(1.5, 1.5) - fx) * (vec2<f32>(1.5, 1.5) - fx);',
+      '  let w1 = vec2<f32>(0.75, 0.75) - (fx - vec2<f32>(1.0, 1.0)) * (fx - vec2<f32>(1.0, 1.0));',
+      '  let w2 = 0.5 * (fx - vec2<f32>(0.5, 0.5)) * (fx - vec2<f32>(0.5, 0.5));',
+      '  var nv = vec2<f32>(0.0, 0.0);',
+      '  var c00 = 0.0; var c01 = 0.0; var c10 = 0.0; var c11 = 0.0;',
+      '  for (var i = 0; i < 3; i = i + 1) {',
+      '    let wxi = select(select(w0.x, w1.x, i == 1), w2.x, i == 2);',
+      '    let dpx = (f32(i) - fx.x) * DX;',
+      '    for (var j = 0; j < 3; j = j + 1) {',
+      '      let wyj = select(select(w0.y, w1.y, j == 1), w2.y, j == 2);',
+      '      let dpy = (f32(j) - fx.y) * DX;',
+      '      let w = wxi * wyj;',
+      '      let g = gv[(base.x + i) * N_GRID + (base.y + j)].xy;',
+      '      nv = nv + w * g;',
+      '      let s = 4.0 * w * INV_DX * INV_DX;',
+      '      c00 = c00 + s * g.x * dpx; c01 = c01 + s * g.x * dpy;',
+      '      c10 = c10 + s * g.y * dpx; c11 = c11 + s * g.y * dpy;',
+      '    }',
+      '  }',
+      '  let np = pos[p] + PR.dt * nv;',
+      '  pos[p] = clamp(np, vec2<f32>(FLOOR, FLOOR), vec2<f32>(CEIL, CEIL));',
+      '',
+      '  let Fp = Fm[p];',
+      '  if (mid == M_FLUID) {',
+      '    Fm[p] = vec4<f32>(Fp.x * (1.0 + PR.dt * (c00 + c11)), 0.0, 0.0, 0.0);',
+      '  } else {',
+      '    let g00 = 1.0 + PR.dt * c00; let g01 = PR.dt * c01;',
+      '    let g10 = PR.dt * c10;       let g11 = 1.0 + PR.dt * c11;',
+      '    let tr = vec4<f32>(g00 * Fp.x + g01 * Fp.z, g00 * Fp.y + g01 * Fp.w,',
+      '                       g10 * Fp.x + g11 * Fp.z, g10 * Fp.y + g11 * Fp.w);',
+      '    if (mid == M_ELASTIC) {',
+      '      Fm[p] = tr;',
+      '    } else if (mid == M_SNOW) {',
+      // Stomakhin: clamp the singular values into a BOX. Cohesive -- the admissible set does not
+      // shrink as the confining pressure falls, which is why snow can stand a vertical wall.
+      '      let sv = svd2(tr);',
+      '      let s0 = min(max(sv.s.x, 1.0 - TC_S), 1.0 + TS_S);',
+      '      let s1 = min(max(sv.s.y, 1.0 - TC_S), 1.0 + TS_S);',
+      '      vp.z = vp.z * (sv.s.x * sv.s.y) / (s0 * s1);',
+      '      Fm[p] = mul_usv(sv.u, vec2<f32>(s0, s1), sv.v);',
+      '    } else {',
+      // Drucker-Prager (Klar et al. 2016, Alg. 3): project the log strain onto a CONE. Cohesionless
+      // -- the admissible shear shrinks with the confining pressure, so sand cannot stand a wall.
+      '      let sv = svd2(tr);',
+      '      let e0 = log(max(abs(sv.s.x), 1e-4));',
+      '      let e1 = log(max(abs(sv.s.y), 1e-4));',
+      '      let trE = e0 + e1 + vp.z;',
+      '      var q0 = 1.0; var q1 = 1.0;',
+      '      if (trE >= 0.0) {',
+      '        vp.z = trE;',                          // cone TIP: no tension, remember the expansion
+      '      } else {',
+      '        vp.z = 0.0;',
+      '        let eh0 = e0 - trE * 0.5;',
+      '        let eh1 = e1 - trE * 0.5;',
+      '        let ehn = sqrt(eh0 * eh0 + eh1 * eh1) + 1e-20;',
+      '        let dg = ehn + (2.0 * LA_A + 2.0 * MU_A) / (2.0 * MU_A) * trE * ALPHA_A;',
+      '        if (dg <= 0.0) { q0 = sv.s.x; q1 = sv.s.y; }',
+      '        else { q0 = exp(e0 - dg / ehn * eh0); q1 = exp(e1 - dg / ehn * eh1); }',
+      '      }',
+      '      Fm[p] = mul_usv(sv.u, vec2<f32>(q0, q1), sv.v);',
+      '    }',
+      '  }',
+      '  vel[p] = vec4<f32>(nv, vp.z, vp.w);',
+      '  Cm[p] = vec4<f32>(c00, c01, c10, c11);',
+      '}',
+      '',
+      // ---------------------------------------------------------------- interactive edits
+      // Marking a particle dead (id 4) rather than compacting on the GPU: compaction needs a prefix
+      // sum and a second buffer, and the host compacts on pointer-up anyway, where it is free.
+      '@compute @workgroup_size(' + WG_P + ')',
+      'fn erase(@builtin(global_invocation_id) gid : vec3<u32>) {',
+      '  let p = gid.x;',
+      '  if (p >= PR.n) { return; }',
+      '  let d = pos[p] - vec2<f32>(PR.pokeX, PR.pokeY);',
+      '  if (dot(d, d) < PR.eraseR * PR.eraseR) {',
+      '    vel[p] = vec4<f32>(0.0, 0.0, 0.0, 5.0);',
+      '  }',
+      '}',
+      '',
+      '@compute @workgroup_size(' + WG_G + ')',
+      'fn empty(@builtin(global_invocation_id) gid : vec3<u32>) {',
+      '  let idx = i32(gid.x);',
+      '  if (idx >= N_CELL) { return; }',
+      '  if (PR.n == 4294967295u) { gv[idx].w = 1.0; }',   // never true; keeps the store live
+      '}'
+    ].join('\n');
+  }
+
+  // ------------------------------------------------------------------ SVD unit-test shader
+  // Deliberately a SEPARATE module and pipeline: the SVD has to be provable in isolation, on
+  // matrices chosen to break it, before it is allowed anywhere near the simulation. A subtly wrong
+  // SVD produces plausible-looking motion, which is exactly the failure a visual check survives.
+  function svdTestShader() {
+    return [
+      SVD_WGSL,
+      '@group(0) @binding(0) var<storage, read> A : array<vec4<f32>>;',
+      '@group(0) @binding(1) var<storage, read_write> Uo : array<vec4<f32>>;',
+      '@group(0) @binding(2) var<storage, read_write> So : array<vec4<f32>>;',
+      '@group(0) @binding(3) var<storage, read_write> Vo : array<vec4<f32>>;',
+      '@compute @workgroup_size(64)',
+      'fn main(@builtin(global_invocation_id) gid : vec3<u32>) {',
+      '  let i = gid.x;',
+      '  if (i >= arrayLength(&A)) { return; }',
+      '  let r = svd2(A[i]);',
+      '  Uo[i] = r.u;',
+      '  So[i] = vec4<f32>(r.s, 0.0, 0.0);',
+      '  Vo[i] = r.v;',
+      '}'
+    ].join('\n');
+  }
+
+  // ------------------------------------------------------------------ render shader
+  // Three views, all reading the simulation buffers directly -- nothing ever crosses back to the
+  // CPU to be drawn.
+  //   'blob'  two passes: particles splat (colour*w, w) additively into an rgba16float target, then
+  //           a full-screen resolve divides out the weight and shades the iso-surface. This is the
+  //           view that has to make four materials tell each other apart, so it carries the colour.
+  //   'grid'  node mass, straight out of gv.z.
+  //   'pts'   one hard square per particle, material-coloured. Low sample count, crisp delivery.
+  function renderShader(fmt) {
+    var cols = ORDER.map(function (m) {
+      var c = MAT[m].color, r = parseInt(c.slice(1, 3), 16) / 255,
+        g = parseInt(c.slice(3, 5), 16) / 255, b = parseInt(c.slice(5, 7), 16) / 255;
+      return 'vec3<f32>(' + f(r.toFixed(4)) + ', ' + f(g.toFixed(4)) + ', ' + f(b.toFixed(4)) + ')';
+    });
+    return [
+      'struct RParams { radius : f32, aspect : f32, n : u32, view : u32,',
+      '                 massRef : f32, iso : f32, dimAlpha : f32, odd : u32, };',
+      '@group(0) @binding(0) var<uniform> R : RParams;',
+      '@group(0) @binding(1) var<storage, read> pos : array<vec2<f32>>;',
+      '@group(0) @binding(2) var<storage, read> vel : array<vec4<f32>>;',
+      '@group(0) @binding(3) var<storage, read> gv  : array<vec4<f32>>;',
+      '',
+      'fn matColor(m : i32) -> vec3<f32> {',
+      '  if (m == ' + ID.fluid + ') { return ' + cols[0] + '; }',
+      '  if (m == ' + ID.elastic + ') { return ' + cols[1] + '; }',
+      '  if (m == ' + ID.snow + ') { return ' + cols[2] + '; }',
+      '  return ' + cols[3] + ';',
+      '}',
+      '',
+      'struct VOut { @builtin(position) p : vec4<f32>, @location(0) uv : vec2<f32>,',
+      '              @location(1) col : vec3<f32>, @location(2) sp : f32, };',
+      '',
+      // the unit quad, derived arithmetically -- dynamic indexing of a const array is a portability
+      // hazard across WGSL implementations and this costs nothing
+      'fn quad(vi : u32) -> vec2<f32> {',
+      '  let qx = select(0.0, 1.0, vi == 1u || vi == 4u || vi == 5u);',
+      '  let qy = select(0.0, 1.0, vi == 2u || vi == 3u || vi == 5u);',
+      '  return vec2<f32>(qx, qy) * 2.0 - vec2<f32>(1.0, 1.0);',
+      '}',
+      '',
+      '@vertex fn vs_particles(@builtin(vertex_index) vi : u32,',
+      '                        @builtin(instance_index) ii : u32) -> VOut {',
+      '  let q = quad(vi);',
+      '  let c = pos[ii];',
+      '  let vv = vel[ii];',
+      '  let mid = i32(round(vv.w));',
+      '  var o : VOut;',
+      // erased: every vertex to one clipped point, so the triangle has zero area and never
+      // reaches a fragment (uv is also pushed outside the disc, so the discard would catch it too)
+      '  if (mid > ' + ID.sand + ') {',
+      '    o.p = vec4<f32>(-5.0, -5.0, 0.0, 1.0); o.uv = vec2<f32>(9.0, 9.0);',
+      '    o.col = vec3<f32>(0.0); o.sp = 0.0; return o;',
+      '  }',
+      '  let ndc = vec2<f32>(c.x * 2.0 - 1.0, c.y * 2.0 - 1.0) + q * vec2<f32>(R.radius, R.radius * R.aspect);',
+      '  o.p = vec4<f32>(ndc, 0.0, 1.0);',
+      '  o.uv = q;',
+      // R.odd is a single particle index the host may paint differently. It is a rendering hook
+      // only -- that particle takes exactly its material's constitutive path in the solver.
+      '  o.col = select(matColor(mid), vec3<f32>(0.176, 0.549, 0.365), ii == R.odd);',
+      '  o.sp = length(vv.xy);',
+      '  return o;',
+      '}',
+      '',
+      '@vertex fn vs_full(@builtin(vertex_index) vi : u32) -> VOut {',
+      '  let q = quad(vi);',
+      '  var o : VOut;',
+      '  o.p = vec4<f32>(q, 0.0, 1.0);',
+      '  o.uv = q * 0.5 + vec2<f32>(0.5, 0.5);',
+      '  o.col = vec3<f32>(0.0); o.sp = 0.0;',
+      '  return o;',
+      '}',
+      '',
+      // ---- pass A of the material view: additive (colour*w, w) accumulation ----
+      '@fragment fn fs_splat(o : VOut) -> @location(0) vec4<f32> {',
+      '  let r2 = dot(o.uv, o.uv);',
+      '  if (r2 > 1.0) { discard; }',
+      '  let w = (1.0 - r2) * (1.0 - r2);',                   // smooth compact kernel
+      '  return vec4<f32>(o.col * w, w);',
+      '}',
+      '',
+      // ---- hard particles view ----
+      '@fragment fn fs_particles(o : VOut) -> @location(0) vec4<f32> {',
+      '  let r2 = dot(o.uv, o.uv);',
+      '  if (r2 > 1.0) { discard; }',
+      '  let shade = 0.55 + 0.45 * sqrt(max(0.0, 1.0 - r2));',
+      '  let hot = clamp(o.sp / 2.5, 0.0, 1.0);',
+      '  let c = mix(o.col, vec3<f32>(1.0, 0.99, 0.95), 0.55 * hot);',
+      '  return vec4<f32>(c * shade, 0.95);',
+      '}',
+      '',
+      'fn ramp(t : f32) -> vec3<f32> {',
+      '  let u = clamp(t, 0.0, 1.0);',
+      '  let c0 = vec3<f32>(0.039, 0.055, 0.078);',
+      '  let c1 = vec3<f32>(0.106, 0.298, 0.451);',
+      '  let c2 = vec3<f32>(0.435, 0.827, 0.933);',
+      '  let c3 = vec3<f32>(1.0, 0.616, 0.361);',
+      '  let c4 = vec3<f32>(1.0, 0.98, 0.92);',
+      '  if (u < 0.25) { return mix(c0, c1, u / 0.25); }',
+      '  if (u < 0.5)  { return mix(c1, c2, (u - 0.25) / 0.25); }',
+      '  if (u < 0.75) { return mix(c2, c3, (u - 0.5) / 0.25); }',
+      '  return mix(c3, c4, (u - 0.75) / 0.25);',
+      '}',
+      '',
+      '@fragment fn fs_grid(o : VOut) -> @location(0) vec4<f32> {',
+      '  let gi = vec2<i32>(clamp(o.uv * f32(' + N_GRID + '), vec2<f32>(0.0), vec2<f32>(' + (N_GRID - 1) + '.0)));',
+      '  let cell = gv[gi.x * ' + N_GRID + ' + gi.y];',
+      '  let t = log(1.0 + cell.z) / log(1.0 + max(R.massRef, 1e-6));',
+      '  return vec4<f32>(ramp(t), 1.0);',
+      '}',
+      '',
+      // ---- pass B of the material view: resolve the accumulation buffer ----
+      '@group(1) @binding(0) var acc : texture_2d<f32>;',
+      '@fragment fn fs_resolve(o : VOut) -> @location(0) vec4<f32> {',
+      '  let ip = vec2<i32>(o.p.xy);',
+      '  let c = textureLoad(acc, ip, 0);',
+      '  let a = c.w;',
+      '  if (a < R.iso * 0.34) { discard; }',
+      '  let base = c.xyz / max(a, 1e-6);',
+      // surface normal from the gradient of the weight field: the Frutiger-era gloss the 2000s
+      // wanted, computed per pixel per frame instead of baked into a JPEG
+      '  let l = textureLoad(acc, ip + vec2<i32>(-2, 0), 0).w;',
+      '  let r = textureLoad(acc, ip + vec2<i32>( 2, 0), 0).w;',
+      '  let d = textureLoad(acc, ip + vec2<i32>(0, -2), 0).w;',
+      '  let u = textureLoad(acc, ip + vec2<i32>(0,  2), 0).w;',
+      '  var nrm = normalize(vec3<f32>(l - r, d - u, 1.6 * R.iso));',
+      '  let ld = normalize(vec3<f32>(-0.42, 0.62, 0.66));',
+      '  let dif = 0.66 + 0.34 * max(0.0, dot(nrm, ld));',
+      '  let spec = pow(max(0.0, dot(nrm, normalize(ld + vec3<f32>(0.0, 0.0, 1.0)))), 26.0);',
+      '  let edge = smoothstep(R.iso * 0.34, R.iso * 1.25, a);',
+      '  var col = base * dif + vec3<f32>(0.9, 0.97, 1.0) * spec * 0.42;',
+      '  col = mix(col * 1.30, col, edge);',                  // brighter rim: reads as a meniscus
+      '  return vec4<f32>(col, min(1.0, 0.30 + 1.6 * edge));',
+      '}'
+    ].join('\n');
+  }
+
+  // ------------------------------------------------------------------ helpers
+  function supported() { return (typeof navigator !== 'undefined') && !!navigator.gpu; }
+
+  // Why navigator.gpu might be missing, told apart. `file://` and plain-HTTP LAN origins are not
+  // secure contexts, so the API is HIDDEN there regardless of what the device supports -- reporting
+  // that as "unsupported" blames the device for a transport problem, and has already produced one
+  // wrong "this device has no WebGPU" conclusion in this project.
+  function probe() {
+    if (typeof navigator === 'undefined') return { ok: false, why: 'no navigator' };
+    if (!navigator.gpu) {
+      var sec = (typeof window !== 'undefined') && window.isSecureContext;
+      return sec
+        ? { ok: false, why: 'unsupported', text: 'this browser has no WebGPU' }
+        : { ok: false, why: 'insecure', text: 'WebGPU is hidden outside a secure context — this page needs HTTPS or localhost' };
+    }
+    return { ok: true, why: 'present' };
+  }
+
+  function seedDisk(cx, cy, radius, n, seed) {
+    var s = (seed >>> 0) || 1;
+    function rnd() { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }
+    var pts = new Float32Array(2 * n);
+    for (var i = 0; i < n; i++) {
+      var a = rnd() * Math.PI * 2, r = radius * Math.sqrt(rnd());
+      pts[2 * i] = cx + r * Math.cos(a);
+      pts[2 * i + 1] = cy + r * Math.sin(a);
+    }
+    return pts;
+  }
+
+  // One grid means ONE timestep: min(dt) over the materials actually present, exactly as canonical
+  // sim.physics.shared_dt does. Adding snow to any scene halves the timestep for everything in it.
+  function sharedDt(names) {
+    var d = Infinity;
+    for (var i = 0; i < names.length; i++) d = Math.min(d, MAT[names[i]].dt);
+    return isFinite(d) ? d : MAT.elastic.dt;
+  }
+
+  var _device = null, _adapterInfo = null, _hasTimestamp = false, _limits = null;
+  var ERRORS = [];
+
+  async function getDevice() {
+    if (_device) return _device;
+    if (!supported()) throw new Error('navigator.gpu is undefined (are you on a secure origin?)');
+    var adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+    if (!adapter) throw new Error('requestAdapter returned null');
+    _adapterInfo = adapter.info || (adapter.requestAdapterInfo ? await adapter.requestAdapterInfo() : {});
+    var feats = [];
+    _hasTimestamp = adapter.features.has('timestamp-query');
+    if (_hasTimestamp) feats.push('timestamp-query');
+    _device = await adapter.requestDevice({ requiredFeatures: feats });
+    _limits = {};
+    ['maxStorageBuffersPerShaderStage', 'maxStorageBufferBindingSize', 'maxBufferSize',
+      'maxComputeWorkgroupsPerDimension', 'maxComputeInvocationsPerWorkgroup']
+      .forEach(function (k) { _limits[k] = _device.limits[k]; });
+    // WebGPU errors are ASYNCHRONOUS and, left alone, silent: an invalid bind group makes every
+    // dispatch a no-op and the simulation "runs" at the speed of doing nothing. Never unlistened.
+    _device.addEventListener('uncapturederror', function (e) {
+      ERRORS.push(String(e.error && e.error.message || e.error));
+      console.error('WebGPU uncaptured error:', e.error);
+    });
+    _device.lost.then(function (e) { ERRORS.push('DEVICE LOST: ' + e.message); });
+    return _device;
+  }
+
+  function deviceInfo() {
+    var a = _adapterInfo || {};
+    return {
+      vendor: a.vendor || '', architecture: a.architecture || '',
+      device: a.device || '', description: a.description || '',
+      timestampQuery: _hasTimestamp, limits: _limits
+    };
+  }
+  function errors() { return ERRORS.slice(); }
+
+  // ------------------------------------------------------------------ SVD unit test (isolated)
+  async function svdSelfTest(mats) {
+    var device = await getDevice();
+    var k = mats.length / 4;
+    var U = GPUBufferUsage;
+    device.pushErrorScope('validation');
+    var inB = device.createBuffer({ size: k * 16, usage: U.STORAGE | U.COPY_DST });
+    function ob() { return device.createBuffer({ size: k * 16, usage: U.STORAGE | U.COPY_SRC }); }
+    var uB = ob(), sB = ob(), vB = ob();
+    var rd = device.createBuffer({ size: k * 16 * 3, usage: U.COPY_DST | U.MAP_READ });
+    device.queue.writeBuffer(inB, 0, mats);
+    var mod = device.createShaderModule({ code: svdTestShader(), label: 'svd-test' });
+    var ci = await mod.getCompilationInfo();
+    var errs = ci.messages.filter(function (m) { return m.type === 'error'; });
+    if (errs.length) throw new Error('svd WGSL: ' + errs.map(function (m) { return m.lineNum + ': ' + m.message; }).join(' | '));
+    var pipe = device.createComputePipeline({ layout: 'auto', compute: { module: mod, entryPoint: 'main' } });
+    var bg = device.createBindGroup({
+      layout: pipe.getBindGroupLayout(0),
+      entries: [inB, uB, sB, vB].map(function (b, i) { return { binding: i, resource: { buffer: b } }; })
+    });
+    var enc = device.createCommandEncoder();
+    var pass = enc.beginComputePass();
+    pass.setPipeline(pipe); pass.setBindGroup(0, bg);
+    pass.dispatchWorkgroups(Math.ceil(k / 64));
+    pass.end();
+    enc.copyBufferToBuffer(uB, 0, rd, 0, k * 16);
+    enc.copyBufferToBuffer(sB, 0, rd, k * 16, k * 16);
+    enc.copyBufferToBuffer(vB, 0, rd, k * 32, k * 16);
+    device.queue.submit([enc.finish()]);
+    var err = await device.popErrorScope();
+    if (err) throw new Error('svd test setup: ' + err.message);
+    await rd.mapAsync(GPUMapMode.READ);
+    var out = new Float32Array(rd.getMappedRange().slice(0));
+    rd.unmap();
+    [inB, uB, sB, vB, rd].forEach(function (b) { b.destroy(); });
+    return { U: out.subarray(0, k * 4), S: out.subarray(k * 4, k * 8), V: out.subarray(k * 8, k * 12) };
+  }
+
+  // ------------------------------------------------------------------ the simulator
+  async function createSim(opts) {
+    opts = opts || {};
+    var device = await getDevice();
+    var cap = opts.capacity | 0 || 8192;           // buffers are allocated once, `n` grows into them
+    var kM = opts.kM !== undefined ? opts.kM : P.kM;
+    var kV = opts.kV !== undefined ? opts.kV : P.kV;
+
+    // ONE density for the whole domain. Canonical simulate_multi lets each group carry its own
+    // p_vol; here every particle is seeded at the same particle-per-area density, so p_vol is a
+    // single uniform. That is a demo choice (constant mass density everywhere) and it is what the
+    // verification scenes reproduce on the canonical side by matching area/n exactly.
+    var pVol = opts.pVol !== undefined ? opts.pVol : (Math.PI * 0.11 * 0.11) / 2048;
+    var pMass = pVol * P.p_rho;
+    var dt = opts.dt !== undefined ? opts.dt : MAT.elastic.dt;
+    var massScale = Math.pow(2, kM) / pMass;
+    var momScale = Math.pow(2, kV) / pMass;
+    var n = 0;
+
+    device.pushErrorScope('validation');
+    var U = GPUBufferUsage;
+    function buf(bytes, usage) { return device.createBuffer({ size: bytes, usage: usage }); }
+    var STO = U.STORAGE | U.COPY_DST | U.COPY_SRC;
+
+    var posBuf = buf(cap * 8, STO);
+    var velBuf = buf(cap * 16, STO);
+    var CBuf = buf(cap * 16, STO);
+    var FBuf = buf(cap * 16, STO);
+    var gmBuf = buf(N_CELL * 4, STO);
+    var gpBuf = buf(N_CELL * 8, STO);
+    var gvBuf = buf(N_CELL * 16, STO);
+    var uBuf = buf(96, U.UNIFORM | U.COPY_DST);
+    var readBuf = device.createBuffer({ size: cap * 8, usage: U.COPY_DST | U.MAP_READ });
+    // pos (cap*8) | vel (cap*16) | C (cap*16) | F (cap*16) = cap*56, one map for the whole state
+    var stateReadBuf = device.createBuffer({ size: cap * 56, usage: U.COPY_DST | U.MAP_READ });
+    var gridReadBuf = device.createBuffer({ size: N_CELL * 16, usage: U.COPY_DST | U.MAP_READ });
+
+    var mod = device.createShaderModule({ code: buildShader(), label: 'mpm4' });
+    var info = await mod.getCompilationInfo();
+    var errs = info.messages.filter(function (m) { return m.type === 'error'; });
+    if (errs.length) throw new Error('WGSL: ' + errs.map(function (m) { return m.lineNum + ': ' + m.message; }).join(' | '));
+
+    function sb(b) {
+      return { binding: b, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } };
+    }
+    var layout = device.createBindGroupLayout({
+      label: 'mpm4-compute-bgl',
+      entries: [{ binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } },
+        sb(1), sb(2), sb(3), sb(4), sb(5), sb(6), sb(7)]
+    });
+    var bind = device.createBindGroup({
+      label: 'mpm4-compute-bg', layout: layout,
+      entries: [uBuf, posBuf, velBuf, CBuf, FBuf, gmBuf, gpBuf, gvBuf]
+        .map(function (b, i) { return { binding: i, resource: { buffer: b } }; })
+    });
+    var pl = device.createPipelineLayout({ bindGroupLayouts: [layout] });
+    function pipe(entry) {
+      return device.createComputePipeline({ layout: pl, label: entry,
+        compute: { module: mod, entryPoint: entry } });
+    }
+    var pClear = pipe('clear_grid'), pP2G = pipe('p2g'), pGrid = pipe('grid_op'),
+      pG2P = pipe('g2p'), pErase = pipe('erase'), pEmpty = pipe('empty');
+
+    var setupError = await device.popErrorScope();
+    if (setupError) throw new Error('WebGPU setup: ' + setupError.message);
+
+    var poke = { on: false, x: 0, y: 0, vx: 0, vy: 0, radius: 0.075, rate: 900.0, spring: 16.0 };
+    var eraseR = 0.06;
+    var uArr = new ArrayBuffer(96);
+    var uF = new Float32Array(uArr), uU = new Uint32Array(uArr);
+
+    function writeUniform() {
+      uF[0] = dt; uF[1] = pMass; uF[2] = pVol; uF[3] = P.gravity; uF[4] = P.FRICTION;
+      uF[5] = massScale; uF[6] = 1.0 / massScale; uF[7] = momScale; uF[8] = 1.0 / momScale;
+      uU[9] = n >>> 0; uU[10] = poke.on ? 1 : 0;
+      uF[11] = poke.x; uF[12] = poke.y; uF[13] = poke.vx; uF[14] = poke.vy;
+      uF[15] = poke.radius; uF[16] = poke.rate; uF[17] = poke.spring;
+      uF[18] = eraseR;
+      device.queue.writeBuffer(uBuf, 0, uArr);
+    }
+    writeUniform();
+
+    var qset = null, qResolve = null, qRead = null;
+    if (_hasTimestamp) {
+      qset = device.createQuerySet({ type: 'timestamp', count: 2 });
+      qResolve = buf(16, U.QUERY_RESOLVE | U.COPY_SRC);
+      qRead = device.createBuffer({ size: 16, usage: U.COPY_DST | U.MAP_READ });
+    }
+
+    function zeroGrid() {
+      device.queue.writeBuffer(gmBuf, 0, new Uint32Array(N_CELL));
+      device.queue.writeBuffer(gpBuf, 0, new Int32Array(2 * N_CELL));
+      device.queue.writeBuffer(gvBuf, 0, new Float32Array(4 * N_CELL));
+    }
+
+    // Append a group of particles of ONE material. Returns how many actually fit.
+    function add(material, pts, v0x, v0y) {
+      var k = Math.min(pts.length >> 1, cap - n);
+      if (k <= 0) return 0;
+      var mid = ID[material];
+      var xs = new Float32Array(2 * k), vs = new Float32Array(4 * k);
+      var Cs = new Float32Array(4 * k), Fs = new Float32Array(4 * k);
+      for (var p = 0; p < k; p++) {
+        xs[2 * p] = pts[2 * p]; xs[2 * p + 1] = pts[2 * p + 1];
+        vs[4 * p] = v0x || 0; vs[4 * p + 1] = v0y || 0;
+        // canonical init_state: sand's Jp is an ADDITIVE log-strain starting at 0, every other
+        // material's is a MULTIPLICATIVE volume ratio starting at 1. Same field, different books.
+        vs[4 * p + 2] = (material === 'sand') ? 0.0 : 1.0;
+        vs[4 * p + 3] = mid;
+        Fs[4 * p] = 1; Fs[4 * p + 3] = (material === 'fluid') ? 0 : 1;
+      }
+      device.queue.writeBuffer(posBuf, n * 8, xs);
+      device.queue.writeBuffer(velBuf, n * 16, vs);
+      device.queue.writeBuffer(CBuf, n * 16, Cs);
+      device.queue.writeBuffer(FBuf, n * 16, Fs);
+      n += k;
+      writeUniform();
+      return k;
+    }
+
+    function clearAll() { n = 0; zeroGrid(); writeUniform(); }
+
+    // ------------------------------------------------------------------------------------------
+    // ONE COMMAND BUFFER PER FRAME. Every substep's three dispatches go into a single compute
+    // pass; WebGPU orders dispatches inside a pass and makes each one's writes visible to the
+    // next, which is exactly the P2G -> grid -> G2P dependency. Nothing crosses back to the CPU.
+    // ------------------------------------------------------------------------------------------
+    function encodeFrame(substeps, opt) {
+      opt = opt || {};
+      var enc = device.createCommandEncoder();
+      var desc = {};
+      if (opt.timed && qset) {
+        desc.timestampWrites = { querySet: qset, beginningOfPassWriteIndex: 0, endOfPassWriteIndex: 1 };
+      }
+      var pass = enc.beginComputePass(desc);
+      pass.setBindGroup(0, bind);
+      if (opt.clearFirst) { pass.setPipeline(pClear); pass.dispatchWorkgroups(GRID_WG); }
+      if (opt.erase) { pass.setPipeline(pErase); pass.dispatchWorkgroups(Math.max(1, Math.ceil(n / WG_P))); }
+      var phases = opt.phases || 'pgG';
+      var doP = phases.indexOf('p') >= 0, doG = phases.indexOf('g') >= 0,
+        doQ = phases.indexOf('G') >= 0, doE = phases.indexOf('e') >= 0;
+      var P_WG = Math.max(1, Math.ceil(n / WG_P));
+      for (var s = 0; s < substeps; s++) {
+        if (doE) { pass.setPipeline(pEmpty); pass.dispatchWorkgroups(GRID_WG); }
+        if (doP && n > 0) { pass.setPipeline(pP2G); pass.dispatchWorkgroups(P_WG); }
+        if (doG) { pass.setPipeline(pGrid); pass.dispatchWorkgroups(GRID_WG); }
+        if (doQ && n > 0) { pass.setPipeline(pG2P); pass.dispatchWorkgroups(P_WG); }
+      }
+      pass.end();
+      if (opt.timed && qset) {
+        enc.resolveQuerySet(qset, 0, 2, qResolve, 0);
+        enc.copyBufferToBuffer(qResolve, 0, qRead, 0, 16);
+      }
+      if (opt.readback && n > 0) enc.copyBufferToBuffer(posBuf, 0, readBuf, 0, n * 8);
+      if (opt.gridReadback) enc.copyBufferToBuffer(gvBuf, 0, gridReadBuf, 0, N_CELL * 16);
+      if (opt.stateReadback && n > 0) {
+        enc.copyBufferToBuffer(posBuf, 0, stateReadBuf, 0, n * 8);
+        enc.copyBufferToBuffer(velBuf, 0, stateReadBuf, cap * 8, n * 16);
+        enc.copyBufferToBuffer(CBuf, 0, stateReadBuf, cap * 24, n * 16);
+        enc.copyBufferToBuffer(FBuf, 0, stateReadBuf, cap * 40, n * 16);
+      }
+      var cmd = enc.finish();
+      if (opt.noSubmit) return;
+      device.queue.submit([cmd]);
+    }
+
+    async function lastGpuNanos() {
+      if (!qset) return null;
+      await qRead.mapAsync(GPUMapMode.READ);
+      var t = new BigUint64Array(qRead.getMappedRange().slice(0));
+      qRead.unmap();
+      return Number(t[1] - t[0]);
+    }
+    async function readPositions() {
+      if (n === 0) return new Float32Array(0);
+      await readBuf.mapAsync(GPUMapMode.READ, 0, n * 8);
+      var out = new Float32Array(readBuf.getMappedRange(0, n * 8).slice(0));
+      readBuf.unmap();
+      return out;
+    }
+    async function readGrid() {
+      await gridReadBuf.mapAsync(GPUMapMode.READ);
+      var out = new Float32Array(gridReadBuf.getMappedRange().slice(0));
+      gridReadBuf.unmap();
+      return out;
+    }
+    // Full particle state, used only by the host-side compaction after an erase.
+    async function readState() {
+      if (n === 0) return null;
+      await stateReadBuf.mapAsync(GPUMapMode.READ);
+      var all = new Float32Array(stateReadBuf.getMappedRange().slice(0));
+      stateReadBuf.unmap();
+      return { pos: all.subarray(0, n * 2), vel: all.subarray(cap * 2, cap * 2 + n * 4),
+        C: all.subarray(cap * 6, cap * 6 + n * 4), F: all.subarray(cap * 10, cap * 10 + n * 4) };
+    }
+
+    // Drop every particle the eraser marked dead, in one host round trip on pointer-up (where a
+    // 1 MB readback is invisible), rather than a GPU stream compaction nobody needs 60 times a
+    // second. Reclaims the slots, so the particle count in the HUD is the truth.
+    // Returns {n, counts} from the SAME readback that did the compaction. Counting from a second,
+    // later read of the staging buffer is a trap: the buffer still holds the pre-compaction state,
+    // so the tally silently disagrees with n.
+    async function compact() {
+      encodeFrame(0, { stateReadback: true });
+      var st = await readState();
+      var counts = [0, 0, 0, 0];
+      if (!st) return { n: 0, counts: counts };
+      var live = 0, i, q, mid;
+      var xs = new Float32Array(n * 2), vs = new Float32Array(n * 4),
+        cs = new Float32Array(n * 4), fs = new Float32Array(n * 4);
+      for (i = 0; i < n; i++) {
+        mid = Math.round(st.vel[4 * i + 3]);
+        if (mid > ID.sand) continue;
+        counts[mid]++;
+        xs[2 * live] = st.pos[2 * i]; xs[2 * live + 1] = st.pos[2 * i + 1];
+        for (q = 0; q < 4; q++) {
+          vs[4 * live + q] = st.vel[4 * i + q];
+          cs[4 * live + q] = st.C[4 * i + q];
+          fs[4 * live + q] = st.F[4 * i + q];
+        }
+        live++;
+      }
+      if (live !== n) {
+        device.queue.writeBuffer(posBuf, 0, xs, 0, live * 2);
+        device.queue.writeBuffer(velBuf, 0, vs, 0, live * 4);
+        device.queue.writeBuffer(CBuf, 0, cs, 0, live * 4);
+        device.queue.writeBuffer(FBuf, 0, fs, 0, live * 4);
+        n = live;
+        writeUniform();
+      }
+      return { n: n, counts: counts };
+    }
+
+    return {
+      get n() { return n; },
+      capacity: cap, device: device,
+      params: {
+        dt: dt, pVol: pVol, pMass: pMass, n_grid: N_GRID, gravity: P.gravity,
+        friction: P.FRICTION, kM: kM, kV: kV, massScale: massScale, momScale: momScale,
+        physics_version: P.physics_version
+      },
+      buffers: { pos: posBuf, vel: velBuf, gv: gvBuf },
+      poke: poke,
+      setEraseRadius: function (r) { eraseR = r; writeUniform(); },
+      setDt: function (d) { dt = d; writeUniform(); },
+      getDt: function () { return dt; },
+      syncUniform: writeUniform,
+      add: add, clear: clearAll, compact: compact,
+      encodeFrame: encodeFrame, lastGpuNanos: lastGpuNanos,
+      readPositions: readPositions, readGrid: readGrid, readState: readState,
+      dispatchesPerFrame: function (substeps) { return 3 * substeps; },
+      idle: function () { return device.queue.onSubmittedWorkDone(); },
+      destroy: function () {
+        [posBuf, velBuf, CBuf, FBuf, gmBuf, gpBuf, gvBuf, uBuf, readBuf, stateReadBuf, gridReadBuf]
+          .forEach(function (b) { b.destroy(); });
+      }
+    };
+  }
+
+  // ------------------------------------------------------------------ renderer (no readback)
+  async function createRenderer(canvas, sim) {
+    var device = sim.device;
+    var ctx = canvas.getContext('webgpu');
+    var fmt = navigator.gpu.getPreferredCanvasFormat();
+    ctx.configure({ device: device, format: fmt, alphaMode: 'opaque' });
+    device.pushErrorScope('validation');
+    var mod = device.createShaderModule({ code: renderShader(fmt), label: 'mpm4-render' });
+    var ci = await mod.getCompilationInfo();
+    var re = ci.messages.filter(function (m) { return m.type === 'error'; });
+    if (re.length) throw new Error('render WGSL: ' + re.map(function (m) { return m.lineNum + ': ' + m.message; }).join(' | '));
+
+    var rBuf = device.createBuffer({ size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    var layout = device.createBindGroupLayout({
+      entries: [
+        { binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } },
+        { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+        { binding: 2, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+        { binding: 3, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'read-only-storage' } }
+      ]
+    });
+    var texLayout = device.createBindGroupLayout({
+      entries: [{ binding: 0, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } }]
+    });
+    var bind = device.createBindGroup({
+      layout: layout,
+      entries: [
+        { binding: 0, resource: { buffer: rBuf } },
+        { binding: 1, resource: { buffer: sim.buffers.pos } },
+        { binding: 2, resource: { buffer: sim.buffers.vel } },
+        { binding: 3, resource: { buffer: sim.buffers.gv } }
+      ]
+    });
+    var pl = device.createPipelineLayout({ bindGroupLayouts: [layout] });
+    var pl2 = device.createPipelineLayout({ bindGroupLayouts: [layout, texLayout] });
+    var blendAlpha = { color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha' },
+      alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' } };
+    var blendAdd = { color: { srcFactor: 'one', dstFactor: 'one' },
+      alpha: { srcFactor: 'one', dstFactor: 'one' } };
+
+    var pParticles = device.createRenderPipeline({
+      layout: pl, vertex: { module: mod, entryPoint: 'vs_particles' },
+      fragment: { module: mod, entryPoint: 'fs_particles', targets: [{ format: fmt, blend: blendAlpha }] },
+      primitive: { topology: 'triangle-list' }
+    });
+    var pSplat = device.createRenderPipeline({
+      layout: pl, vertex: { module: mod, entryPoint: 'vs_particles' },
+      fragment: { module: mod, entryPoint: 'fs_splat', targets: [{ format: 'rgba16float', blend: blendAdd }] },
+      primitive: { topology: 'triangle-list' }
+    });
+    var pResolve = device.createRenderPipeline({
+      layout: pl2, vertex: { module: mod, entryPoint: 'vs_full' },
+      fragment: { module: mod, entryPoint: 'fs_resolve', targets: [{ format: fmt, blend: blendAlpha }] },
+      primitive: { topology: 'triangle-list' }
+    });
+    var pGridView = device.createRenderPipeline({
+      layout: pl, vertex: { module: mod, entryPoint: 'vs_full' },
+      fragment: { module: mod, entryPoint: 'fs_grid', targets: [{ format: fmt }] },
+      primitive: { topology: 'triangle-list' }
+    });
+    var err = await device.popErrorScope();
+    if (err) throw new Error('renderer setup: ' + err.message);
+
+    var accTex = null, accView = null, accBind = null, accW = 0, accH = 0;
+    function ensureAcc() {
+      if (accTex && accW === canvas.width && accH === canvas.height) return;
+      if (accTex) accTex.destroy();
+      accW = canvas.width; accH = canvas.height;
+      accTex = device.createTexture({
+        size: [accW, accH], format: 'rgba16float',
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
+      });
+      accView = accTex.createView();
+      accBind = device.createBindGroup({ layout: texLayout, entries: [{ binding: 0, resource: accView }] });
+    }
+
+    var ru = new Float32Array(8);
+    var ruU = new Uint32Array(ru.buffer);
+    var CLEAR = { r: 0.0235, g: 0.0353, b: 0.051, a: 1 };
+
+    return {
+      draw: function (o) {
+        o = o || {};
+        var view = o.view || 'blob';                      // 'blob' | 'grid' | 'pts'
+        var enc = device.createCommandEncoder();
+        ru[0] = o.radius !== undefined ? o.radius : 0.012;
+        ru[1] = canvas.width / canvas.height;
+        ruU[2] = sim.n >>> 0;
+        ruU[3] = view === 'grid' ? 1 : (view === 'pts' ? 2 : 0);
+        ru[4] = o.massRef !== undefined ? o.massRef : 24.0;
+        ru[5] = o.iso !== undefined ? o.iso : 1.0;
+        ru[6] = 1.0;
+        ruU[7] = (o.odd === undefined ? 0xffffffff : o.odd) >>> 0;
+        device.queue.writeBuffer(rBuf, 0, ru);
+
+        if (view === 'blob') {
+          ensureAcc();
+          var pa = enc.beginRenderPass({
+            colorAttachments: [{ view: accView, clearValue: { r: 0, g: 0, b: 0, a: 0 },
+              loadOp: 'clear', storeOp: 'store' }]
+          });
+          if (sim.n > 0) { pa.setBindGroup(0, bind); pa.setPipeline(pSplat); pa.draw(6, sim.n); }
+          pa.end();
+          var pb = enc.beginRenderPass({
+            colorAttachments: [{ view: ctx.getCurrentTexture().createView(),
+              clearValue: CLEAR, loadOp: 'clear', storeOp: 'store' }]
+          });
+          pb.setBindGroup(0, bind);
+          pb.setBindGroup(1, accBind);
+          pb.setPipeline(pResolve); pb.draw(6, 1);
+          pb.end();
+        } else {
+          var pass = enc.beginRenderPass({
+            colorAttachments: [{ view: ctx.getCurrentTexture().createView(),
+              clearValue: CLEAR, loadOp: 'clear', storeOp: 'store' }]
+          });
+          pass.setBindGroup(0, bind);
+          if (view === 'grid') {
+            pass.setPipeline(pGridView); pass.draw(6, 1);
+          } else if (sim.n > 0) {
+            pass.setPipeline(pParticles); pass.draw(6, sim.n);
+          }
+          pass.end();
+        }
+        device.queue.submit([enc.finish()]);
+      },
+      destroy: function () { if (accTex) accTex.destroy(); }
+    };
+  }
+
+  return {
+    supported: supported, probe: probe, getDevice: getDevice, deviceInfo: deviceInfo, errors: errors,
+    hasTimestamp: function () { return _hasTimestamp; },
+    createSim: createSim, createRenderer: createRenderer, seedDisk: seedDisk, sharedDt: sharedDt,
+    svdSelfTest: svdSelfTest,
+    PARAMS: P, MAT: MAT, ORDER: ORDER, ID: ID, N_GRID: N_GRID, N_CELL: N_CELL,
+    WG_P: WG_P, WG_G: WG_G, buildShader: buildShader, svdTestShader: svdTestShader
+  };
+});

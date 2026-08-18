@@ -157,5 +157,23 @@
     "range": "Measured on one RTX 4090: 55.6 (Taichi kernel launched from Python) vs 1.11 (WGSL dispatch inside a recorded command buffer) -- a 50x difference on the same device.",
     "source": "runs/material-variants/webgpu-port-of-the-interactive-simulation/verify/baselines.py:52 (noop) and runs/material-variants/webgpu-port-of-the-interactive-simulation/verify/harness.html (phases 'e')",
     "caution": "Multiply by the number of kernels per substep AND by substeps_per_frame before comparing to a frame budget -- that product is what actually decides whether a real-time explicit solver is possible. This is a per-SUBMISSION cost, so it is a property of how the API is driven, not of the hardware."
+  },
+  "node_mass_headroom": {
+    "label": "fixed-point node-mass headroom",
+    "short": "How far the heaviest grid node is from the point where the fixed-point mass accumulator wraps.",
+    "formula": "2^(32-kM) / max over the run of (node mass in PARTICLE MASSES). The numerator is where an unsigned 32-bit accumulator carrying 2^kM quanta per particle mass saturates: 256 particle masses at the standard kM=24. The denominator is read from the grid every frame.",
+    "units": "dimensionless ratio (a factor of safety)",
+    "range": ">1 is safe, <=1 has already wrapped. Measured 14.8x at 4096 particles and 5.6x at 12288 with all four materials deliberately crushed into one corner by the interaction force.",
+    "source": "runs/material-variants/the-demo-mvp-four-materials-on-webgpu-live-on-the-demo-page/verify/harness.html (pile probe) and runs/material-variants/the-demo-mvp-four-materials-on-webgpu-live-on-the-demo-page/verify/score.py:96 (pile_headroom)",
+    "caution": "Overrun does NOT produce a NaN or an error -- the accumulator wraps around and that node's block detonates. So this number must be measured on the WORST case a user can reach, not on a typical scene: it is a function of particles-per-cell, which an interactive demo lets the user change at will. It is also a per-node measurement, not a per-scene one; a single dense node is enough."
+  },
+  "realtime_factor": {
+    "label": "achieved real-time factor",
+    "short": "Simulated seconds advanced per wall-clock second, measured rather than assumed.",
+    "formula": "sum over a measurement window of (substeps_this_frame * dt) divided by the summed wall-clock frame intervals. 1.00 is real time; 0.5 is labelled half speed.",
+    "units": "dimensionless (simulated seconds per real second)",
+    "range": "0 to whatever the hardware allows. 1.00 measured for four materials, 9249 particles, shared dt=5e-5, on an RTX 4090 in Chromium.",
+    "source": "runs/material-variants/the-demo-mvp-four-materials-on-webgpu-live-on-the-demo-page/web/demo4.js (tick: simTime/realTime) and runs/material-variants/the-demo-mvp-four-materials-on-webgpu-live-on-the-demo-page/verify/capture_page.py",
+    "caution": "Must be computed from the MEASURED frame interval, not from an assumed 1/60 s per frame. A loop that advances a fixed 1/60 s of physics every frame runs 2.2x too fast on a 133 Hz display while reporting 1.00x. Quoting it also requires the particle count, the materials present (they set the shared dt) and the device -- it is not a property of the solver alone."
   }
 }

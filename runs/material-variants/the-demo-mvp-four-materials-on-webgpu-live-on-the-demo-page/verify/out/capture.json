@@ -1,0 +1,37 @@
+{
+  "frames": 997,
+  "wall_seconds": 18.752848386764526,
+  "capture_fps": 53.165256788598974,
+  "page": {
+    "gpu": true,
+    "n": 9121,
+    "dt": 5e-05,
+    "fps": 134.5565749235474,
+    "spf": 150,
+    "achieved": 1.0000000000729328,
+    "errors": []
+  },
+  "final": {
+    "n": 9249,
+    "counts": {
+      "fluid": 3947,
+      "elastic": 1176,
+      "snow": 2496,
+      "sand": 1630
+    },
+    "fps": 133.29200248231396,
+    "achieved": 1.0000000000184759,
+    "spf": 150,
+    "spfFull": 333,
+    "dt": 5e-05,
+    "hud": [
+      "speed 1.00\u00d7 real time",
+      "fps 133",
+      "particles 9248",
+      "solver steps / frame 150",
+      "per simulated second 20,000",
+      "in the box water + rubber + snow + sand  \u2192  \u0394t 5e-5"
+    ],
+    "errors": []
+  }
+}

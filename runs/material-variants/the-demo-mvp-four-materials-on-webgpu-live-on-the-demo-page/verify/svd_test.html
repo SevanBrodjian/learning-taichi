@@ -1,0 +1,81 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>WGSL 2x2 SVD unit test</title>
+<style>
+  body { background:#0a0e14; color:#dfe6ee; font:13px/1.6 ui-monospace,Menlo,Consolas,monospace; padding:14px; }
+  pre { white-space:pre-wrap; }
+  .ok { color:#7ee787 } .bad { color:#ff8f8f } .hd { color:#6fd3ee }
+</style>
+<h3 class="hd">WGSL 2x2 SVD -- unit test in isolation</h3>
+<pre id="log"></pre>
+<script src="/web/params.js"></script>
+<script src="/web/mpm4-webgpu.js"></script>
+<script>
+// Runs the WGSL svd2() on the exact float32 matrices Python wrote, and POSTs U, S, V back so
+// score_svd.py can check reconstruction, orthogonality, ordering and agreement with ti.svd.
+// Nothing here interprets the result -- the scoring is done in Python against the Taichi reference,
+// because "it looked fine in the browser" is precisely the check a wrong SVD survives.
+const LOG = document.getElementById('log');
+function say(s, cls) { LOG.innerHTML += '<span class="' + (cls || '') + '">' + s + '</span>\n'; }
+async function post(name, body) { await fetch('/save?name=' + name, { method: 'POST', body: body }); }
+
+async function main() {
+  const p = MPM4.probe();
+  if (!p.ok) { say('NO WEBGPU: ' + p.why + ' -- ' + (p.text || ''), 'bad');
+    await post('svd_done.json', JSON.stringify({ error: p.why })); return; }
+  await MPM4.getDevice();
+  const info = MPM4.deviceInfo();
+  say('adapter: ' + JSON.stringify(info), 'ok');
+
+  const raw = await (await fetch('/verify/svd_in.f32?t=' + Date.now())).arrayBuffer();
+  const mats = new Float32Array(raw);
+  const k = mats.length / 4;
+  say('matrices: ' + k);
+
+  const t0 = performance.now();
+  const r = await MPM4.svdSelfTest(mats);
+  const ms = performance.now() - t0;
+
+  // A cheap in-page smoke check so a catastrophic failure is visible immediately; the real
+  // verdict is score_svd.py.
+  let worstRec = 0, worstOrth = 0, badOrder = 0, nonFinite = 0;
+  for (let i = 0; i < k; i++) {
+    const a = mats.subarray(4 * i, 4 * i + 4);
+    const u = r.U.subarray(4 * i, 4 * i + 4);
+    const s0 = r.S[4 * i], s1 = r.S[4 * i + 1];
+    const v = r.V.subarray(4 * i, 4 * i + 4);
+    if (![a[0], u[0], s0, s1, v[0]].every(isFinite)) { nonFinite++; continue; }
+    if (s1 > s0 + 1e-6) badOrder++;
+    // U diag(s) V^T
+    const b0 = u[0] * s0, b1 = u[1] * s1, b2 = u[2] * s0, b3 = u[3] * s1;
+    const rec = [b0 * v[0] + b1 * v[1], b0 * v[2] + b1 * v[3],
+                 b2 * v[0] + b3 * v[1], b2 * v[2] + b3 * v[3]];
+    const scale = Math.max(1e-6, Math.max(...a.map(Math.abs)));
+    for (let q = 0; q < 4; q++) worstRec = Math.max(worstRec, Math.abs(rec[q] - a[q]) / scale);
+    const uu = [u[0] * u[0] + u[2] * u[2] - 1, u[0] * u[1] + u[2] * u[3],
+                u[1] * u[1] + u[3] * u[3] - 1];
+    const vv = [v[0] * v[0] + v[2] * v[2] - 1, v[0] * v[1] + v[2] * v[3],
+                v[1] * v[1] + v[3] * v[3] - 1];
+    worstOrth = Math.max(worstOrth, ...uu.map(Math.abs), ...vv.map(Math.abs));
+  }
+  say('gpu time ' + ms.toFixed(1) + ' ms   worst rel reconstruction ' + worstRec.toExponential(2) +
+      '   worst orthogonality ' + worstOrth.toExponential(2) +
+      '   descending-order violations ' + badOrder + '   non-finite ' + nonFinite,
+      (worstRec < 1e-3 && worstOrth < 1e-3 && !badOrder && !nonFinite) ? 'ok' : 'bad');
+
+  const out = new Float32Array(k * 12);
+  out.set(r.U, 0); out.set(r.S, k * 4); out.set(r.V, k * 8);
+  await post('svd_out.f32', out.buffer);
+  await post('svd_done.json', JSON.stringify({
+    ok: true, k: k, gpu_ms: ms, device: info,
+    smoke: { worst_rel_reconstruction: worstRec, worst_orthogonality: worstOrth,
+             order_violations: badOrder, non_finite: nonFinite },
+    webgpu_errors: MPM4.errors()
+  }));
+  say('DONE -- posted svd_out.f32', 'ok');
+}
+main().catch(async function (e) {
+  say('ERROR ' + (e && e.stack ? e.stack : e), 'bad');
+  try { await post('svd_done.json', JSON.stringify({ error: String(e && e.message || e) })); } catch (_) {}
+});
+</script>

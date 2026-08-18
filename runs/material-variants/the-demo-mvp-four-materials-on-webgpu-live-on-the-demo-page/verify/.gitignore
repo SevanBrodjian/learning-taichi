@@ -1,0 +1,8 @@
+# browser profiles and raw trajectory dumps: regenerable by re-running the harness, and large.
+_cdpprofile*/
+_hlprofile*/
+_dash_*/
+__pycache__/
+out/traj_*.f32
+out/svd_out.f32
+base.npz

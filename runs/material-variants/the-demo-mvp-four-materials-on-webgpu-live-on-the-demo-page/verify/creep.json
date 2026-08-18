@@ -1,0 +1,30 @@
+{
+  "fluid": {
+    "dt_own": 0.00012,
+    "repose_own": 3.404184859028122,
+    "dt_shared": 5e-05,
+    "repose_shared": 2.730166427492651,
+    "delta_deg": -0.6740184315354707
+  },
+  "elastic": {
+    "dt_own": 0.0001,
+    "repose_own": 56.33046632925727,
+    "dt_shared": 5e-05,
+    "repose_shared": 56.3841666685694,
+    "delta_deg": 0.053700339312129586
+  },
+  "snow": {
+    "dt_own": 5e-05,
+    "repose_own": 56.005191109915145,
+    "dt_shared": 5e-05,
+    "repose_shared": 56.005191109915145,
+    "delta_deg": 0.0
+  },
+  "sand": {
+    "dt_own": 0.0001,
+    "repose_own": 24.55251559075262,
+    "dt_shared": 5e-05,
+    "repose_shared": 23.756732095518128,
+    "delta_deg": -0.7957834952344918
+  }
+}

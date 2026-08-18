@@ -127,6 +127,11 @@
           "id": "fixed-point-atomics",
           "title": "Scattering floats without an atomic float add",
           "file": "core/15-fixed-point-atomics.md"
+        },
+        {
+          "id": "svd-in-practice",
+          "title": "Computing the 2x2 SVD, and proving it before trusting it",
+          "file": "core/16-svd-in-practice.md"
         }
       ]
     }

@@ -93,3 +93,14 @@ browser, verified it against `sim.physics`, and measured what interactive rates 
   `real-time-cost` (one grid = one dt; and the substep-creep result), `linear-algebra` (deviatoric split),
   `svd-polar` (log/Hencky strain). Registered `repose_angle`, `shape_drift`, `substeps_per_frame`,
   `dt_stable_max`, `dt_faithful_max`.
+
+## the-demo-mvp-four-materials-on-webgpu-live-on-the-demo-page
+- Ported a Taichi-exact 2x2 SVD to WGSL (polar incl. the det<0 reflection branch + one Jacobi rotation);
+  unit-verified against `ti.svd` on 2,076 matrices in 11 adversarial families before wiring it in.
+- Extended the elastic-only WebGPU engine to four materials WITHOUT adding storage buffers: material id
+  and Jp packed into `vel` widened to vec4, fluid's J into `Fm.x`. Still 7 of the guaranteed 8.
+- Verified per material against canonical on the angle-of-repose heap, and on a mixed four-material
+  scene against `simulate_multi`; all judged against canonical's own self-noise band.
+- Shipped to the Demo tab; drove the real dashboard over CDP and clicked every control there.
+- Caught two defects that every numerical check passed: a CSS `[hidden]` override that drew the
+  no-WebGPU overlay over a working sim, and a fixed 1/60 s per frame loop (2.2x too fast at 133 Hz).

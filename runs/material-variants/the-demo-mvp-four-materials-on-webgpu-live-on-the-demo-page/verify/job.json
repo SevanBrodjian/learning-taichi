@@ -1,0 +1,94 @@
+{
+  "id": "mpm4-verify",
+  "frames": 60,
+  "T": 1.6,
+  "ics": [
+    {
+      "name": "heap_fluid",
+      "kind": "single",
+      "material": "fluid",
+      "pts_file": "ic_heap.f32",
+      "n": 2000,
+      "area": 0.02927165864791402,
+      "p_vol": 1.463582932395701e-05,
+      "dt": 0.00012,
+      "spf": 222,
+      "n_frames": 60
+    },
+    {
+      "name": "heap_elastic",
+      "kind": "single",
+      "material": "elastic",
+      "pts_file": "ic_heap.f32",
+      "n": 2000,
+      "area": 0.02927165864791402,
+      "p_vol": 1.463582932395701e-05,
+      "dt": 0.0001,
+      "spf": 267,
+      "n_frames": 60
+    },
+    {
+      "name": "heap_snow",
+      "kind": "single",
+      "material": "snow",
+      "pts_file": "ic_heap.f32",
+      "n": 2000,
+      "area": 0.02927165864791402,
+      "p_vol": 1.463582932395701e-05,
+      "dt": 5e-05,
+      "spf": 533,
+      "n_frames": 60
+    },
+    {
+      "name": "heap_sand",
+      "kind": "single",
+      "material": "sand",
+      "pts_file": "ic_heap.f32",
+      "n": 2000,
+      "area": 0.02927165864791402,
+      "p_vol": 1.463582932395701e-05,
+      "dt": 0.0001,
+      "spf": 267,
+      "n_frames": 60
+    },
+    {
+      "name": "mixed4",
+      "kind": "multi",
+      "pts_file": "ic_mixed4.f32",
+      "mat_file": "ic_mixed4_mat.i32",
+      "n": 3245,
+      "area": 0.11468776681011238,
+      "p_vol": 3.534291735288517e-05,
+      "dt": 5e-05,
+      "spf": 533,
+      "n_frames": 60,
+      "materials": [
+        "fluid",
+        "elastic",
+        "snow",
+        "sand",
+        "fluid"
+      ]
+    }
+  ],
+  "physics_version": "phys-bebeaafbe73e",
+  "bench": {
+    "realtime_n": [
+      2048,
+      4096,
+      6144,
+      8192,
+      12288,
+      16384
+    ],
+    "realtime_frames": 24,
+    "pile_n": [
+      4096,
+      8192,
+      12288
+    ],
+    "pile_frames": 90,
+    "kM": 24
+  },
+  "shared_dt": 5e-05
+}

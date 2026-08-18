@@ -1,0 +1,252 @@
+{
+  "job_id": "mpm4-verify",
+  "started": 1787030456071,
+  "device": {
+    "vendor": "nvidia",
+    "architecture": "lovelace",
+    "device": "",
+    "description": "",
+    "timestampQuery": true,
+    "limits": {
+      "maxStorageBuffersPerShaderStage": 8,
+      "maxStorageBufferBindingSize": 134217728,
+      "maxBufferSize": 268435456,
+      "maxComputeWorkgroupsPerDimension": 65535,
+      "maxComputeInvocationsPerWorkgroup": 256
+    }
+  },
+  "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Claude/1.30096.5 Chrome/148.0.7778.280 Electron/42.7.0 Safari/537.36 MSIX",
+  "params_physics_version": "phys-bebeaafbe73e",
+  "rollouts": [
+    {
+      "ic": "heap_fluid",
+      "kind": "single",
+      "material": "fluid",
+      "n": 2000,
+      "dt": 0.00012,
+      "spf": 222,
+      "frames": 60,
+      "n_nonfinite": 0,
+      "mean_displacement": 0.20036766057406638,
+      "wall_ms": 285.59999999403954,
+      "file": "traj_heap_fluid.f32",
+      "pVol": 0.00001463582932395701,
+      "pMass": 0.00001463582932395701
+    },
+    {
+      "ic": "heap_elastic",
+      "kind": "single",
+      "material": "elastic",
+      "n": 2000,
+      "dt": 0.0001,
+      "spf": 267,
+      "frames": 60,
+      "n_nonfinite": 0,
+      "mean_displacement": 0.000709848578703003,
+      "wall_ms": 307.09999999403954,
+      "file": "traj_heap_elastic.f32",
+      "pVol": 0.00001463582932395701,
+      "pMass": 0.00001463582932395701
+    },
+    {
+      "ic": "heap_snow",
+      "kind": "single",
+      "material": "snow",
+      "n": 2000,
+      "dt": 0.00005,
+      "spf": 533,
+      "frames": 60,
+      "n_nonfinite": 0,
+      "mean_displacement": 0.0008343425638896233,
+      "wall_ms": 509.2000000178814,
+      "file": "traj_heap_snow.f32",
+      "pVol": 0.00001463582932395701,
+      "pMass": 0.00001463582932395701
+    },
+    {
+      "ic": "heap_sand",
+      "kind": "single",
+      "material": "sand",
+      "n": 2000,
+      "dt": 0.0001,
+      "spf": 267,
+      "frames": 60,
+      "n_nonfinite": 0,
+      "mean_displacement": 0.048406552607931794,
+      "wall_ms": 312.5,
+      "file": "traj_heap_sand.f32",
+      "pVol": 0.00001463582932395701,
+      "pMass": 0.00001463582932395701
+    },
+    {
+      "ic": "mixed4",
+      "kind": "multi",
+      "material": null,
+      "n": 3245,
+      "dt": 0.00005,
+      "spf": 533,
+      "frames": 60,
+      "n_nonfinite": 0,
+      "mean_displacement": 0.39127805516577735,
+      "wall_ms": 523.6999999880791,
+      "file": "traj_mixed4.f32",
+      "pVol": 0.00003534291735288517,
+      "pMass": 0.00003534291735288517
+    }
+  ],
+  "shared_dt": 0.00005,
+  "substeps_per_frame": 333,
+  "realtime": [
+    {
+      "n": 2048,
+      "dt": 0.00005,
+      "substeps": 333,
+      "frames": 24,
+      "sustained_ms": 2.258333332836628,
+      "gpu_ms": 2.147328,
+      "fps": 442.8044281416723,
+      "us_per_substep_gpu": 6.4484324324324325,
+      "mean_displacement_over_bench": 0.2676340667569895,
+      "motion_ok": true
+    },
+    {
+      "n": 4096,
+      "dt": 0.00005,
+      "substeps": 333,
+      "frames": 24,
+      "sustained_ms": 2.7791666674117246,
+      "gpu_ms": 2.563072,
+      "fps": 359.82008985855947,
+      "us_per_substep_gpu": 7.6969129129129135,
+      "mean_displacement_over_bench": 0.26051801894687554,
+      "motion_ok": true
+    },
+    {
+      "n": 6144,
+      "dt": 0.00005,
+      "substeps": 333,
+      "frames": 24,
+      "sustained_ms": 3,
+      "gpu_ms": 2.917376,
+      "fps": 333.3333333333333,
+      "us_per_substep_gpu": 8.76088888888889,
+      "mean_displacement_over_bench": 0.2591638546562815,
+      "motion_ok": true
+    },
+    {
+      "n": 8192,
+      "dt": 0.00005,
+      "substeps": 333,
+      "frames": 24,
+      "sustained_ms": 3.370833333581686,
+      "gpu_ms": 3.457024,
+      "fps": 296.6625463316657,
+      "us_per_substep_gpu": 10.381453453453453,
+      "mean_displacement_over_bench": 0.258587786634552,
+      "motion_ok": true
+    },
+    {
+      "n": 12288,
+      "dt": 0.00005,
+      "substeps": 333,
+      "frames": 24,
+      "sustained_ms": 4.445833334078391,
+      "gpu_ms": 4.457472,
+      "fps": 224.92970942809694,
+      "us_per_substep_gpu": 13.3858018018018,
+      "mean_displacement_over_bench": 0.2589765588925154,
+      "motion_ok": true
+    },
+    {
+      "n": 16384,
+      "dt": 0.00005,
+      "substeps": 333,
+      "frames": 24,
+      "sustained_ms": 5.245833333581686,
+      "gpu_ms": 5.112832,
+      "fps": 190.6274821196487,
+      "us_per_substep_gpu": 15.353849849849851,
+      "mean_displacement_over_bench": 0.2602717293058822,
+      "motion_ok": true
+    }
+  ],
+  "pile": [
+    {
+      "n": 4096,
+      "frames": 90,
+      "kM": 24,
+      "kV": 22,
+      "max_node_mass_pm": 17.345243453979492,
+      "max_node_mom_pm": 25.077714920043945,
+      "worst_frame": 32,
+      "mass_saturates_at_pm": 256,
+      "mom_saturates_at_pm": 512,
+      "mass_headroom": 14.759089469065152,
+      "mom_headroom": 20.416533230097937
+    },
+    {
+      "n": 8192,
+      "frames": 90,
+      "kM": 24,
+      "kV": 22,
+      "max_node_mass_pm": 35.94812774658203,
+      "max_node_mom_pm": 45.34952163696289,
+      "worst_frame": 84,
+      "mass_saturates_at_pm": 256,
+      "mom_saturates_at_pm": 512,
+      "mass_headroom": 7.121372267414974,
+      "mom_headroom": 11.290086014549837
+    },
+    {
+      "n": 12288,
+      "frames": 90,
+      "kM": 24,
+      "kV": 22,
+      "max_node_mass_pm": 46.07582092285156,
+      "max_node_mom_pm": 62.62062454223633,
+      "worst_frame": 55,
+      "mass_saturates_at_pm": 256,
+      "mom_saturates_at_pm": 512,
+      "mass_headroom": 5.556059444467442,
+      "mom_headroom": 8.176219955370557
+    }
+  ],
+  "substep_table": [
+    {
+      "present": [
+        "fluid"
+      ],
+      "dt": 0.00012,
+      "substeps_per_frame": 139
+    },
+    {
+      "present": [
+        "fluid",
+        "sand"
+      ],
+      "dt": 0.0001,
+      "substeps_per_frame": 167
+    },
+    {
+      "present": [
+        "fluid",
+        "elastic",
+        "sand"
+      ],
+      "dt": 0.0001,
+      "substeps_per_frame": 167
+    },
+    {
+      "present": [
+        "fluid",
+        "elastic",
+        "snow",
+        "sand"
+      ],
+      "dt": 0.00005,
+      "substeps_per_frame": 333
+    }
+  ],
+  "finished": 1787030462528,
+  "webgpu_errors": []
+}

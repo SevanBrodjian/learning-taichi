@@ -1,0 +1,41 @@
+{
+  "served_demoview": {
+    "imports_bundle": true,
+    "bytes": 10069
+  },
+  "clicked_demo_tab": true,
+  "state": {
+    "mounted": true,
+    "chips": [
+      "speed 1.00\u00d7 real time",
+      "fps 133",
+      "particles 9120",
+      "solver steps / frame 148",
+      "per simulated second 20,000",
+      "in the box water + rubber + snow + sand  \u2192  \u0394t 5e-5"
+    ],
+    "buttons": 11,
+    "fallback_shown": false,
+    "canvas": [
+      809,
+      809
+    ]
+  },
+  "after_controls": {
+    "chips": [
+      "speed 1.00\u00d7 real time",
+      "fps 134",
+      "particles 9120",
+      "solver steps / frame 150",
+      "per simulated second 20,000",
+      "in the box water + rubber + snow + sand  \u2192  \u0394t 5e-5"
+    ],
+    "tool_on": [
+      "fluid"
+    ],
+    "view_on": [
+      "blob"
+    ],
+    "webgpu_errors": []
+  }
+}

@@ -1,0 +1,421 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>The Demo MVP — four materials on WebGPU</title>
+<style>
+:root{--bg:#0a0e14;--pan:#0e131b;--fg:#dfe6ee;--mut:#7f8ea3;--acc:#6fd3ee;--line:#1d2734;
+      --water:#4db6ff;--rubber:#ff9d5c;--snow:#e6ecff;--sand:#ffd24d;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:14px/1.62 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;padding:18px 16px 34px}
+.wrap{max-width:1040px;margin:0 auto}
+h2{font-size:15px;letter-spacing:.13em;text-transform:uppercase;color:var(--acc);margin:34px 0 10px;
+  border-bottom:1px solid var(--line);padding-bottom:6px}
+h2:first-of-type{margin-top:8px}
+p{margin:9px 0}
+.mut{color:var(--mut)}
+.verdict{background:linear-gradient(180deg,#101822,#0c1119);border:1px solid #24404f;border-left:3px solid var(--acc);
+  border-radius:5px;padding:14px 16px;font-size:15px;line-height:1.66}
+.verdict b{color:#bfe9f7}
+.warn{border-left-color:var(--sand)}
+.warn b{color:var(--sand)}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#bcd6e4}
+video,img{width:100%;border:1px solid var(--line);border-radius:5px;display:block;background:#000}
+figure{margin:12px 0 0}
+figcaption{font-size:12px;color:var(--mut);margin-top:6px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:820px){.grid2{grid-template-columns:1fr}}
+table{border-collapse:collapse;width:100%;font-size:12.5px;margin-top:8px;
+  font-family:ui-monospace,Menlo,Consolas,monospace}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.07em;font-size:11px}
+.ok{color:#7ee787}.bad{color:#ff8f8f}.hl{color:var(--acc)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 4px}
+.tabs button{font:inherit;font-size:12px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;
+  background:linear-gradient(180deg,#16222d,#0d151d);border:1px solid #23394a;border-radius:4px;
+  color:#9fc4d2;padding:8px 12px;transition:all .1s}
+.tabs button:hover{border-color:#356b83;color:#e6f6fd}
+.tabs button.on{color:#04121a;border-color:#7fd8f0;background:linear-gradient(180deg,#a9e9fb,#5cc0dd)}
+.sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:7px;vertical-align:baseline}
+.card{background:var(--pan);border:1px solid var(--line);border-radius:6px;padding:14px 16px}
+.big{font-size:26px;font-weight:700;font-family:ui-monospace,Menlo,Consolas,monospace;line-height:1.15}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:10px;margin-top:12px}
+.kpi{background:var(--pan);border:1px solid var(--line);border-radius:6px;padding:11px 13px}
+.kpi .lab{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--mut)}
+.kpi .val{font-size:20px;font-weight:700;font-family:ui-monospace,Menlo,Consolas,monospace;margin-top:3px}
+.bar{height:9px;background:#131c26;border-radius:5px;overflow:hidden;margin-top:5px}
+.bar i{display:block;height:100%;border-radius:5px}
+.note{font-size:12px;color:var(--mut);margin-top:7px}
+.scope{border-left:3px solid var(--sand);background:rgba(255,210,77,.05);padding:9px 13px;border-radius:0 5px 5px 0;
+  font-size:12.8px;color:#cdd8e2;margin-top:12px}
+.scope b{color:var(--sand)}
+svg{display:block;width:100%;height:auto}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin-top:8px}
+</style>
+<div class="wrap">
+
+<div class="verdict">
+  All four canonical materials — <b style="color:var(--water)">water</b>,
+  <b style="color:var(--rubber)">rubber</b>, <b style="color:var(--snow)">snow</b> and
+  <b style="color:var(--sand)">sand</b> — now run together on <b>one shared MLS-MPM grid, in a browser,
+  on WebGPU, at 1.00&times; real time</b> with <span id="vShipped"></span> particles, and the Demo tab
+  is that simulation. Each material reproduces canonical <code>sim.physics</code> on a fixed
+  angle-of-repose scene to within, or close to, canonical's own self-noise — settled slopes agree to
+  <span id="vAngle"></span>. The new engineering was a 2&times;2 SVD in WGSL, unit-checked against
+  <code>ti.svd</code> on <span id="vSvd"></span> adversarial matrices before it was wired in.
+  <b>What it does not do:</b> a mixed scene is <b>not</b> quantitatively canonical — one grid forces one
+  timestep, and running sand at snow's smaller step costs it
+  <span id="vCreep"></span> of settled slope.
+</div>
+
+<h2>1 — is each material recognisably itself?</h2>
+<p class="mut">An over-steep 60° heap, released from rest, 2000 particles, each material at its OWN
+canonical timestep. Whatever slope survives is the slope the material genuinely holds. Ground truth on
+the top row, the browser underneath, same seed and same substep count. Pick a material to see its
+numbers; the video plays all four at once.</p>
+
+<div class="tabs" id="matTabs"></div>
+<div class="grid2" style="margin-top:6px">
+  <div class="card" id="matCard"></div>
+  <div class="card">
+    <div style="font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--mut)">settled slope, both sides</div>
+    <svg id="reposeSvg" viewBox="0 0 460 220"></svg>
+    <div class="legend"><span>■ canonical <code>sim.physics</code></span><span>■ WebGPU, in the browser</span>
+      <span class="mut">dotted = the 60° slope it was seeded with</span></div>
+  </div>
+</div>
+
+<figure>
+  <video src="__API__material_vs_canonical.mp4" controls autoplay muted loop playsinline></video>
+  <figcaption>Ground truth (top) against the same step running in WebGPU (bottom). The fitted flank
+  whose slope <em>is</em> the reported angle is drawn on the final frame of every panel, so the number
+  and the picture are the same object. Water spreads flat, sand slumps to a dome, rubber and snow keep
+  the heap they were given.</figcaption>
+</figure>
+
+<h2>2 — do they behave when they are in the same box?</h2>
+<p class="mut">All four on one grid through canonical <code>simulate_multi</code>, against the same
+scene in the browser. This is the case the demo actually ships.</p>
+<div class="kpis" id="mixKpis"></div>
+<figure>
+  <video src="__API__mixed4_vs_canonical.mp4" controls muted loop playsinline></video>
+  <figcaption>One grid, five groups, 3245 particles, shared Δt = 5e-5. Colours are the canonical
+  per-material colours from <code>spec/registry/materials.json</code>.</figcaption>
+</figure>
+
+<div class="scope"><b>The scope this result is bound to.</b> Four materials, on two scenes (a heap per
+material and one mixed drop), on one device (RTX 4090 / Chromium), at one grid resolution, over 1.6 s
+of physics. That supports a hypothesis about multi-material MPM in the browser; it is not a claim about
+other scenes, other GPUs, or longer rollouts.</div>
+
+<h2>3 — the shipped page</h2>
+<p class="mut">The Demo tab, captured from a real GPU-backed window while genuine pointer events drive
+it: the opening scene lands, sand is poured in, the view switches to grid mass and to raw particles,
+the material is dragged around, a channel is carved out of it, and the scene is reset.</p>
+<figure>
+  <video src="__API__demo_capture.mp4" controls muted loop playsinline></video>
+  <figcaption>Real time. Read the HUD: <code>speed</code> is simulated seconds per real second and is
+  measured, never assumed.</figcaption>
+</figure>
+<div class="grid2">
+  <figure><img src="__API__verify/shots/dashboard_demo_tab.png" alt="the Demo tab running">
+    <figcaption>The Demo tab in the dashboard itself — through Vite, React and a generated ES-module
+    copy of the same code.</figcaption></figure>
+  <figure><img src="__API__demo_no_webgpu.png" alt="the no-WebGPU path">
+    <figcaption>Graceful degradation, captured by hiding <code>navigator.gpu</code> from a real window.
+    The three cases are told apart: hidden by an insecure origin, unsupported, or no device at all.</figcaption></figure>
+</div>
+
+<h2>4 — what one grid costs, and why</h2>
+<p class="mut">One grid means one timestep, and it is <code>min(dt)</code> over the materials
+<em>present</em>. Put snow in the box and every particle in it pays snow's substep count. Click a
+mixture:</p>
+<div class="tabs" id="mixTabs"></div>
+<div class="grid2" style="margin-top:6px">
+  <div class="card" id="costCard"></div>
+  <div class="card">
+    <div style="font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--mut)">measured frame cost, four materials present</div>
+    <svg id="costSvg" viewBox="0 0 460 230"></svg>
+  </div>
+</div>
+
+<div class="scope"><b>And this is a correctness issue, not only a cost one.</b> A plastic material's
+strength decays with <em>substep count</em>, not with physical time, so running sand at snow's smaller
+step gives it more creep than canonical sand shows. Measured canonical-against-canonical on the same
+heap: <span id="creepText"></span>. Rubber, which has no plastic projection, does not move.
+<b>A material's behaviour therefore depends on what else is in the scene</b>, and the demo does not
+claim a mixed scene is quantitatively canonical.</div>
+
+<h2>5 — the two traps this had to get past</h2>
+<div class="grid2">
+  <div class="card">
+    <div class="big" style="color:var(--acc)" id="svdBig"></div>
+    <div class="note">worst relative reconstruction error of <code>U·diag(s)·Vᵀ</code> over
+    <span id="svdN"></span> matrices in 11 adversarial families — random, near-rotation, near-singular,
+    reflections with negative determinant, anisotropic to a condition number of 10⁴, exact zeros and
+    identities, the snow clamp boundary, and 1600 deformation gradients sampled from real snow and sand
+    rollouts.</div>
+    <table id="svdTable"></table>
+    <div class="note">A wrong 2&times;2 SVD does not produce garbage; it produces plausible-looking
+    motion. Snow still crumbles, sand still slumps, and nothing on the screen tells you the singular
+    values are wrong — which is why this was proved in isolation before it went anywhere near the sim.</div>
+  </div>
+  <div class="card">
+    <div style="font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--mut)">fixed-point headroom, deliberately piling material into one corner</div>
+    <svg id="pileSvg" viewBox="0 0 460 210"></svg>
+    <div class="note">WGSL has no atomic float add, so P2G accumulates mass into an
+    <code>atomic&lt;u32&gt;</code> scaled by 2²⁴ quanta per particle mass. That saturates at
+    <b>256 particle masses on one node</b> and then <b>wraps silently</b> — no NaN, no error, the block
+    just detonates. Previous measurements were on scenes with a fixed particle count; this demo lets a
+    visitor pile material up by hand, so the worst case was measured by actively crushing all four
+    materials into a corner with the drag force.</div>
+  </div>
+</div>
+
+<h2>6 — how the four materials actually differ</h2>
+<svg id="lawSvg" viewBox="0 0 900 250"></svg>
+<p class="note">All four share one transfer skeleton and one grid. They differ only in what happens to
+the deformation gradient after the gather. Water keeps a scalar volume ratio and no shear strength at
+all. Rubber keeps <code>F</code> untouched — no plastic projection, which is why it needs no singular
+values and why its settled slope does not move with the timestep. Snow clamps the singular values into
+a fixed <b>box</b>: the admissible set does not shrink when the confining pressure falls, which is
+cohesion, which is why snow can stand a vertical wall. Sand projects the log of the singular values
+onto a <b>cone</b> whose width is proportional to the confining pressure: no pressure, no strength,
+so sand cannot.</p>
+
+</div>
+<script>
+const D = {"mats":["fluid","elastic","snow","sand"],"label":{"fluid":"WATER","elastic":"RUBBER","snow":"SNOW","sand":"SAND"},"color":{"fluid":"#4db6ff","elastic":"#ff9d5c","snow":"#e6ecff","sand":"#ffd24d"},"blurb":{"fluid":"no shear strength at all \u2014 it finds its own level","elastic":"purely elastic, no plastic projection \u2014 it keeps the shape it was given","snow":"singular values clamped into a BOX \u2014 cohesive, so it can stand a wall","sand":"log-strain projected onto a CONE \u2014 cohesionless, so its strength needs pressure"},"heap":{"fluid":{"n":2000,"dt":0.00012,"substeps_per_frame":222,"traj_rmse":0.0002282169443788007,"self_noise":3.9297632611123845e-05,"self_noise_repeat":6.183507503010333e-05,"ratio_to_noise_band":5.807396761966778,"repose_angle_canonical":3.404184859028122,"repose_angle_webgpu":3.3731880862017203,"pile_height_canonical":0.027550645172595978,"pile_height_webgpu":0.02766543999314308,"spread_width_canonical":0.8681206703186035,"spread_width_webgpu":0.8683934807777405},"elastic":{"n":2000,"dt":0.0001,"substeps_per_frame":267,"traj_rmse":3.9337455746135674e-06,"self_noise":2.8090795467505814e-07,"self_noise_repeat":1.0685140239274915e-07,"ratio_to_noise_band":14.003681665632964,"repose_angle_canonical":56.33046632925727,"repose_angle_webgpu":56.32649152314104,"pile_height_canonical":0.17284150421619415,"pile_height_webgpu":0.17283928394317627,"spread_width_canonical":0.18007493019104004,"spread_width_webgpu":0.18010938167572021},"snow":{"n":2000,"dt":5e-05,"substeps_per_frame":533,"traj_rmse":7.953169551910833e-05,"self_noise":7.097291927493643e-06,"self_noise_repeat":7.405931228277041e-06,"ratio_to_noise_band":11.20592140377046,"repose_angle_canonical":56.005191109915145,"repose_angle_webgpu":56.03729395911468,"pile_height_canonical":0.17011314630508423,"pile_height_webgpu":0.1703248918056488,"spread_width_canonical":0.18028363585472107,"spread_width_webgpu":0.18040955066680908},"sand":{"n":2000,"dt":0.0001,"substeps_per_frame":267,"traj_rmse":0.00011365680256858468,"self_noise":0.0001303985482081771,"self_noise_repeat":9.073222463484854e-05,"ratio_to_noise_band":0.871610950661316,"repose_angle_canonical":24.55251559075262,"repose_angle_webgpu":24.50943626230758,"pile_height_canonical":0.09105104207992554,"pile_height_webgpu":0.09088592231273651,"spread_width_canonical":0.30727750062942505,"spread_width_webgpu":0.30813565850257874}},"mixed":{"n":3245,"dt":5e-05,"substeps_per_frame":533,"traj_rmse":0.0009094420820474625,"self_noise":0.0009878621203824878,"ratio_to_noise_band":0.9206164132453403,"per_material":{"fluid":{"n":1745,"traj_rmse_web_vs_canonical":0.0015475730178877711,"self_noise_nudge":0.001701339497230947,"self_noise_repeat":0.0018516950076445937,"ratio_to_nudge_band":0.9096203435037852},"elastic":{"n":500,"traj_rmse_web_vs_canonical":0.00013618075172416866,"self_noise_nudge":9.251434676116332e-05,"self_noise_repeat":0.00010441131598781794,"ratio_to_nudge_band":1.4719960362011235},"snow":{"n":500,"traj_rmse_web_vs_canonical":0.00010446601663716137,"self_noise_nudge":0.0001441867061657831,"self_noise_repeat":7.848435780033469e-05,"ratio_to_nudge_band":0.7245190587615501},"sand":{"n":500,"traj_rmse_web_vs_canonical":0.00026060218806378543,"self_noise_nudge":0.00023684899497311562,"self_noise_repeat":0.00029118076781742275,"ratio_to_nudge_band":1.1002883423396668}}},"creep":{"fluid":{"dt_own":0.00012,"repose_own":3.404184859028122,"dt_shared":5e-05,"repose_shared":2.730166427492651,"delta_deg":-0.6740184315354707},"elastic":{"dt_own":0.0001,"repose_own":56.33046632925727,"dt_shared":5e-05,"repose_shared":56.3841666685694,"delta_deg":0.053700339312129586},"snow":{"dt_own":5e-05,"repose_own":56.005191109915145,"dt_shared":5e-05,"repose_shared":56.005191109915145,"delta_deg":0.0},"sand":{"dt_own":0.0001,"repose_own":24.55251559075262,"dt_shared":5e-05,"repose_shared":23.756732095518128,"delta_deg":-0.7957834952344918}},"realtime":[{"n":2048,"dt":5e-05,"substeps":333,"frames":24,"sustained_ms":2.258333332836628,"gpu_ms":2.147328,"fps":442.8044281416723,"us_per_substep_gpu":6.4484324324324325,"mean_displacement_over_bench":0.2676340667569895,"motion_ok":true},{"n":4096,"dt":5e-05,"substeps":333,"frames":24,"sustained_ms":2.7791666674117246,"gpu_ms":2.563072,"fps":359.82008985855947,"us_per_substep_gpu":7.6969129129129135,"mean_displacement_over_bench":0.26051801894687554,"motion_ok":true},{"n":6144,"dt":5e-05,"substeps":333,"frames":24,"sustained_ms":3,"gpu_ms":2.917376,"fps":333.3333333333333,"us_per_substep_gpu":8.76088888888889,"mean_displacement_over_bench":0.2591638546562815,"motion_ok":true},{"n":8192,"dt":5e-05,"substeps":333,"frames":24,"sustained_ms":3.370833333581686,"gpu_ms":3.457024,"fps":296.6625463316657,"us_per_substep_gpu":10.381453453453453,"mean_displacement_over_bench":0.258587786634552,"motion_ok":true},{"n":12288,"dt":5e-05,"substeps":333,"frames":24,"sustained_ms":4.445833334078391,"gpu_ms":4.457472,"fps":224.92970942809694,"us_per_substep_gpu":13.3858018018018,"mean_displacement_over_bench":0.2589765588925154,"motion_ok":true},{"n":16384,"dt":5e-05,"substeps":333,"frames":24,"sustained_ms":5.245833333581686,"gpu_ms":5.112832,"fps":190.6274821196487,"us_per_substep_gpu":15.353849849849851,"mean_displacement_over_bench":0.2602717293058822,"motion_ok":true}],"pile":[{"n":4096,"frames":90,"kM":24,"kV":22,"max_node_mass_pm":17.345243453979492,"max_node_mom_pm":25.077714920043945,"worst_frame":32,"mass_saturates_at_pm":256,"mom_saturates_at_pm":512,"mass_headroom":14.759089469065152,"mom_headroom":20.416533230097937},{"n":8192,"frames":90,"kM":24,"kV":22,"max_node_mass_pm":35.94812774658203,"max_node_mom_pm":45.34952163696289,"worst_frame":84,"mass_saturates_at_pm":256,"mom_saturates_at_pm":512,"mass_headroom":7.121372267414974,"mom_headroom":11.290086014549837},{"n":12288,"frames":90,"kM":24,"kV":22,"max_node_mass_pm":46.07582092285156,"max_node_mom_pm":62.62062454223633,"worst_frame":55,"mass_saturates_at_pm":256,"mom_saturates_at_pm":512,"mass_headroom":5.556059444467442,"mom_headroom":8.176219955370557}],"substeps":[{"present":["fluid"],"dt":0.00012,"substeps_per_frame":139},{"present":["fluid","sand"],"dt":0.0001,"substeps_per_frame":167},{"present":["fluid","elastic","sand"],"dt":0.0001,"substeps_per_frame":167},{"present":["fluid","elastic","snow","sand"],"dt":5e-05,"substeps_per_frame":333}],"svd":{"n_matrices":2076,"max_rel_reconstruction":1.0037746953442855e-05,"max_orthogonality":4.172325134277344e-07,"order_violations":0,"max_abs_singular_vs_taichi":7.152557373046875e-07,"max_rel_singular_vs_taichi":3.5760535865847487e-07,"non_finite":0,"by_family":[{"family":"random","n":160,"max_rel_reconstruction":4.889670193130998e-07,"max_orthogonality_U":4.172325134277344e-07,"max_orthogonality_V":1.7881393432617188e-07,"order_violations":0,"max_abs_singular_vs_taichi":4.76837158203125e-07,"max_rel_singular_vs_taichi":3.310128136035928e-07,"non_finite":0},{"family":"near_rotation","n":80,"max_rel_reconstruction":3.1433449787022624e-07,"max_orthogonality_U":2.384185791015625e-07,"max_orthogonality_V":0.0,"order_violations":0,"max_abs_singular_vs_taichi":2.384185791015625e-07,"max_rel_singular_vs_taichi":2.384185791015625e-07,"non_finite":0},{"family":"near_singular","n":60,"max_rel_reconstruction":3.8675352163949643e-07,"max_orthogonality_U":2.980232238769531e-07,"max_orthogonality_V":1.1920928955078125e-07,"order_violations":0,"max_abs_singular_vs_taichi":2.384185791015625e-07,"max_rel_singular_vs_taichi":2.2076156369621458e-07,"non_finite":0},{"family":"reflection","n":80,"max_rel_reconstruction":5.040129528840611e-07,"max_orthogonality_U":3.5762786865234375e-07,"max_orthogonality_V":1.7881393432617188e-07,"order_violations":0,"max_abs_singular_vs_taichi":7.152557373046875e-07,"max_rel_singular_vs_taichi":2.5907164058480703e-07,"non_finite":0},{"family":"anisotropic","n":80,"max_rel_reconstruction":4.938486804752953e-07,"max_orthogonality_U":3.5762786865234375e-07,"max_orthogonality_V":1.7881393432617188e-07,"order_violations":0,"max_abs_singular_vs_taichi":2.384185791015625e-07,"max_rel_singular_vs_taichi":2.384185791015625e-07,"non_finite":0},{"family":"zero","n":4,"max_rel_reconstruction":0.0,"max_orthogonality_U":0.0,"max_orthogonality_V":0.0,"order_violations":0,"max_abs_singular_vs_taichi":0.0,"max_rel_singular_vs_taichi":0.0,"non_finite":0},{"family":"identity","n":4,"max_rel_reconstruction":0.0,"max_orthogonality_U":0.0,"max_orthogonality_V":0.0,"order_violations":0,"max_abs_singular_vs_taichi":0.0,"max_rel_singular_vs_taichi":0.0,"non_finite":0},{"family":"pure_reflection","n":4,"max_rel_reconstruction":0.0,"max_orthogonality_U":0.0,"max_orthogonality_V":0.0,"order_violations":0,"max_abs_singular_vs_taichi":0.0,"max_rel_singular_vs_taichi":0.0,"non_finite":0},{"family":"snow_clamp_edge","n":4,"max_rel_reconstruction":0.0,"max_orthogonality_U":0.0,"max_orthogonality_V":0.0,"order_violations":0,"max_abs_singular_vs_taichi":0.0,"max_rel_singular_vs_taichi":0.0,"non_finite":0},{"family":"rollout_snow","n":800,"max_rel_reconstruction":4.0550873857768373e-07,"max_orthogonality_U":2.980232238769531e-07,"max_orthogonality_V":5.960464477539063e-08,"order_violations":0,"max_abs_singular_vs_taichi":2.384185791015625e-07,"max_rel_singular_vs_taichi":2.3840911467232218e-07,"non_finite":0},{"family":"rollout_sand","n":800,"max_rel_reconstruction":1.0037746953442855e-05,"max_orthogonality_U":3.5762786865234375e-07,"max_orthogonality_V":1.7881393432617188e-07,"order_violations":0,"max_abs_singular_vs_taichi":3.5762786865234375e-07,"max_rel_singular_vs_taichi":3.5760535865847487e-07,"non_finite":0}],"pass":true},"shipped":{"particles":9249,"counts":{"fluid":3947,"elastic":1176,"snow":2496,"sand":1630},"fps":133.29200248231396,"achieved_x_real_time":1.0000000000184759,"substeps_per_frame":150,"substeps_per_simulated_second":20000,"capture_frames":997,"capture_seconds":18.752848386764526,"capture_fps":53.165256788598974,"dashboard_tab":{"mounted":true,"chips":["speed 1.00\u00d7 real time","fps 133","particles 9120","solver steps / frame 148","per simulated second 20,000","in the box water + rubber + snow + sand  \u2192  \u0394t 5e-5"],"buttons":11,"fallback_shown":false,"canvas":[809,809]}},"api":"/api/data/learning-taichi/runs/material-variants/the-demo-mvp-four-materials-on-webgpu-live-on-the-demo-page/"};
+const API = D.api;
+document.querySelectorAll('video,img').forEach(e => {
+  const s = e.getAttribute('src'); if (s && s.startsWith('__API__')) e.setAttribute('src', API + s.slice(7));
+});
+const f = (v, n) => Number(v).toFixed(n === undefined ? 2 : n);
+const e1 = v => Number(v).toExponential(1);
+
+// ---------------------------------------------------------------- verdict fill-ins
+document.getElementById('vShipped').textContent = D.shipped.particles.toLocaleString();
+const angErr = Math.max(...D.mats.map(m => Math.abs(D.heap[m].repose_angle_webgpu - D.heap[m].repose_angle_canonical)));
+document.getElementById('vAngle').textContent = f(angErr, 2) + '° or better';
+document.getElementById('vSvd').textContent = D.svd.n_matrices.toLocaleString();
+const worstCreep = Math.min(...Object.values(D.creep).map(c => c.delta_deg));
+document.getElementById('vCreep').textContent = f(Math.abs(worstCreep), 1) + '°';
+
+// ---------------------------------------------------------------- 1. per-material
+const tabs = document.getElementById('matTabs');
+D.mats.forEach((m, i) => {
+  const b = document.createElement('button');
+  b.innerHTML = '<span class="sw" style="background:' + D.color[m] + '"></span>' + D.label[m];
+  b.onclick = () => sel(m);
+  b.dataset.m = m;
+  tabs.appendChild(b);
+});
+function sel(m) {
+  [...tabs.children].forEach(b => b.classList.toggle('on', b.dataset.m === m));
+  const h = D.heap[m];
+  const inside = h.ratio_to_noise_band <= 1.0;
+  document.getElementById('matCard').innerHTML =
+    '<div style="font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--mut)">' +
+      D.label[m] + ' — ' + D.blurb[m] + '</div>' +
+    '<div class="big" style="color:' + D.color[m] + ';margin-top:8px">' +
+      f(h.repose_angle_webgpu, 1) + '° <span style="font-size:14px;color:var(--mut)">settled slope in the browser</span></div>' +
+    '<div class="note">canonical <code>sim.physics</code> on the same seed: <b class="hl">' +
+      f(h.repose_angle_canonical, 1) + '°</b></div>' +
+    '<table>' +
+    row('traj_rmse vs canonical', e1(h.traj_rmse), 'mean per-particle distance, in domain lengths') +
+    row('canonical self-noise band', e1(h.self_noise), 'canonical vs canonical, ICs nudged by 1e-7') +
+    row('ratio to that band', f(h.ratio_to_noise_band, 1) + '×',
+        inside ? 'inside the band — indistinguishable from re-running canonical'
+               : 'above the band; see the note') +
+    row('pile height', f(h.pile_height_webgpu, 3) + ' / ' + f(h.pile_height_canonical, 3), 'browser / canonical') +
+    row('spread width', f(h.spread_width_webgpu, 3) + ' / ' + f(h.spread_width_canonical, 3), 'browser / canonical') +
+    row('timestep', h.dt.toExponential(0) + '  (' + h.substeps_per_frame + ' substeps/frame)', 'its own canonical dt') +
+    '</table>' +
+    (inside ? '' : '<div class="note"><b class="hl">Why the ratio, not the number.</b> The absolute ' +
+      'disagreement is ' + e1(h.traj_rmse) + ' domain lengths — a rounding error on a unit square. ' +
+      'The ratio is large because the <em>band</em> is tiny: this scene barely moves, so canonical ' +
+      'reproduces itself almost exactly, while fixed-point quantisation in P2G is a small deterministic ' +
+      'bias rather than chaos. Both numbers are shown because either alone misleads.</div>');
+}
+function row(k, v, note) {
+  return '<tr><td>' + k + (note ? '<div class="note" style="margin:0">' + note + '</div>' : '') +
+         '</td><td class="hl">' + v + '</td></tr>';
+}
+sel('sand');
+
+// repose bar chart
+(function () {
+  const W = 460, H = 220, pad = 34, base = H - 26, top = 12;
+  const max = 65;
+  let s = '<line x1="' + pad + '" y1="' + (base - (60 / max) * (base - top)) + '" x2="' + (W - 8) +
+    '" y2="' + (base - (60 / max) * (base - top)) + '" stroke="#3a4a5a" stroke-dasharray="3 3"/>' +
+    '<text x="' + (W - 10) + '" y="' + (base - (60 / max) * (base - top) - 5) +
+    '" fill="#7f8ea3" font-size="10" text-anchor="end" font-family="ui-monospace">seeded 60°</text>';
+  D.mats.forEach((m, i) => {
+    const x = pad + i * ((W - pad - 12) / 4);
+    const w = (W - pad - 12) / 4 - 14;
+    const g = D.heap[m].repose_angle_canonical, b = D.heap[m].repose_angle_webgpu;
+    const hg = (g / max) * (base - top), hb = (b / max) * (base - top);
+    s += '<rect x="' + x + '" y="' + (base - hg) + '" width="' + (w / 2 - 1) + '" height="' + hg + '" fill="#4a6b80"/>';
+    s += '<rect x="' + (x + w / 2 + 1) + '" y="' + (base - hb) + '" width="' + (w / 2 - 1) + '" height="' + hb +
+      '" fill="' + D.color[m] + '"/>';
+    s += '<text x="' + (x + w / 2) + '" y="' + (base - Math.max(hg, hb) - 6) +
+      '" fill="#dfe6ee" font-size="11" text-anchor="middle" font-family="ui-monospace">' + f(b, 1) + '°</text>';
+    s += '<text x="' + (x + w / 2) + '" y="' + (base + 14) + '" fill="#7f8ea3" font-size="10" text-anchor="middle">' +
+      D.label[m] + '</text>';
+  });
+  s += '<line x1="' + pad + '" y1="' + base + '" x2="' + (W - 8) + '" y2="' + base + '" stroke="#1d2734"/>';
+  for (const t of [0, 20, 40, 60]) {
+    const y = base - (t / max) * (base - top);
+    s += '<text x="' + (pad - 6) + '" y="' + (y + 3) + '" fill="#7f8ea3" font-size="9" text-anchor="end" font-family="ui-monospace">' + t + '</text>';
+  }
+  document.getElementById('reposeSvg').innerHTML = s;
+})();
+
+// ---------------------------------------------------------------- 2. mixed scene
+(function () {
+  const m = D.mixed;
+  const cells = [['whole scene', m.traj_rmse, m.self_noise, m.ratio_to_noise_band]];
+  for (const k of D.mats) if (m.per_material[k])
+    cells.push([D.label[k].toLowerCase(), m.per_material[k].traj_rmse_web_vs_canonical,
+                m.per_material[k].self_noise_nudge, m.per_material[k].ratio_to_nudge_band]);
+  document.getElementById('mixKpis').innerHTML = cells.map(([n, r, b, x]) =>
+    '<div class="kpi"><div class="lab">' + n + '</div><div class="val" style="color:' +
+    (x <= 1.6 ? '#7ee787' : '#ffd24d') + '">' + f(x, 1) + '×</div>' +
+    '<div class="note" style="margin-top:2px">' + e1(r) + ' vs a band of ' + e1(b) + '</div></div>').join('');
+})();
+
+// ---------------------------------------------------------------- 4. cost of a mixture
+const mixTabs = document.getElementById('mixTabs');
+D.substeps.forEach((r, i) => {
+  const b = document.createElement('button');
+  b.textContent = r.present.map(p => ({fluid:'water',elastic:'rubber',snow:'snow',sand:'sand'})[p]).join(' + ');
+  b.onclick = () => selMix(i);
+  b.dataset.i = i;
+  mixTabs.appendChild(b);
+});
+function selMix(i) {
+  [...mixTabs.children].forEach(b => b.classList.toggle('on', +b.dataset.i === i));
+  const r = D.substeps[i];
+  const worst = D.substeps[D.substeps.length - 1];
+  document.getElementById('costCard').innerHTML =
+    '<div style="font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--mut)">shared timestep</div>' +
+    '<div class="big" style="color:var(--acc);margin-top:8px">' + r.dt.toExponential(0) + '</div>' +
+    '<div class="note">= min(dt) over the materials present — the stiffest one sets it for everybody.</div>' +
+    '<table>' +
+    row('substeps per real-time frame', r.substeps_per_frame, 'at 60 fps') +
+    row('solver dispatches per frame', (3 * r.substeps_per_frame).toLocaleString(), 'P2G → grid → G2P, all in ONE command buffer') +
+    row('relative to water alone', f(r.substeps_per_frame / D.substeps[0].substeps_per_frame, 2) + '×', '') +
+    '</table>' +
+    (i === D.substeps.length - 1
+      ? '<div class="note"><b class="hl">This is the demo\'s real cost.</b> Snow alone doubles it, and ' +
+        'adding sand to a scene that already has snow costs nothing at all.</div>' : '');
+}
+selMix(3);
+
+(function () {
+  const W = 460, H = 230, L = 46, R = 12, T = 14, B = 30;
+  const rt = D.realtime;
+  const xs = rt.map(r => r.n), ys = rt.map(r => r.sustained_ms);
+  const xmax = Math.max(...xs), ymax = 18;
+  const X = v => L + (v / xmax) * (W - L - R);
+  const Y = v => H - B - (v / ymax) * (H - B - T);
+  let s = '<rect x="' + L + '" y="' + Y(16.67) + '" width="' + (W - L - R) + '" height="' + (H - B - Y(16.67)) +
+    '" fill="#0f1720"/>';
+  s += '<line x1="' + L + '" y1="' + Y(16.67) + '" x2="' + (W - R) + '" y2="' + Y(16.67) +
+    '" stroke="#ff7a7a" stroke-dasharray="4 3"/>' +
+    '<text x="' + (W - R) + '" y="' + (Y(16.67) - 5) + '" fill="#ff7a7a" font-size="10" text-anchor="end" font-family="ui-monospace">60 fps budget 16.67 ms</text>';
+  s += '<polyline fill="none" stroke="#6fd3ee" stroke-width="2" points="' +
+    rt.map(r => X(r.n) + ',' + Y(r.sustained_ms)).join(' ') + '"/>';
+  rt.forEach(r => {
+    s += '<circle cx="' + X(r.n) + '" cy="' + Y(r.sustained_ms) + '" r="3.4" fill="#6fd3ee"/>';
+  });
+  const last = rt[rt.length - 1];
+  s += '<text x="' + (X(last.n) - 6) + '" y="' + (Y(last.sustained_ms) - 9) +
+    '" fill="#dfe6ee" font-size="11" text-anchor="end" font-family="ui-monospace">' +
+    f(last.sustained_ms, 2) + ' ms at ' + last.n.toLocaleString() + '</text>';
+  s += '<line x1="' + L + '" y1="' + (H - B) + '" x2="' + (W - R) + '" y2="' + (H - B) + '" stroke="#1d2734"/>';
+  s += '<line x1="' + L + '" y1="' + T + '" x2="' + L + '" y2="' + (H - B) + '" stroke="#1d2734"/>';
+  for (const t of [0, 5, 10, 15]) s += '<text x="' + (L - 6) + '" y="' + (Y(t) + 3) +
+    '" fill="#7f8ea3" font-size="9" text-anchor="end" font-family="ui-monospace">' + t + '</text>';
+  for (const t of [4096, 8192, 12288, 16384]) s += '<text x="' + X(t) + '" y="' + (H - B + 13) +
+    '" fill="#7f8ea3" font-size="9" text-anchor="middle" font-family="ui-monospace">' + (t / 1024) + 'k</text>';
+  s += '<text x="' + (L + (W - L - R) / 2) + '" y="' + (H - 3) + '" fill="#7f8ea3" font-size="10" text-anchor="middle">particles</text>';
+  s += '<text x="10" y="' + (T + 8) + '" fill="#7f8ea3" font-size="10">ms/frame</text>';
+  document.getElementById('costSvg').innerHTML = s;
+})();
+
+document.getElementById('creepText').innerHTML = D.mats.filter(m => Math.abs(D.creep[m].delta_deg) > 1e-9)
+  .map(m => '<b>' + D.label[m].toLowerCase() + '</b> ' + f(D.creep[m].repose_own, 1) + '° → ' +
+       f(D.creep[m].repose_shared, 1) + '° (' + (D.creep[m].delta_deg > 0 ? '+' : '') +
+       f(D.creep[m].delta_deg, 1) + '°)').join(', ') +
+  ', snow already runs at the shared step, rubber ' +
+  (Math.abs(D.creep.elastic.delta_deg) < 0.2 ? 'moves ' + f(Math.abs(D.creep.elastic.delta_deg), 2) + '°' : '');
+
+// ---------------------------------------------------------------- 5. SVD + headroom
+document.getElementById('svdBig').textContent = e1(D.svd.max_rel_reconstruction);
+document.getElementById('svdN').textContent = D.svd.n_matrices.toLocaleString();
+document.getElementById('svdTable').innerHTML =
+  row('orthogonality of U and V', e1(D.svd.max_orthogonality), 'worst |UᵀU − I|, |VᵀV − I|') +
+  row('singular values vs ti.svd', e1(D.svd.max_rel_singular_vs_taichi), 'the only thing the return maps consume') +
+  row('descending-order violations', D.svd.order_violations, 'both plastic clamps assume s₀ ≥ s₁') +
+  row('non-finite results', D.svd.non_finite, 'across every adversarial family');
+
+(function () {
+  const W = 460, H = 210, L = 46, R = 12, T = 16, B = 30;
+  const p = D.pile, sat = p[0].mass_saturates_at_pm;
+  const xmax = Math.max(...p.map(r => r.n)) * 1.05;
+  const X = v => L + (v / xmax) * (W - L - R);
+  const Y = v => H - B - (v / (sat * 1.1)) * (H - B - T);
+  let s = '<line x1="' + L + '" y1="' + Y(sat) + '" x2="' + (W - R) + '" y2="' + Y(sat) +
+    '" stroke="#ff7a7a" stroke-dasharray="4 3"/>' +
+    '<text x="' + (W - R) + '" y="' + (Y(sat) - 5) + '" fill="#ff7a7a" font-size="10" text-anchor="end" font-family="ui-monospace">wraps silently at ' + sat + '</text>';
+  s += '<polyline fill="none" stroke="#ffd24d" stroke-width="2" points="' +
+    p.map(r => X(r.n) + ',' + Y(r.max_node_mass_pm)).join(' ') + '"/>';
+  p.forEach(r => { s += '<circle cx="' + X(r.n) + '" cy="' + Y(r.max_node_mass_pm) + '" r="3.4" fill="#ffd24d"/>'; });
+  const last = p[p.length - 1];
+  s += '<text x="' + X(last.n) + '" y="' + (Y(last.max_node_mass_pm) - 9) +
+    '" fill="#dfe6ee" font-size="11" text-anchor="end" font-family="ui-monospace">' +
+    f(last.max_node_mass_pm, 1) + ' pm — ' + f(last.mass_headroom, 1) + '× headroom</text>';
+  s += '<line x1="' + L + '" y1="' + (H - B) + '" x2="' + (W - R) + '" y2="' + (H - B) + '" stroke="#1d2734"/>';
+  s += '<line x1="' + L + '" y1="' + T + '" x2="' + L + '" y2="' + (H - B) + '" stroke="#1d2734"/>';
+  for (const t of [0, 64, 128, 192, 256]) s += '<text x="' + (L - 6) + '" y="' + (Y(t) + 3) +
+    '" fill="#7f8ea3" font-size="9" text-anchor="end" font-family="ui-monospace">' + t + '</text>';
+  p.forEach(r => { s += '<text x="' + X(r.n) + '" y="' + (H - B + 13) +
+    '" fill="#7f8ea3" font-size="9" text-anchor="middle" font-family="ui-monospace">' + (r.n / 1024) + 'k</text>'; });
+  s += '<text x="10" y="' + (T + 8) + '" fill="#7f8ea3" font-size="10">particle masses on the heaviest node</text>';
+  document.getElementById('pileSvg').innerHTML = s;
+})();
+
+// ---------------------------------------------------------------- 6. the constitutive picture
+(function () {
+  const s = [];
+  const box = (x, y, w, h, fill, stroke) => '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h +
+    '" rx="4" fill="' + fill + '" stroke="' + stroke + '"/>';
+  s.push('<text x="10" y="18" fill="#7f8ea3" font-size="12" font-family="ui-monospace">one grid, one transfer, four endings</text>');
+  const lanes = [
+    ['P2G  scatter mass + stress', 30], ['grid  gravity, walls, Coulomb friction', 66], ['G2P  gather velocity + ∇v', 102]];
+  lanes.forEach(([t, y]) => {
+    s.push(box(14, y, 872, 26, '#111a24', '#22justify'.replace('justify', '3546')));
+    s.push('<text x="26" y="' + (y + 17) + '" fill="#bcd6e4" font-size="12" font-family="ui-monospace">' + t + '</text>');
+  });
+  s.push('<path d="M450 128 L450 142" stroke="#2b4658" stroke-width="1.5"/>');
+  const cols = ['#4db6ff', '#ff9d5c', '#e6ecff', '#ffd24d'];
+  const heads = ['WATER', 'RUBBER', 'SNOW', 'SAND'];
+  const body = [
+    ['J ← J (1 + Δt tr C)', 'a scalar volume ratio.', 'No F, no SVD.', 'σ = E (J − 1) I'],
+    ['F ← (I + Δt C) F', 'no projection at all.', 'Needs only the polar', 'rotation R = U Vᵀ'],
+    ['F = U Σ′ Vᵀ,  Σ′ = clamp(Σ)', 'a BOX in singular values.', 'Cohesive: the admissible', 'set never shrinks'],
+    ['ε = ln Σ projected onto a CONE', 'width ∝ confining pressure.', 'Cohesionless: no pressure,', 'no shear strength']];
+  for (let i = 0; i < 4; i++) {
+    const x = 14 + i * 220;
+    s.push('<path d="M450 142 L' + (x + 100) + ' 142 L' + (x + 100) + ' 154" stroke="#2b4658" stroke-width="1.5" fill="none"/>');
+    s.push(box(x, 154, 202, 86, '#0e131b', cols[i] + '55'));
+    s.push('<text x="' + (x + 12) + '" y="' + 174 + '" fill="' + cols[i] +
+      '" font-size="12" font-weight="700" font-family="ui-monospace">' + heads[i] + '</text>');
+    body[i].forEach((line, j) => s.push('<text x="' + (x + 12) + '" y="' + (190 + j * 13) +
+      '" fill="#9fb3c4" font-size="10.5" font-family="ui-monospace">' + line.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</text>'));
+  }
+  document.getElementById('lawSvg').innerHTML = s.join('');
+})();
+</script>

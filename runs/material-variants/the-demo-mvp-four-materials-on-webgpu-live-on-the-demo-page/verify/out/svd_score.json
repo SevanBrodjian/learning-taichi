@@ -1,0 +1,133 @@
+{
+  "n_matrices": 2076,
+  "max_rel_reconstruction": 1.0037746953442855e-05,
+  "max_orthogonality": 4.172325134277344e-07,
+  "order_violations": 0,
+  "max_abs_singular_vs_taichi": 7.152557373046875e-07,
+  "max_rel_singular_vs_taichi": 3.5760535865847487e-07,
+  "non_finite": 0,
+  "by_family": [
+    {
+      "family": "random",
+      "n": 160,
+      "max_rel_reconstruction": 4.889670193130998e-07,
+      "max_orthogonality_U": 4.172325134277344e-07,
+      "max_orthogonality_V": 1.7881393432617188e-07,
+      "order_violations": 0,
+      "max_abs_singular_vs_taichi": 4.76837158203125e-07,
+      "max_rel_singular_vs_taichi": 3.310128136035928e-07,
+      "non_finite": 0
+    },
+    {
+      "family": "near_rotation",
+      "n": 80,
+      "max_rel_reconstruction": 3.1433449787022624e-07,
+      "max_orthogonality_U": 2.384185791015625e-07,
+      "max_orthogonality_V": 0.0,
+      "order_violations": 0,
+      "max_abs_singular_vs_taichi": 2.384185791015625e-07,
+      "max_rel_singular_vs_taichi": 2.384185791015625e-07,
+      "non_finite": 0
+    },
+    {
+      "family": "near_singular",
+      "n": 60,
+      "max_rel_reconstruction": 3.8675352163949643e-07,
+      "max_orthogonality_U": 2.980232238769531e-07,
+      "max_orthogonality_V": 1.1920928955078125e-07,
+      "order_violations": 0,
+      "max_abs_singular_vs_taichi": 2.384185791015625e-07,
+      "max_rel_singular_vs_taichi": 2.2076156369621458e-07,
+      "non_finite": 0
+    },
+    {
+      "family": "reflection",
+      "n": 80,
+      "max_rel_reconstruction": 5.040129528840611e-07,
+      "max_orthogonality_U": 3.5762786865234375e-07,
+      "max_orthogonality_V": 1.7881393432617188e-07,
+      "order_violations": 0,
+      "max_abs_singular_vs_taichi": 7.152557373046875e-07,
+      "max_rel_singular_vs_taichi": 2.5907164058480703e-07,
+      "non_finite": 0
+    },
+    {
+      "family": "anisotropic",
+      "n": 80,
+      "max_rel_reconstruction": 4.938486804752953e-07,
+      "max_orthogonality_U": 3.5762786865234375e-07,
+      "max_orthogonality_V": 1.7881393432617188e-07,
+      "order_violations": 0,
+      "max_abs_singular_vs_taichi": 2.384185791015625e-07,
+      "max_rel_singular_vs_taichi": 2.384185791015625e-07,
+      "non_finite": 0
+    },
+    {
+      "family": "zero",
+      "n": 4,
+      "max_rel_reconstruction": 0.0,
+      "max_orthogonality_U": 0.0,
+      "max_orthogonality_V": 0.0,
+      "order_violations": 0,
+      "max_abs_singular_vs_taichi": 0.0,
+      "max_rel_singular_vs_taichi": 0.0,
+      "non_finite": 0
+    },
+    {
+      "family": "identity",
+      "n": 4,
+      "max_rel_reconstruction": 0.0,
+      "max_orthogonality_U": 0.0,
+      "max_orthogonality_V": 0.0,
+      "order_violations": 0,
+      "max_abs_singular_vs_taichi": 0.0,
+      "max_rel_singular_vs_taichi": 0.0,
+      "non_finite": 0
+    },
+    {
+      "family": "pure_reflection",
+      "n": 4,
+      "max_rel_reconstruction": 0.0,
+      "max_orthogonality_U": 0.0,
+      "max_orthogonality_V": 0.0,
+      "order_violations": 0,
+      "max_abs_singular_vs_taichi": 0.0,
+      "max_rel_singular_vs_taichi": 0.0,
+      "non_finite": 0
+    },
+    {
+      "family": "snow_clamp_edge",
+      "n": 4,
+      "max_rel_reconstruction": 0.0,
+      "max_orthogonality_U": 0.0,
+      "max_orthogonality_V": 0.0,
+      "order_violations": 0,
+      "max_abs_singular_vs_taichi": 0.0,
+      "max_rel_singular_vs_taichi": 0.0,
+      "non_finite": 0
+    },
+    {
+      "family": "rollout_snow",
+      "n": 800,
+      "max_rel_reconstruction": 4.0550873857768373e-07,
+      "max_orthogonality_U": 2.980232238769531e-07,
+      "max_orthogonality_V": 5.960464477539063e-08,
+      "order_violations": 0,
+      "max_abs_singular_vs_taichi": 2.384185791015625e-07,
+      "max_rel_singular_vs_taichi": 2.3840911467232218e-07,
+      "non_finite": 0
+    },
+    {
+      "family": "rollout_sand",
+      "n": 800,
+      "max_rel_reconstruction": 1.0037746953442855e-05,
+      "max_orthogonality_U": 3.5762786865234375e-07,
+      "max_orthogonality_V": 1.7881393432617188e-07,
+      "order_violations": 0,
+      "max_abs_singular_vs_taichi": 3.5762786865234375e-07,
+      "max_rel_singular_vs_taichi": 3.5760535865847487e-07,
+      "non_finite": 0
+    }
+  ],
+  "pass": true
+}

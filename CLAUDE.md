@@ -195,7 +195,12 @@ The user can queue, add, edit, and refine tasks **directly from the dashboard** 
 Edit button, and the Overview can create/edit tasks and directions). Sending **`/execute`** tells the
 orchestrator to pick up the whole `queued` backlog and run it to completion (see the `/execute` skill).
 1. The user **queues a task** (drags a proposed task to `queued`, adds one on the dashboard, or asks for
-   one). The proposed task's `note` is only a seed for that decision, not an executable spec.
+   one). The proposed task's `note` is only a seed for that decision, not an executable spec. **When the
+   orchestrator proposes a task, the note it writes stays short** — a few sentences the user reads in
+   seconds to decide *whether to queue this*, in the user's own register, not the worker's. Every
+   constraint, prior measurement and known trap belongs in the brief at expansion time (step 2), where a
+   worker will actually read it. Dumping a full spec into the note buries the Overview in a wall of text
+   and puts the detail where nobody reads it — a defect, not thoroughness.
 2. The orchestrator **expands that seed into a full contract** at `coordination/tasks/<id>.md` (objective,
    concrete experiments, deliverables, the schema-v2 manifest, definition-of-done, paths, KaTeX rules).
    **Then it surfaces a short contract for approval before spawning** (unless in `hard` mode — below):

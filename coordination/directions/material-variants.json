@@ -339,7 +339,8 @@
         "materials",
         "demo",
         "rendering"
-      ]
+      ],
+      "budget_minutes": 140
     }
   ]
 }

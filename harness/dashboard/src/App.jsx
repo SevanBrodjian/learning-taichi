@@ -180,7 +180,7 @@ export default function App() {
   // article to the bottom first.
   const isSplit = section === "training" || section === "reports";
   const mainContent = (
-    <main className={`content${isSplit ? " content-split" : ""}${section === "map" ? " content-map" : ""}`}>
+    <main className={`content${isSplit ? " content-split" : ""}${section === "map" ? " content-map" : ""}${section === "demo" ? " content-demo" : ""}`}>
       {section === "overview" && (
         <OverviewView
           overview={overview}

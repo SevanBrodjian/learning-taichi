@@ -45,6 +45,7 @@ TAGS = {
     "interactive-simulation-of-one-material":            ["materials", "demo"],
     "webgpu-port-of-the-interactive-simulation":         ["materials", "demo"],
     "sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid": ["materials", "demo"],
+    "the-demo-mvp-four-materials-on-webgpu-live-on-the-demo-page": ["materials", "demo", "rendering"],
 }
 
 # ── the derived graph ───────────────────────────────────────────────────────────────────────────────
@@ -135,6 +136,15 @@ GRAPH = {
          " is partly a discretisation artefact and its dt was never set by stability"),
         ("interactive-simulation-of-one-material", "applies",
          "reuses its particle renderer, and its substeps-per-frame budget framing, for four materials"),
+    ],
+
+    "the-demo-mvp-four-materials-on-webgpu-live-on-the-demo-page": [
+        ("webgpu-port-of-the-interactive-simulation", "extends",
+         "takes that elastic-only WebGPU engine and adds the SVD path snow and sand need, then ships it"),
+        ("sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid", "extends",
+         "realises its four-materials-in-one-grid result as an interactive scene rather than a rollout"),
+        ("interactive-simulation-of-one-material", "applies",
+         "reuses its particle/grid/material render modes and its drag interaction"),
     ],
 
     "more-realistic-basic-fluid-sims": [

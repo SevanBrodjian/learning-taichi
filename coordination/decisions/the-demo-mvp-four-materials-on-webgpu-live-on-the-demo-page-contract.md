@@ -50,3 +50,6 @@ Shipping a material that looks wrong *without* saying so is the one unacceptable
 ## Also
 Aesthetic at full strength (`spec/aesthetic.md`) — this is the flagship page. The transplant contract in
 `DemoView.jsx` holds: it imports nothing from the harness, so it can be lifted onto your site.
+
+
+**Resolution: APPROVED**

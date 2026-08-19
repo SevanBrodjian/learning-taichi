@@ -40,3 +40,6 @@ live demo **plus** a two-axis sweep — each of those is a standard task on its 
 
 Every number will be labelled as one GPU, one browser, one scene — reported raw **and** derated to the
 quarter-GPU assumption you asked for.
+
+
+**Resolution: APPROVED**

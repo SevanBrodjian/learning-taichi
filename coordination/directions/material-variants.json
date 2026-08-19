@@ -418,6 +418,16 @@
           "kind": "extends"
         }
       ]
+    },
+    {
+      "id": "profile-a-nn-running-for-the-grid-update-on-webgpu",
+      "title": "Profile a NN running for the grid update on WebGPU",
+      "status": "queued",
+      "note": "This task is related to the demo, but should NOT update the demo page at all. It is a scoped, specific task focused on determining whether it is viable to consider replacing the analytic grid update formula with a learned NN, and what scale of NN is viable at different particle counts on this GPU. Note that this is a high end GPU, so realistically we should assume 1/4 the compute power, at most, as available in practice. It is not particularly important what the NN is implementing. For now it can just learn a fixed material or scene, e.g. water. But it's important that the WHOLE grid update is replaced with a NN, just keep the MPM scaffolding. The output should be written as interactive WebGPU running in a live demo (not on the demo page, just on this task page) to demonstrate it, and we should show performance across NN sizes and particle counts to understand what's usable.",
+      "effort": "standard",
+      "tags": [
+        "demo"
+      ]
     }
   ]
 }

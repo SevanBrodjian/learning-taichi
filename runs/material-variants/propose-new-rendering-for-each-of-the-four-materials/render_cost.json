@@ -1,0 +1,104 @@
+{
+  "456": {
+    "current": {
+      "gpu_ms": 0.3086,
+      "wall_ms": 1.088
+    },
+    "snow_powder": {
+      "gpu_ms": 0.3066,
+      "wall_ms": 1.04
+    },
+    "water_film": {
+      "gpu_ms": 0.5424,
+      "wall_ms": 4.529
+    },
+    "water_glass": {
+      "gpu_ms": 0.5855,
+      "wall_ms": 4.655
+    },
+    "rubber_flat": {
+      "gpu_ms": 0.5164,
+      "wall_ms": 4.221
+    },
+    "rubber_tex": {
+      "gpu_ms": 0.7528,
+      "wall_ms": 5.145
+    },
+    "sand_bare": {
+      "gpu_ms": 1.0822,
+      "wall_ms": 5.231
+    },
+    "sand_grain": {
+      "gpu_ms": 1.1176,
+      "wall_ms": 5.216
+    }
+  },
+  "720": {
+    "current": {
+      "gpu_ms": 0.7385,
+      "wall_ms": 1.601
+    },
+    "snow_powder": {
+      "gpu_ms": 0.6861,
+      "wall_ms": 1.517
+    },
+    "water_film": {
+      "gpu_ms": 0.7737,
+      "wall_ms": 5.145
+    },
+    "water_glass": {
+      "gpu_ms": 0.8271,
+      "wall_ms": 5.416
+    },
+    "rubber_flat": {
+      "gpu_ms": 0.7726,
+      "wall_ms": 4.899
+    },
+    "rubber_tex": {
+      "gpu_ms": 1.2609,
+      "wall_ms": 5.832
+    },
+    "sand_bare": {
+      "gpu_ms": 1.4657,
+      "wall_ms": 6.021
+    },
+    "sand_grain": {
+      "gpu_ms": 1.4752,
+      "wall_ms": 5.927
+    }
+  },
+  "1080": {
+    "current": {
+      "gpu_ms": 1.5011,
+      "wall_ms": 2.457
+    },
+    "snow_powder": {
+      "gpu_ms": 1.3444,
+      "wall_ms": 2.191
+    },
+    "water_film": {
+      "gpu_ms": 1.1341,
+      "wall_ms": 5.806
+    },
+    "water_glass": {
+      "gpu_ms": 1.2684,
+      "wall_ms": 6.102
+    },
+    "rubber_flat": {
+      "gpu_ms": 1.2419,
+      "wall_ms": 5.813
+    },
+    "rubber_tex": {
+      "gpu_ms": 2.5264,
+      "wall_ms": 7.574
+    },
+    "sand_bare": {
+      "gpu_ms": 2.3732,
+      "wall_ms": 6.806
+    },
+    "sand_grain": {
+      "gpu_ms": 2.1741,
+      "wall_ms": 6.521
+    }
+  }
+}

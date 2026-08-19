@@ -222,3 +222,7 @@ exactly the 3-D light transport it never attempts. Making it fast did not make i
 
 **Code:** `sim/fluid_render.py`, `sim/fluid_render2.py`, `sim/fluid_render_gpu.py`, `sim/fluid_showcase_gpu.py`.
 **Related:** [[fluid-color-mixing]] — advecting a per-particle dye through the solver.
+[[material-appearance]] — the general version of this page: what changes when four different substances
+have to share one screen, and why the *reconstruction* rather than the shading is what makes them look
+like different materials. [[filters-and-samples]] — the convolution, sampling-noise and
+distance-transform facts the pipeline above is built on.

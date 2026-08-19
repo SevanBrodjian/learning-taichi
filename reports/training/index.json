@@ -46,6 +46,11 @@
      "id": "vector-calculus",
      "title": "Vector calculus on a grid: gradient, divergence, curvature",
      "file": "prerequisites/05-vector-calculus.md"
+    },
+    {
+     "id": "filters-and-samples",
+     "title": "Filters and point samples: convolution, separability, sampling noise",
+     "file": "prerequisites/06-filters-and-samples.md"
     }
    ]
   },
@@ -132,6 +137,11 @@
      "id": "svd-in-practice",
      "title": "Computing the 2x2 SVD, and proving it before trusting it",
      "file": "core/16-svd-in-practice.md"
+    },
+    {
+     "id": "material-appearance",
+     "title": "Four materials, one shader: reconstruction is what makes them different",
+     "file": "core/17-material-appearance.md"
     }
    ]
   }

@@ -1,0 +1,186 @@
+{
+  "res": 720,
+  "particles_bench": 16384,
+  "demo_density": 28294.212105225837,
+  "demo_iso": 2.6,
+  "demo_radius": 0.017,
+  "physics_version": "phys-c518316a4a05",
+  "render_cost_by_res": {
+    "456": {
+      "current": {
+        "gpu_ms": 0.3086,
+        "wall_ms": 1.088
+      },
+      "snow_powder": {
+        "gpu_ms": 0.3066,
+        "wall_ms": 1.04
+      },
+      "water_film": {
+        "gpu_ms": 0.5424,
+        "wall_ms": 4.529
+      },
+      "water_glass": {
+        "gpu_ms": 0.5855,
+        "wall_ms": 4.655
+      },
+      "rubber_flat": {
+        "gpu_ms": 0.5164,
+        "wall_ms": 4.221
+      },
+      "rubber_tex": {
+        "gpu_ms": 0.7528,
+        "wall_ms": 5.145
+      },
+      "sand_bare": {
+        "gpu_ms": 1.0822,
+        "wall_ms": 5.231
+      },
+      "sand_grain": {
+        "gpu_ms": 1.1176,
+        "wall_ms": 5.216
+      }
+    },
+    "720": {
+      "current": {
+        "gpu_ms": 0.7385,
+        "wall_ms": 1.601
+      },
+      "snow_powder": {
+        "gpu_ms": 0.6861,
+        "wall_ms": 1.517
+      },
+      "water_film": {
+        "gpu_ms": 0.7737,
+        "wall_ms": 5.145
+      },
+      "water_glass": {
+        "gpu_ms": 0.8271,
+        "wall_ms": 5.416
+      },
+      "rubber_flat": {
+        "gpu_ms": 0.7726,
+        "wall_ms": 4.899
+      },
+      "rubber_tex": {
+        "gpu_ms": 1.2609,
+        "wall_ms": 5.832
+      },
+      "sand_bare": {
+        "gpu_ms": 1.4657,
+        "wall_ms": 6.021
+      },
+      "sand_grain": {
+        "gpu_ms": 1.4752,
+        "wall_ms": 5.927
+      }
+    },
+    "1080": {
+      "current": {
+        "gpu_ms": 1.5011,
+        "wall_ms": 2.457
+      },
+      "snow_powder": {
+        "gpu_ms": 1.3444,
+        "wall_ms": 2.191
+      },
+      "water_film": {
+        "gpu_ms": 1.1341,
+        "wall_ms": 5.806
+      },
+      "water_glass": {
+        "gpu_ms": 1.2684,
+        "wall_ms": 6.102
+      },
+      "rubber_flat": {
+        "gpu_ms": 1.2419,
+        "wall_ms": 5.813
+      },
+      "rubber_tex": {
+        "gpu_ms": 2.5264,
+        "wall_ms": 7.574
+      },
+      "sand_bare": {
+        "gpu_ms": 2.3732,
+        "wall_ms": 6.806
+      },
+      "sand_grain": {
+        "gpu_ms": 2.1741,
+        "wall_ms": 6.521
+      }
+    }
+  },
+  "over_current_at_456": {
+    "current": 1.0,
+    "snow_powder": 0.99,
+    "water_film": 1.76,
+    "water_glass": 1.9,
+    "rubber_flat": 1.67,
+    "rubber_tex": 2.44,
+    "sand_bare": 3.51,
+    "sand_grain": 3.62
+  },
+  "passes": {
+    "current": "1 particle splat + 1 full-screen resolve",
+    "water_glass": "1 splat + 1 speed splat + 4 separable blurs (8 passes) + 4 morphological disk passes + 10 jump-flood passes + 1 shade",
+    "water_film": "1 splat + 1 speed splat + 4 separable blurs (8 passes) + 2 morphological disk passes + 10 jump-flood passes + 1 shade (no background sampling)",
+    "rubber_tex": "1 splat + 1 material-coord splat + 4 separable blurs + 6 morphological disk passes + 10 jump-flood passes + 1 shade",
+    "rubber_flat": "1 splat + 4 separable blurs + 6 morphological disk passes + 10 jump-flood passes + 1 shade",
+    "snow_powder": "1 particle splat + 1 full-screen resolve -- exactly the current renderer's shape; only the shading arithmetic differs",
+    "snow_current": "1 particle splat + 1 full-screen resolve",
+    "sand_grain": "1 splat + 1 grain-sprite pass (6 sprites/particle) + 3 separable blurs + 4 morphological disk passes + 10 jump-flood passes + 1 shade",
+    "sand_bare": "1 splat + 1 grain-sprite pass (6 sprites/particle) + 3 separable blurs + 4 morphological disk passes + 10 jump-flood passes + 1 shade"
+  },
+  "scenes": {
+    "fill/fluid": {
+      "n": 7902,
+      "stable": true,
+      "T": 1.3005000352859497
+    },
+    "fill/elastic": {
+      "n": 7882,
+      "stable": true,
+      "T": 1.3005000352859497
+    },
+    "fill/snow": {
+      "n": 7882,
+      "stable": true,
+      "T": 1.3005000352859497
+    },
+    "fill/sand": {
+      "n": 7882,
+      "stable": true,
+      "T": 1.2960000038146973
+    },
+    "slam/fluid": {
+      "n": 1076,
+      "stable": true,
+      "T": 0.9990000128746033
+    },
+    "slam/elastic": {
+      "n": 1076,
+      "stable": true,
+      "T": 0.9990000128746033
+    },
+    "slam/snow": {
+      "n": 1076,
+      "stable": true,
+      "T": 0.9990000128746033
+    },
+    "slam/sand": {
+      "n": 1076,
+      "stable": true,
+      "T": 0.9990000128746033
+    },
+    "four_up": {
+      "n": 3556,
+      "stable": true,
+      "dt": 5e-05
+    },
+    "pool_elastic": {
+      "n": 8061,
+      "stable": true,
+      "dt": 5e-05
+    }
+  },
+  "gpu": "NVIDIA GeForce RTX 4090, Taichi 1.7.4 / CUDA (NOT WebGPU)"
+}

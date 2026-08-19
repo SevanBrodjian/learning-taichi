@@ -38,6 +38,10 @@
       ],
       "follow_ups": [
         {
+          "id": "propose-new-rendering-for-each-of-the-four-materials",
+          "dir": "material-variants"
+        },
+        {
           "id": "gpu-accelerate-fluid-renderer",
           "dir": "realistic-rendering"
         },

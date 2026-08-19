@@ -48,6 +48,7 @@ TAGS = {
     "the-demo-mvp-four-materials-on-webgpu-live-on-the-demo-page": ["materials", "demo", "rendering"],
     "improve-material-realism-in-behavior": ["materials", "demo"],
     "propose-new-rendering-for-each-of-the-four-materials": ["rendering", "demo"],
+    "profile-a-nn-running-for-the-grid-update-on-webgpu": ["learned", "demo"],
 }
 
 # ── the derived graph ───────────────────────────────────────────────────────────────────────────────
@@ -159,6 +160,19 @@ GRAPH = {
          "adds a density axis to the one-grid multi-material physics that task built, so the four materials"
          " now interact by buoyancy rather than merely coexisting -- and buoyancy EMERGES from the mass"
          " ratio in the transfer, with no buoyancy force anywhere"),
+    ],
+
+    "propose-new-rendering-for-each-of-the-four-materials": [
+        ("improve-basic-fluid-sim-realism", "applies",
+         "ports that lineage's screen-space iso-surface (sim/fluid_render2.render_frame) to WATER inside the"
+         " interactive demo's renderer rather than re-deriving it -- filled mask for opacity, density"
+         " gradient for normals, Beer-Lambert absorption"),
+        ("the-demo-mvp-four-materials-on-webgpu-live-on-the-demo-page", "extends",
+         "takes that page's shipped shader as the baseline and proposes a distinct treatment per material to"
+         " replace it; its greyscale test shows the shipped renderer draws four IDENTICAL shapes"),
+        ("improve-material-realism-in-behavior", "applies",
+         "draws the materials that task had just redefined, and reuses its new scene_pool buoyancy scene as"
+         " one of the two comparison scenes"),
     ],
 
     "more-realistic-basic-fluid-sims": [

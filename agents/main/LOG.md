@@ -132,3 +132,38 @@ browser, verified it against `sim.physics`, and measured what interactive rates 
 - Stability was checked on velocity and deformation, NOT positions: `simulate` clamps positions into the
   domain, so a diverging run still returns finite in-range x and a check on x alone passes on a material
   that has already exploded.
+
+## 2026-08-19 — worker: propose-new-rendering-for-each-of-the-four-materials
+
+Proposed a distinct visual treatment per canonical material (water / rubber / snow / sand), rendered
+against the demo's current shader on two scenes, plus the four together on one grid and the canonical
+buoyancy pool. Demo page and `sim/physics/` untouched (`git status` clean for both).
+
+- **Greyscale test is the deliverable.** Same neutral albedo for all four, luminance output. Current:
+  four visually identical mushy blobs. Proposed: four different shape languages. Everything else on the
+  page supports that one comparison.
+- **Baseline is a line-by-line port** of `mpm4.js` `fs_splat`/`fs_resolve` with the demo's own constants
+  (radius 0.017 of the domain, iso 2.6), and every scene is seeded at the demo's areal density
+  (28,294/unit area, ~1.7 particles per grid cell) so the iso threshold still means what it means there.
+  Could NOT pixel-diff against the live WebGPU demo: this environment refuses to composite a frame from
+  the demo canvas. Fidelity rests on code correspondence.
+- **A wall clock was the wrong instrument and nearly produced a wrong conclusion.** Timed on the host,
+  every screen-space treatment reported ~3.3 ms — the same at 360^2 and 1080^2, a 9x change in pixels.
+  Re-measured with Taichi's kernel profiler (`sim/material_render_cost.py`, which wraps `ti.init` to turn
+  the profiler on without touching `sim/physics`): 0.31–1.12 ms of actual device time. The gap is
+  Python-side kernel launches and matches the `dispatch_floor_us` result from the WebGPU-port task.
+  Registered `render_gpu_ms` and `render_wall_ms` in `spec/registry/metrics.json`, with the caution.
+- **PLATFORM DEFECT, affects every task page in the repo, not just this one.** Media referenced by
+  `/api/data/...` inside `custom_html` does NOT load in the dashboard: the task page runs in
+  `sandbox="allow-scripts"`, i.e. an opaque origin, and in this browser that document is refused every
+  subresource from the data server. Isolated it: the identical srcdoc iframe WITHOUT the sandbox
+  attribute loads the same URL fine (`plain/root: ok 723` vs `sandbox/root: ERR`). `improve-material-
+  realism-in-behavior` has 14 such refs and would be equally blank. Mitigated here by inlining ~140 KB of
+  base64 stills that take over on a video `error` event, plus a banner explaining it. **The harness fix
+  belongs to someone else** — either add `allow-same-origin` to the iframe, or inline media.
+- **Display math must have `$$` on its own line.** `$$content
+content$$` makes the dashboard's renderer
+  swallow the rest of the document into one math run; two KaTeX errors were caught only by opening the
+  rendered pages. Fixed; both new pages now render with 0 errors.
+- Honest negatives kept on the page: snow's treatment is a near-no-op and reads by elimination; the
+  water reconstruction loses the airborne spray the splat keeps.

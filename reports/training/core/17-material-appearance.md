@@ -15,8 +15,10 @@ The standard way to draw particles is a **splat**: give each particle a small di
 weight $w$ and a weighted colour into an image, divide out the weight, and shade the result as an
 iso-surface of $w$. Concretely, with a compact kernel $w(r) = (1-r^2)^2$ over a disc of radius $R$:
 
-$$A(u) = \sum_p w\!\left(\frac{\lVert u - x_p\rVert}{R}\right), \qquad
-c(u) = \frac{1}{A(u)}\sum_p c_p\, w\!\left(\frac{\lVert u - x_p\rVert}{R}\right),$$
+$$
+A(u) = \sum_p w\!\left(\frac{\lVert u - x_p\rVert}{R}\right), \qquad
+c(u) = \frac{1}{A(u)}\sum_p c_p\, w\!\left(\frac{\lVert u - x_p\rVert}{R}\right),
+$$
 
 then keep the pixels where $A > \tau$ and light them with a normal built from $\nabla A$.
 

@@ -48,8 +48,10 @@ Here is the fact that explains a whole family of visual defects.
 Scatter $N$ points uniformly at random into a region, then count how many land in one small patch of
 area $a$. That count $C$ is a random variable. For small $a$ it is Poisson-like, with
 
-$$\mathbb{E}[C] = \lambda, \qquad \operatorname{Var}(C) = \lambda, \qquad
-\frac{\operatorname{sd}(C)}{\mathbb{E}[C]} = \frac{1}{\sqrt{\lambda}},$$
+$$
+\mathbb{E}[C] = \lambda, \qquad \operatorname{Var}(C) = \lambda, \qquad
+\frac{\operatorname{sd}(C)}{\mathbb{E}[C]} = \frac{1}{\sqrt{\lambda}},
+$$
 
 where $\lambda$ is the expected count in that patch. The mean is right; the *relative* fluctuation is
 $1/\sqrt{\lambda}$ and it is large exactly where you are looking most closely. A patch expecting

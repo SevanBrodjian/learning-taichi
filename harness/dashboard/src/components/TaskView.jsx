@@ -57,7 +57,15 @@ function BespokePage({ html }) {
       className="custom-frame lead"
       style={height ? { height: height + "px" } : undefined}
       srcDoc={html + AUTOSIZE}
-      sandbox="allow-scripts"
+      // `allow-same-origin` is REQUIRED, not laziness. Without it the frame gets an opaque origin and the
+      // browser refuses every subresource it asks the data server for, so each `/api/data/...` image and
+      // video in a bespoke page silently renders blank -- which is what every task page had been doing.
+      // Isolated it: in the SAME sandboxed frame a `data:` URI image loads and the identical /api/ URL
+      // fails; adding this flag makes it load. The cost is that a bespoke page can now reach the parent
+      // document, which is acceptable only because task HTML is first-party (written by our own worker
+      // agents and reviewed before it is committed), never user-supplied. If that ever stops being true,
+      // the alternative is inlining media as data: URIs -- affordable for stills, not for video.
+      sandbox="allow-scripts allow-same-origin"
       title="task result"
     />
   );

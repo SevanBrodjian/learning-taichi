@@ -11,8 +11,10 @@ Public API:
       -> (snaps, times, mats, stable, dt)
   shared_dt(materials)                                                        # the dt a shared grid forces
   scene(name, n)                                                              # canonical initial conditions
+  scene_pool(solid, n, ...)                                                   # the buoyancy scene
   MAT / MAT_ID                                                                # frozen per-material params
   spread_width / pile_height / repose_angle / circularity                     # shape diagnostics
+  waterline / submerged_fraction / rest_depth                                 # buoyancy diagnostics
   core.*                                                                      # building-block ti.func's for
                                                                               #   learned-dynamics tasks to reuse
 """
@@ -22,8 +24,9 @@ import hashlib
 import pathlib
 
 from . import core
-from .core import (MAT, MAT_ID, circularity, dp_alpha, pile_height, repose_angle, scene, seed_box,
-                   seed_disk, shared_dt, simulate, simulate_multi, spread_width, surface_profile)
+from .core import (MAT, MAT_ID, circularity, dp_alpha, pile_height, repose_angle, rest_depth, scene,
+                   scene_pool, seed_box, seed_disk, shared_dt, simulate, simulate_multi, spread_width,
+                   submerged_fraction, surface_profile, waterline)
 
 
 def _version() -> str:

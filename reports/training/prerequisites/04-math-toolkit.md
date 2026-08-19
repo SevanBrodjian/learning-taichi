@@ -115,6 +115,39 @@ and that push is what enters the momentum a particle deposits during the next tr
 expression and where it sits in the deposited momentum are assembled in [[mls-mpm-forward]], because it is
 easier to see the stress term in the context of the full step than in isolation.
 
+## Scaling: which parameters a model can actually see
+
+A simulator usually has more knobs than it has independent behaviours. Some combinations of parameters
+leave every trajectory untouched, and knowing which ones is the difference between tuning a material and
+chasing a symmetry around in circles.
+
+The test is mechanical. Write the governing equation, then ask which groupings of the parameters actually
+appear in it. Anything that never appears alone cannot be measured from the motion, because the motion
+never depended on it.
+
+Take a simple mass on a spring, $m\ddot{x} = -k x$. Divide by $m$ and the equation becomes
+$\ddot{x} = -(k/m)\,x$. Only the ratio $k/m$ survives. Two springs, one with $k = 1, m = 1$ and one with
+$k = 100, m = 100$, produce the *same* oscillation, forever, from the same initial conditions. Watching
+the motion, there is no experiment that separates a stiff heavy spring from a soft light one at the same
+ratio. The pair $(k, m)$ has one physical degree of freedom, not two, and $\omega = \sqrt{k/m}$ is it.
+
+Two vocabulary items, because they get used interchangeably. A **dimensionless group** is a combination of
+parameters with no units left, like the ratio of two lengths or the Reynolds number; behaviour depends on
+those groups and not on the raw parameters. A **gauge freedom** is a transformation of the parameters that
+leaves every prediction identical, so the parameters are not uniquely determined by any measurement, and
+the transformation above, $(k, m) \to (\alpha k, \alpha m)$, is exactly that.
+
+Three practical consequences, all of which show up later.
+
+- **A gauge direction is not a tuning knob.** Turning both parameters together changes nothing, so a
+  fitting procedure pointed along that direction wanders without ever improving.
+- **A gauge can be broken by adding a second object.** Two springs coupled together, or two materials
+  sharing a grid, can compare their masses against each other even though neither could measure its own.
+  What was unobservable in isolation becomes observable in company. This is precisely what happens to
+  density in [[material-stiffness]].
+- **It tells you what a change really changed.** If a parameter is moved along a gauge direction, nothing
+  moved. If it is moved across one, something did, and the dimensionless group that changed names what.
+
 ## Reverse-mode autodiff over an unrolled program
 
 This is the piece your machine-learning background already owns, stated so the core sections can lean on

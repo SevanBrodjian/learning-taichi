@@ -7,6 +7,11 @@ there is exactly ONE fluid, ONE elastic, ONE snow, and every task that needs a m
 
 Scope of this module:
   * The MLS-MPM transfer skeleton (P2G / grid update with Coulomb friction / G2P) at n_grid=128.
+  * PER-MATERIAL DENSITY. Every material carries `rho`, so a particle's mass is p_vol*rho and a heavy
+    material is genuinely heavier than a light one on the shared grid. Nothing applies a buoyancy
+    force: sinking and floating fall out of the mass ratio alone (see the MAT comment below).
+  * PER-MATERIAL Poisson ratio `nu` (how incompressible the solid is) and per-material floor/wall
+    friction `fric`, both of which used to be single global constants shared by every material.
   * Four constitutive models, with FROZEN canonical parameters (MAT):
       - fluid   : weakly-compressible pressure from J, plus an optional Newtonian viscous stress
                   mu_visc (C + C^T), plus an optional continuum-surface-force surface tension.
@@ -44,12 +49,15 @@ dim = 2
 n_grid = 128
 dx = 1.0 / n_grid
 inv_dx = float(n_grid)
-p_rho = 1.0
 gravity = 9.8
 bound = 3
 floor_y = bound * dx
-NU = 0.2                 # Poisson ratio, fixed for every solid path
-FRICTION = 0.5           # Coulomb friction at the floor (what lets snow hold an angle of repose)
+
+# The three DEFAULTS below exist only as a fallback for code that names no material. Every canonical
+# material overrides all three in MAT, and the simulators read the material's value, not these.
+p_rho = 1.0              # density  -> MAT[...]["rho"]
+NU = 0.2                 # Poisson ratio -> MAT[...]["nu"]
+FRICTION = 0.5           # Coulomb friction at the floor and the side walls -> MAT[...]["fric"]
 
 MAX_P = 16384
 
@@ -73,15 +81,47 @@ def dp_alpha(phi_deg):
 
 # FROZEN canonical per-material parameters. Changing any of these is a deliberate, version-bumping,
 # test-gated event (CLAUDE.md -> "Canonical physics" / promotion criteria), never a per-task tweak.
+#
+# rho  -- density, with water as the unit. This is what makes sand and rubber sink and snow float when
+#         they share a grid. There is NO buoyancy force anywhere in this file: a particle's mass is
+#         p_vol*rho, P2G scatters that mass to the grid, and the grid update divides the scattered
+#         momentum by it. Gravity is applied to the VELOCITY, so it accelerates every node equally,
+#         while the surrounding fluid's pressure reaches a node as an impulse divided by that node's
+#         mass. A heavy node therefore feels less of the fluid's upward push and sinks; a light one
+#         feels more and rises. Archimedes is an OUTPUT here, not an input.
+#
+# WHY E MOVED WHEN rho WAS INTRODUCED. One material on its own is EXACTLY invariant under
+# (rho, E) -> (k rho, k E). The momentum balance rho Dv/Dt = div(sigma) + rho g has sigma proportional
+# to E, so only E/rho survives; in the discrete transfer the stress reaches the grid divided by the
+# node mass, which is proportional to rho, so it enters as E/rho there too. Absolute density is
+# unobservable for a lone material and only becomes physical when two materials share a grid. So snow,
+# sand and elastic keep their old E/rho exactly and their solo behaviour does not move (asserted by a
+# golden signature); the old E numbers live on as E/rho -- snow 150, sand 300.
+#
+# nu   -- Poisson ratio: how much the material resists a change of VOLUME as opposed to a change of
+#         shape. la = E nu / ((1+nu)(1-2nu)) diverges as nu -> 1/2, which is what "incompressible"
+#         means numerically, and it is why rubber runs a smaller timestep than a squashy solid would.
+#         Rubber is nearly incompressible in reality (nu ~ 0.5); the granular/plastic materials are not.
+# fric -- Coulomb friction coefficient at the floor and the side walls. Water is frictionless against a
+#         smooth boundary; a granular pack is not. This used to be one global number, which made water
+#         drag along the floor and glue itself to the walls.
 MAT = {
-    "fluid":   {"E": 180.0, "dt": 1.2e-4, "xi": 0.0,  "tc": 0.0,    "ts": 0.0,    "phi": 0.0,
-                "color": "#4db6ff"},
-    "elastic": {"E": 400.0, "dt": 1.0e-4, "xi": 0.0,  "tc": 0.0,    "ts": 0.0,    "phi": 0.0,
-                "color": "#ff9d5c"},
-    "snow":    {"E": 150.0, "dt": 5.0e-5, "xi": 10.0, "tc": 2.5e-2, "ts": 7.5e-3, "phi": 0.0,
-                "color": "#e6ecff"},
-    "sand":    {"E": 300.0, "dt": 1.0e-4, "xi": 0.0,  "tc": 0.0,    "ts": 0.0,    "phi": 50.0,
-                "color": "#ffd24d"},
+    # E/rho = 900: five times the old 180. The weakly-compressible fluid's density varies like
+    # rho v^2 / E, so the old value let particles compress by tens of percent on impact, which is what
+    # "mushy" looked like. fric = 0 is the other half: water does not grip a smooth floor.
+    "fluid":   {"E": 900.0, "rho": 1.0, "nu": 0.20, "fric": 0.0, "dt": 5.0e-5,
+                "xi": 0.0,  "tc": 0.0,    "ts": 0.0,    "phi": 0.0,  "color": "#4db6ff"},
+    # rubber: nu 0.45 (was the global 0.20). E is raised so that mu/rho -- the SHEAR response, which is
+    # what the material's shape dynamics actually depend on -- is unchanged: mu = E/(2(1+nu)) = 200 at
+    # rho = 1.2 matches the old mu = 166.7 at rho = 1. Only the volumetric stiffness la went up.
+    "elastic": {"E": 580.0, "rho": 1.2, "nu": 0.45, "fric": 0.5, "dt": 5.0e-5,
+                "xi": 0.0,  "tc": 0.0,    "ts": 0.0,    "phi": 0.0,  "color": "#ff9d5c"},
+    # settled snow is about 0.3x the density of water, so it floats. E/rho = 150, exactly as before.
+    "snow":    {"E": 45.0,  "rho": 0.3, "nu": 0.20, "fric": 0.5, "dt": 5.0e-5,
+                "xi": 10.0, "tc": 2.5e-2, "ts": 7.5e-3, "phi": 0.0,  "color": "#e6ecff"},
+    # dry sand packs at about 1.6x water, so it sinks. E/rho = 300, exactly as before.
+    "sand":    {"E": 480.0, "rho": 1.6, "nu": 0.20, "fric": 0.5, "dt": 1.0e-4,
+                "xi": 0.0,  "tc": 0.0,    "ts": 0.0,    "phi": 50.0, "color": "#ffd24d"},
 }
 E_FLUID = MAT["fluid"]["E"]
 
@@ -101,6 +141,9 @@ Jp = ti.field(float, MAX_P)                      # snow: accumulated plastic vol
 
 grid_v = ti.Vector.field(dim, float, (n_grid, n_grid))
 grid_m = ti.field(float, (n_grid, n_grid))
+# Mass-weighted friction scattered to the grid alongside the mass, so a node shared by two materials
+# gets the friction of whatever is actually sitting on it. grid_fr/grid_m is the node's coefficient.
+grid_fr = ti.field(float, (n_grid, n_grid))
 
 x_np_buf = ti.Vector.field(dim, float, MAX_P)
 v0_buf = ti.Vector.field(dim, float, MAX_P)
@@ -115,6 +158,8 @@ m_tc = ti.field(float, N_MAT)
 m_ts = ti.field(float, N_MAT)
 m_alpha = ti.field(float, N_MAT)
 m_muv = ti.field(float, N_MAT)
+m_nu = ti.field(float, N_MAT)
+m_fric = ti.field(float, N_MAT)
 
 
 # --------------------------------------------------------------------------- constitutive stress
@@ -139,17 +184,17 @@ def corotated_PFt(Fc, mu, la):
 
 
 @ti.func
-def elastic_stress(p, dt, E, p_vol):
-    mu = E / (2.0 * (1.0 + NU))
-    la = E * NU / ((1.0 + NU) * (1.0 - 2.0 * NU))
+def elastic_stress(p, dt, E, nu, p_vol):
+    mu = E / (2.0 * (1.0 + nu))
+    la = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu))
     return -dt * 4.0 * p_vol * inv_dx * inv_dx * corotated_PFt(F[p], mu, la)
 
 
 @ti.func
-def snow_stress(p, dt, E, xi, p_vol):
+def snow_stress(p, dt, E, nu, xi, p_vol):
     h = ti.exp(xi * (1.0 - Jp[p]))          # hardening: compacted snow (Jp<1) stiffens
-    mu = (E / (2.0 * (1.0 + NU))) * h
-    la = (E * NU / ((1.0 + NU) * (1.0 - 2.0 * NU))) * h
+    mu = (E / (2.0 * (1.0 + nu))) * h
+    la = (E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu))) * h
     return -dt * 4.0 * p_vol * inv_dx * inv_dx * corotated_PFt(F[p], mu, la)
 
 
@@ -177,9 +222,9 @@ def hencky_tau(Fc, mu, la):
 
 
 @ti.func
-def sand_stress(p, dt, E, p_vol):
-    mu = E / (2.0 * (1.0 + NU))
-    la = E * NU / ((1.0 + NU) * (1.0 - 2.0 * NU))
+def sand_stress(p, dt, E, nu, p_vol):
+    mu = E / (2.0 * (1.0 + nu))
+    la = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu))
     return -dt * 4.0 * p_vol * inv_dx * inv_dx * hencky_tau(F[p], mu, la)
 
 
@@ -230,11 +275,12 @@ def clear_grid():
     for i, j in ti.ndrange(n_grid, n_grid):
         grid_v[i, j] = ti.Vector.zero(float, dim)
         grid_m[i, j] = 0.0
+        grid_fr[i, j] = 0.0
 
 
 @ti.kernel
-def p2g(mat: ti.template(), n: ti.i32, dt: ti.f32, E: ti.f32, xi: ti.f32,
-        mu_visc: ti.f32, p_vol: ti.f32, p_mass: ti.f32):
+def p2g(mat: ti.template(), n: ti.i32, dt: ti.f32, E: ti.f32, nu: ti.f32, xi: ti.f32,
+        mu_visc: ti.f32, p_vol: ti.f32, p_mass: ti.f32, fric: ti.f32):
     for p in range(n):
         Xp = x[p] * inv_dx
         base = int(Xp - 0.5)
@@ -244,11 +290,11 @@ def p2g(mat: ti.template(), n: ti.i32, dt: ti.f32, E: ti.f32, xi: ti.f32,
         if ti.static(mat == FLUID):
             stress = fluid_visc_stress(p, dt, E, mu_visc, p_vol)
         elif ti.static(mat == ELASTIC):
-            stress = elastic_stress(p, dt, E, p_vol)
+            stress = elastic_stress(p, dt, E, nu, p_vol)
         elif ti.static(mat == SNOW):
-            stress = snow_stress(p, dt, E, xi, p_vol)
+            stress = snow_stress(p, dt, E, nu, xi, p_vol)
         else:
-            stress = sand_stress(p, dt, E, p_vol)
+            stress = sand_stress(p, dt, E, nu, p_vol)
         affine = stress + p_mass * C[p]
         for i, j in ti.static(ti.ndrange(3, 3)):
             offset = ti.Vector([i, j])
@@ -256,6 +302,7 @@ def p2g(mat: ti.template(), n: ti.i32, dt: ti.f32, E: ti.f32, xi: ti.f32,
             weight = w[i].x * w[j].y
             grid_v[base[0] + i, base[1] + j] += weight * (p_mass * v[p] + affine @ dpos)
             grid_m[base[0] + i, base[1] + j] += weight * p_mass
+            grid_fr[base[0] + i, base[1] + j] += weight * p_mass * fric
 
 
 @ti.func
@@ -270,24 +317,36 @@ def coulomb(vt, cap):
 
 @ti.kernel
 def grid_op(dt: ti.f32, fric: ti.f32, grav: ti.f32):
+    """Grid update. `fric` is only the fallback for a node that carries no mass (and therefore no
+    material and no result); every node that holds material uses grid_fr/grid_m, the mass-weighted
+    friction of what is actually sitting on it.
+
+    All four boundaries get the SAME treatment: separating in the normal direction, Coulomb friction on
+    the tangent. The side walls used to zero BOTH components, which glued material to them -- water
+    thrown against a wall could not slide back down it, which is the artefact that reads as water being
+    sticky. A wall is a wall, not glue, and it is the material's own `fric` that decides how much it
+    drags along one."""
     for i, j in ti.ndrange(n_grid, n_grid):
         m = grid_m[i, j]
+        f = fric
         if m > 0.0:
             grid_v[i, j] = grid_v[i, j] / m
+            f = grid_fr[i, j] / m
         grid_v[i, j].y -= dt * grav
         vx = grid_v[i, j].x
         vy = grid_v[i, j].y
         if j < bound and vy < 0:                 # floor: separating, Coulomb friction on the tangent
-            vx = coulomb(vx, fric * (-vy))
+            vx = coulomb(vx, f * (-vy))
             vy = 0.0
         if j > n_grid - bound and vy > 0:        # ceiling: separating
+            vx = coulomb(vx, f * vy)
             vy = 0.0
-        if i < bound and vx < 0:                 # sticky side walls
+        if i < bound and vx < 0:                 # left wall: separating, NOT glued
+            vy = coulomb(vy, f * (-vx))
             vx = 0.0
-            vy = 0.0
-        if i > n_grid - bound and vx > 0:
+        if i > n_grid - bound and vx > 0:        # right wall
+            vy = coulomb(vy, f * vx)
             vx = 0.0
-            vy = 0.0
         grid_v[i, j] = ti.Vector([vx, vy])
 
 
@@ -311,7 +370,7 @@ def g2p_gather(p):
 
 @ti.kernel
 def g2p(mat: ti.template(), n: ti.i32, dt: ti.f32, theta_c: ti.f32, theta_s: ti.f32,
-        E: ti.f32, alpha: ti.f32):
+        E: ti.f32, nu: ti.f32, alpha: ti.f32):
     for p in range(n):
         new_v, new_C = g2p_gather(p)
         v[p] = new_v
@@ -330,8 +389,8 @@ def g2p(mat: ti.template(), n: ti.i32, dt: ti.f32, theta_c: ti.f32, theta_s: ti.
             F[p] = U @ ti.Matrix([[s0, 0.0], [0.0, s1]]) @ Vt
         else:
             F_tr = (ti.Matrix.identity(float, dim) + dt * new_C) @ F[p]
-            mu = E / (2.0 * (1.0 + NU))
-            la = E * NU / ((1.0 + NU) * (1.0 - 2.0 * NU))
+            mu = E / (2.0 * (1.0 + nu))
+            la = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu))
             F[p] = dp_return_map(p, F_tr, mu, la, alpha)
         C[p] = new_C
 
@@ -354,11 +413,11 @@ def p2g_multi(n: ti.i32, dt: ti.f32):
         if m == FLUID:
             stress = fluid_visc_stress(p, dt, m_E[FLUID], m_muv[FLUID], p_vol)
         elif m == ELASTIC:
-            stress = elastic_stress(p, dt, m_E[ELASTIC], p_vol)
+            stress = elastic_stress(p, dt, m_E[ELASTIC], m_nu[ELASTIC], p_vol)
         elif m == SNOW:
-            stress = snow_stress(p, dt, m_E[SNOW], m_xi[SNOW], p_vol)
+            stress = snow_stress(p, dt, m_E[SNOW], m_nu[SNOW], m_xi[SNOW], p_vol)
         else:
-            stress = sand_stress(p, dt, m_E[SAND], p_vol)
+            stress = sand_stress(p, dt, m_E[SAND], m_nu[SAND], p_vol)
         affine = stress + p_mass * C[p]
         for i, j in ti.static(ti.ndrange(3, 3)):
             offset = ti.Vector([i, j])
@@ -366,6 +425,7 @@ def p2g_multi(n: ti.i32, dt: ti.f32):
             weight = w[i].x * w[j].y
             grid_v[base[0] + i, base[1] + j] += weight * (p_mass * v[p] + affine @ dpos)
             grid_m[base[0] + i, base[1] + j] += weight * p_mass
+            grid_fr[base[0] + i, base[1] + j] += weight * p_mass * m_fric[m]
 
 
 @ti.kernel
@@ -390,8 +450,9 @@ def g2p_multi(n: ti.i32, dt: ti.f32):
         else:
             F_tr = (ti.Matrix.identity(float, dim) + dt * new_C) @ F[p]
             Es = m_E[SAND]
-            mu = Es / (2.0 * (1.0 + NU))
-            la = Es * NU / ((1.0 + NU) * (1.0 - 2.0 * NU))
+            nus = m_nu[SAND]
+            mu = Es / (2.0 * (1.0 + nus))
+            la = Es * nus / ((1.0 + nus) * (1.0 - 2.0 * nus))
             F[p] = dp_return_map(p, F_tr, mu, la, m_alpha[SAND])
         C[p] = new_C
 
@@ -437,6 +498,26 @@ def seed_box(x0, x1, y0, y1, n, seed=0):
     return np.stack([rng.uniform(x0, x1, n), rng.uniform(y0, y1, n)], axis=1)
 
 
+def seed_lattice(x0, x1, y0, y1, n, seed=0, jitter=0.25):
+    """A jittered regular lattice covering the box, with roughly `n` points.
+
+    Use this instead of `seed_box` for a body of fluid that is supposed to START AT REST. A uniform
+    random sample has Poisson clumping at the sub-cell scale, and the weakly-compressible fluid has no
+    way to push back on it: its pressure comes from the advected volume ratio J, not from the actual
+    particle packing, so a randomly seeded pool quietly compacts as it settles and its free surface
+    creeps downward for the whole run. Seeding on a lattice starts the pack near its own rest density
+    and cuts that drift by more than half. The jitter (a fraction of the lattice spacing) breaks the
+    grid alignment that would otherwise show up as banding artefacts in the transfer."""
+    a = (x1 - x0) * (y1 - y0)
+    s = np.sqrt(a / max(n, 1))
+    xs = np.arange(x0 + s / 2, x1, s)
+    ys = np.arange(y0 + s / 2, y1, s)
+    X, Y = np.meshgrid(xs, ys)
+    p = np.stack([X.ravel(), Y.ravel()], axis=1)
+    rng = np.random.default_rng(seed)
+    return p + rng.uniform(-jitter * s, jitter * s, p.shape)
+
+
 def seed_triangle(cx, y0, half_base, height, n, seed=0):
     """Uniform samples in the isoceles triangle standing on the floor with apex above (cx, y0).
     Uniformity comes from barycentric sampling with a sqrt on the first coordinate; sampling the
@@ -464,6 +545,20 @@ def scene(name, n=9000):
         a = seed_disk((0.42, 0.5), 0.07, n // 2)
         b = seed_disk((0.58, 0.5), 0.07, n - n // 2)
         return {"pts": np.concatenate([a, b], 0), "area": 2 * np.pi * 0.07 ** 2, "v0": (0.0, 0.0), "T": 1.0}
+    if name == "slam":
+        # A HARD floor impact: the drop disk released from higher up and given a downward kick. Gentle
+        # settling barely compresses anything, so a solid's VOLUMETRIC response -- the thing the Poisson
+        # ratio governs -- is only visible in a scene carrying enough kinetic energy to squash it.
+        return {"pts": seed_disk((0.5, 0.60), 0.11, n), "area": np.pi * 0.11 ** 2,
+                "v0": (0.0, -6.0), "T": 1.0}
+    if name == "dam":
+        # A ONE-SIDED dam break: a block held against the left wall and released. Unlike the symmetric
+        # `column`, which reaches both side walls almost at once, this measures RUNOUT -- how far the
+        # leading front travels before it stops -- which is what separates a material that slides along
+        # the floor from one that drags on it.
+        xr, yt = 0.22, 0.42
+        return {"pts": seed_box(floor_y, xr, floor_y, yt, n),
+                "area": (xr - floor_y) * (yt - floor_y), "v0": (0.0, 0.0), "T": 1.4}
     if name == "heap":
         # The angle-of-repose test: an OVER-STEEP pile released from rest. Seeded as a 60-degree
         # triangle, which is steeper than any granular material can support, so whatever slope is left
@@ -476,24 +571,66 @@ def scene(name, n=9000):
     raise KeyError(name)
 
 
+def scene_pool(solid, n=9000, *, depth=0.34, blob_r=0.075, blob_cx=0.5, blob_cy=0.20,
+               x0=None, x1=None, T=2.0, seed=0, rho=None):
+    """The canonical BUOYANCY scene: a disk of `solid`, at rest, fully submerged at mid-depth in a pool
+    of water, with the water seeded AROUND it so neither phase starts overlapping the other.
+
+    Starting the blob submerged and at rest is deliberate. Dropping it in from above would measure a
+    splash, and whatever the blob did afterwards would be confounded with the momentum it arrived with.
+    Released at rest inside the pool, the only thing that can move it is the balance between its weight
+    and the fluid pressure around it, which is exactly the quantity under test.
+
+    Both groups are given the same particle density (particles per unit area), so `p_vol` matches across
+    the interface and one phase is not silently resolved better than the other.
+
+    `rho` overrides the solid's density, which is what turns this scene into a controlled experiment:
+    the same material at three densities must float, hover and sink.
+
+    The pool spans the whole tank by default, so the water starts at rest against both walls instead of
+    collapsing sideways and sloshing -- a wave crossing the tank would move the free surface by more than
+    the effect being measured.
+
+    Returns dict(groups, T, water_area, solid_area, n_solid).
+    """
+    x0 = floor_y if x0 is None else x0
+    x1 = 1.0 - floor_y if x1 is None else x1
+    box_area = (x1 - x0) * (depth - floor_y)
+    disk_area = np.pi * blob_r ** 2
+    n_solid = max(120, int(round(n * disk_area / box_area)))
+    lat = seed_lattice(x0, x1, floor_y, depth, n, seed=seed)
+    water = lat[np.hypot(lat[:, 0] - blob_cx, lat[:, 1] - blob_cy) > blob_r * 1.05]
+    blob = seed_disk((blob_cx, blob_cy), blob_r, n_solid, seed=seed + 1)
+    g_solid = {"material": solid, "pts": blob, "area": disk_area, "v0": (0.0, 0.0)}
+    if rho is not None:
+        g_solid["rho"] = float(rho)
+    return {"groups": [{"material": "fluid", "pts": water, "area": box_area - disk_area,
+                        "v0": (0.0, 0.0)}, g_solid],
+            "T": T, "water_area": box_area - disk_area, "solid_area": disk_area, "n_solid": n_solid}
+
+
 # --------------------------------------------------------------------------- the forward simulator
 def simulate(material, pts, area, T, n_frames, *, v0=(0.0, 0.0), dt=None, E=None, xi=None,
-             phi=None, mu_visc=0.0, gravity_on=True):
+             phi=None, nu=None, rho=None, fric=None, mu_visc=0.0, gravity_on=True):
     """Roll `material` ("fluid"|"elastic"|"snow"|"sand") forward to physical time T from seed `pts`
-    (area for density), capturing n_frames snapshots evenly in physical time. Canonical frozen params
-    unless overridden. mu_visc is a fluid-only knob (Newtonian viscosity), xi a snow-only one (hardening)
-    and phi a sand-only one (friction angle); the last two are exposed so their cost and their effect can
-    be measured against the canonical value. Returns (snaps (n_frames,n,2), times, stable)."""
+    (whose `area` fixes the per-particle volume), capturing n_frames snapshots evenly in physical time.
+    Canonical frozen params unless overridden. mu_visc is a fluid-only knob (Newtonian viscosity), xi a
+    snow-only one (hardening) and phi a sand-only one (friction angle); nu, rho and fric are exposed so
+    that the Poisson ratio, the density and the boundary friction can each be measured against the
+    canonical value. Returns (snaps (n_frames,n,2), times, stable)."""
     cfg = MAT[material]
     mid = MAT_ID[material]
     dt = cfg["dt"] if dt is None else dt
     E = cfg["E"] if E is None else E
     xi = cfg["xi"] if xi is None else xi
+    nu = cfg.get("nu", NU) if nu is None else nu
+    rho = cfg.get("rho", p_rho) if rho is None else rho
+    fric = cfg.get("fric", FRICTION) if fric is None else fric
     alpha = dp_alpha(cfg.get("phi", 0.0) if phi is None else phi)
     grav = 9.8 if gravity_on else 0.0
     n = _upload(pts, v0, mid)
     p_vol = area / n
-    p_mass = p_vol * p_rho
+    p_mass = p_vol * rho
     spf = max(1, int(round((T / n_frames) / dt)))
     init_state(n)
     snaps = np.zeros((n_frames, n, dim), dtype=np.float32)
@@ -503,9 +640,9 @@ def simulate(material, pts, area, T, n_frames, *, v0=(0.0, 0.0), dt=None, E=None
     for fidx in range(n_frames):
         for _ in range(spf):
             clear_grid()
-            p2g(mid, n, dt, E, xi, mu_visc, p_vol, p_mass)
-            grid_op(dt, FRICTION, grav)
-            g2p(mid, n, dt, cfg["tc"], cfg["ts"], E, alpha)
+            p2g(mid, n, dt, E, nu, xi, mu_visc, p_vol, p_mass, fric)
+            grid_op(dt, fric, grav)
+            g2p(mid, n, dt, cfg["tc"], cfg["ts"], E, nu, alpha)
             t += dt
         cur = x.to_numpy()[:n]
         if not np.isfinite(cur).all():
@@ -525,8 +662,11 @@ def shared_dt(materials):
 def simulate_multi(groups, T, n_frames, *, dt=None, gravity_on=True, mu_visc=0.0):
     """Roll SEVERAL materials forward in ONE shared grid.
 
-    groups: list of dicts with keys `material`, `pts` (n_i,2), `area`, and optional `v0`.
+    groups: list of dicts with keys `material`, `pts` (n_i,2), `area`, and optional `v0` and `rho`.
     dt defaults to shared_dt(materials present) -- the physically forced choice, not a preference.
+
+    `rho` overrides that group's canonical density. It exists so a buoyancy result can be shown to
+    depend on DENSITY and nothing else: the same material, same stiffness, same scene, three densities.
 
     Returns (snaps (n_frames, N, 2), times, mats (N,) int32, stable, dt). Particle order is the
     concatenation of the groups in the order given, so `mats` selects each group's rows.
@@ -545,28 +685,33 @@ def simulate_multi(groups, T, n_frames, *, dt=None, gravity_on=True, mu_visc=0.0
     mid = np.zeros(n, dtype=np.int32)
     v0s = np.zeros((n, dim), dtype=np.float32)
     pvol = np.zeros(n, dtype=np.float32)
+    prho = np.zeros(n, dtype=np.float32)
     off = 0
     for g in groups:
         k = np.asarray(g["pts"]).shape[0]
         mid[off:off + k] = MAT_ID[g["material"]]
         v0s[off:off + k] = np.asarray(g.get("v0", (0.0, 0.0)), dtype=np.float32)
         pvol[off:off + k] = g["area"] / k
+        prho[off:off + k] = g.get("rho", MAT[g["material"]].get("rho", p_rho))
         off += k
 
     xb = np.zeros((MAX_P, dim), dtype=np.float32); xb[:n] = pts
     vb = np.zeros((MAX_P, dim), dtype=np.float32); vb[:n] = v0s
     mb = np.zeros(MAX_P, dtype=np.int32); mb[:n] = mid
     vo = np.zeros(MAX_P, dtype=np.float32); vo[:n] = pvol
+    ro = np.zeros(MAX_P, dtype=np.float32); ro[:n] = prho
     x_np_buf.from_numpy(xb)
     v0_buf.from_numpy(vb)
     mat_id.from_numpy(mb)
     p_vol_f.from_numpy(vo)
-    p_mass_f.from_numpy(vo * p_rho)
+    p_mass_f.from_numpy(vo * ro)          # THE line that makes one material heavier than another
 
     for name, i in MAT_ID.items():
         c = MAT[name]
         m_E[i] = c["E"]; m_xi[i] = c["xi"]; m_tc[i] = c["tc"]; m_ts[i] = c["ts"]
         m_alpha[i] = dp_alpha(c.get("phi", 0.0))
+        m_nu[i] = c.get("nu", NU)
+        m_fric[i] = c.get("fric", FRICTION)
         m_muv[i] = mu_visc if name == "fluid" else 0.0
 
     spf = max(1, int(round((T / n_frames) / dt)))
@@ -638,6 +783,27 @@ def repose_angle(snap, nbins=20, q=90.0, min_count=8):
     if not slopes:
         return 0.0
     return float(np.degrees(np.arctan(float(np.mean(slopes)))))
+
+
+def waterline(fluid_snap, q=97.0):
+    """Height of a pool's free surface: the q-th percentile of the fluid particles' y. The percentile
+    rather than the max, so a little spray thrown off the top does not become "the surface"."""
+    return float(np.percentile(fluid_snap[:, 1], q))
+
+
+def submerged_fraction(solid_snap, fluid_snap, q=97.0):
+    """Fraction of a body's particles sitting below the free surface of the fluid around it.
+
+    This is the direct read-out of Archimedes' principle. A body at rest floating in equilibrium
+    displaces its own weight, so the submerged fraction settles at rho_solid/rho_fluid; a body denser
+    than the fluid cannot reach equilibrium at all and ends fully submerged at 1."""
+    return float((solid_snap[:, 1] < waterline(fluid_snap, q)).mean())
+
+
+def rest_depth(solid_snap, fluid_snap, q=97.0):
+    """How deep a body has settled: the waterline minus the body's mean height, in domain units.
+    Positive means the body's centre is under water, negative means it is riding on top."""
+    return float(waterline(fluid_snap, q) - solid_snap[:, 1].mean())
 
 
 def circularity(snap, res=96):

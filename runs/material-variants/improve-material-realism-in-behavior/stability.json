@@ -1,0 +1,218 @@
+{
+ "physics_version": "phys-c518316a4a05",
+ "shape_tol": 0.15,
+ "runs": {
+  "fluid": {
+   "scene": "slam",
+   "dt_canonical": 5e-05,
+   "reference_width": 0.7955968379974365,
+   "factors": {
+    "1.5": {
+     "ok": true,
+     "vmax": 4.262857437133789,
+     "width": 0.7721002101898193,
+     "shape_drift": 0.03
+    },
+    "2.0": {
+     "ok": true,
+     "vmax": 4.411477088928223,
+     "width": 0.8022492527961731,
+     "shape_drift": 0.008
+    },
+    "3.0": {
+     "ok": true,
+     "vmax": 3.910687208175659,
+     "width": 0.8377425670623779,
+     "shape_drift": 0.053
+    },
+    "4.0": {
+     "ok": false,
+     "vmax": null,
+     "width": 0.0,
+     "shape_drift": 9.9
+    },
+    "6.0": {
+     "ok": false,
+     "vmax": null,
+     "width": 0.0,
+     "shape_drift": 9.9
+    },
+    "8.0": {
+     "ok": false,
+     "vmax": null,
+     "width": 0.0,
+     "shape_drift": 9.9
+    },
+    "12.0": {
+     "ok": false,
+     "vmax": null,
+     "width": 0.0,
+     "shape_drift": 9.9
+    }
+   },
+   "dt_stable_max": 0.00015000000000000001,
+   "dt_faithful_max": 0.00015000000000000001,
+   "stable_margin": 3.0,
+   "faithful_margin": 3.0
+  },
+  "elastic": {
+   "scene": "slam",
+   "dt_canonical": 5e-05,
+   "reference_width": 0.17170855402946472,
+   "factors": {
+    "1.5": {
+     "ok": true,
+     "vmax": 1.1506328582763672,
+     "width": 0.17226648330688477,
+     "shape_drift": 0.003
+    },
+    "2.0": {
+     "ok": true,
+     "vmax": 1.416019320487976,
+     "width": 0.17446362972259521,
+     "shape_drift": 0.016
+    },
+    "3.0": {
+     "ok": true,
+     "vmax": 1.223814845085144,
+     "width": 0.17995253205299377,
+     "shape_drift": 0.048
+    },
+    "4.0": {
+     "ok": false,
+     "vmax": null,
+     "width": 0.0,
+     "shape_drift": 9.9
+    },
+    "6.0": {
+     "ok": false,
+     "vmax": null,
+     "width": 0.0,
+     "shape_drift": 9.9
+    },
+    "8.0": {
+     "ok": false,
+     "vmax": null,
+     "width": 0.0,
+     "shape_drift": 9.9
+    },
+    "12.0": {
+     "ok": false,
+     "vmax": null,
+     "width": 0.0,
+     "shape_drift": 9.9
+    }
+   },
+   "dt_stable_max": 0.00015000000000000001,
+   "dt_faithful_max": 0.00015000000000000001,
+   "stable_margin": 3.0,
+   "faithful_margin": 3.0
+  },
+  "snow": {
+   "scene": "drop",
+   "dt_canonical": 5e-05,
+   "reference_width": 0.36616140604019165,
+   "factors": {
+    "1.5": {
+     "ok": true,
+     "vmax": 0.06663039326667786,
+     "width": 0.38970017433166504,
+     "shape_drift": 0.064
+    },
+    "2.0": {
+     "ok": true,
+     "vmax": 0.02245294116437435,
+     "width": 0.4385886490345001,
+     "shape_drift": 0.198
+    },
+    "3.0": {
+     "ok": true,
+     "vmax": 0.04590418189764023,
+     "width": 0.4554973840713501,
+     "shape_drift": 0.244
+    },
+    "4.0": {
+     "ok": true,
+     "vmax": 0.05591953173279762,
+     "width": 0.44599786400794983,
+     "shape_drift": 0.218
+    },
+    "6.0": {
+     "ok": true,
+     "vmax": 0.05664847418665886,
+     "width": 0.40072768926620483,
+     "shape_drift": 0.094
+    },
+    "8.0": {
+     "ok": false,
+     "vmax": 957.0079345703125,
+     "width": 0.953125,
+     "shape_drift": 9.9
+    },
+    "12.0": {
+     "ok": false,
+     "vmax": 1060.1246337890625,
+     "width": 0.953125,
+     "shape_drift": 9.9
+    }
+   },
+   "dt_stable_max": 0.00030000000000000003,
+   "dt_faithful_max": 0.00030000000000000003,
+   "stable_margin": 6.0,
+   "faithful_margin": 6.0
+  },
+  "sand": {
+   "scene": "slam",
+   "dt_canonical": 0.0001,
+   "reference_width": 0.9321054220199585,
+   "factors": {
+    "1.5": {
+     "ok": true,
+     "vmax": 0.4590117633342743,
+     "width": 0.9344503879547119,
+     "shape_drift": 0.003
+    },
+    "2.0": {
+     "ok": true,
+     "vmax": 1.0113792419433594,
+     "width": 0.9360425472259521,
+     "shape_drift": 0.004
+    },
+    "3.0": {
+     "ok": true,
+     "vmax": 1.2941904067993164,
+     "width": 0.9351593852043152,
+     "shape_drift": 0.003
+    },
+    "4.0": {
+     "ok": true,
+     "vmax": 1.1703001260757446,
+     "width": 0.9377266764640808,
+     "shape_drift": 0.006
+    },
+    "6.0": {
+     "ok": true,
+     "vmax": 9.591513633728027,
+     "width": 0.9125070571899414,
+     "shape_drift": 0.021
+    },
+    "8.0": {
+     "ok": true,
+     "vmax": 31.79742431640625,
+     "width": 0.9340662360191345,
+     "shape_drift": 0.002
+    },
+    "12.0": {
+     "ok": true,
+     "vmax": 24.015974044799805,
+     "width": 0.9441844820976257,
+     "shape_drift": 0.013
+    }
+   },
+   "dt_stable_max": 0.0012000000000000001,
+   "dt_faithful_max": 0.0012000000000000001,
+   "stable_margin": 12.0,
+   "faithful_margin": 12.0
+  }
+ }
+}

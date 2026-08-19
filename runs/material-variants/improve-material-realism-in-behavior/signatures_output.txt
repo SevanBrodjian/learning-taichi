@@ -1,0 +1,30 @@
+[Taichi] version 1.7.4, llvm 15.0.1, commit b4b956fd, win, python 3.11.15
+[Taichi] Starting on arch=cuda
+=== canonical physics golden signatures ===
+  [PASS] drop: all materials stable   (fluid=True elastic=True snow=True)
+  [PASS] drop: width  fluid > snow > elastic   (0.461 > 0.335 > 0.173)
+  [PASS] drop: height elastic > snow > fluid   (0.290 > 0.140 > 0.029)
+  [PASS] column: elastic springs back above snow   (elastic 0.505 vs snow 0.160)
+  [PASS] column: snow holds a pile above fluid   (snow 0.160 vs fluid 0.105)
+  [PASS] heap: sand stable   (stable=True)
+  [PASS] heap: sand holds an angle of repose, fluid does not   (sand 25.8 deg vs fluid 2.8 deg)
+  [PASS] heap: sand does NOT spread flat like a fluid   (width fluid 0.795 vs sand 0.308; height sand 0.095 vs fluid 0.019)
+  [PASS] heap: sand YIELDS where cohesive snow/elastic keep the seeded slope   (seeded 56.5 -> sand 25.8, snow 56.3, elastic 56.4 deg; width sand 0.308 vs snow 0.180)
+  [PASS] multi-material path matches canonical for fluid   (vs canonical 5.67e-03, self-noise 4.33e-03)
+  [PASS] multi-material path matches canonical for elastic   (vs canonical 2.90e-06, self-noise 3.97e-06)
+  [PASS] multi-material path matches canonical for snow   (vs canonical 1.13e-05, self-noise 1.10e-05)
+  [PASS] multi-material path matches canonical for sand   (vs canonical 1.63e-04, self-noise 2.08e-04)
+  [PASS] viscosity: thicker fluid spreads less (and doesn't collapse)   (thin 0.922 > thick 0.508 > 0.15)
+  [PASS] pool: snow FLOATS -- it rises to the surface and breaks it   (rose +0.015, depth change -0.129, submerged 0.47)
+  [PASS] pool: rubber SINKS -- it goes down and stays fully under   (moved -0.110, depth change +0.015, submerged 1.00)
+  [PASS] pool: sand SINKS, and faster than rubber does   (moved -0.128 vs rubber -0.110, submerged 1.00)
+  [PASS] pool: resting depth is ordered by density (sand > rubber > snow)   (sand +0.031 > rubber +0.015 > snow -0.129  (rho 1.6 / 1.2 / 0.3))
+  [PASS] pool: the SAME blob orders by DENSITY alone (0.3 floats, 1.0 hangs, 1.6 sinks)   (rho 0.3 -> +0.019 (42% under),  1.0 -> -0.028 (97%),  1.6 -> -0.116 (100%))
+  [PASS] density rescaling leaves a lone material unmoved (snow)   (rho 0.3 vs rescaled to 1.0: 1.45e-05, self-noise 1.45e-05)
+  [PASS] density rescaling leaves a lone material unmoved (sand)   (rho 1.6 vs rescaled to 1.0: 1.74e-04, self-noise 1.73e-04)
+  [PASS] density rescaling leaves a lone material unmoved (elastic)   (rho 1.2 vs rescaled to 1.0: 2.53e-05, self-noise 6.66e-06)
+  [PASS] slam: rubber holds its VOLUME through a hard impact   (worst mean det(F) 0.978 (>0.95), worst 1st-pct particle 0.684 (>0.45))
+  [PASS] drop: water is nearly incompressible   (worst mean J 0.999 (>0.97), worst 1st-pct particle 0.939 (>0.85))
+  [PASS] dam break: frictionless water outruns the same water given a granular friction   (front has travelled 0.278 vs 0.248 at t = 0.20 s)
+physics VERSION: phys-c518316a4a05
+ALL PASS

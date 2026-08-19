@@ -104,3 +104,31 @@ browser, verified it against `sim.physics`, and measured what interactive rates 
 - Shipped to the Demo tab; drove the real dashboard over CDP and clicked every control there.
 - Caught two defects that every numerical check passed: a CSS `[hidden]` override that drew the
   no-WebGPU overlay over a working sim, and a fixed 1/60 s per frame loop (2.2x too fast at 133 Hz).
+
+## improve-material-realism-in-behavior
+- Changed FROZEN ground truth (`sim/physics/`) for the first time since sand: per-material `rho`, `nu`
+  and `fric` in `MAT`, all three previously single globals. Version `phys-bebeaafbe73e` ->
+  `phys-c518316a4a05`.
+- Diagnosed before tuning. Rubber's "compresses too much" is the global `NU = 0.2`: on a hard floor
+  impact the body held 89% of its area at peak with its worst particle at det F = 0.18. Water's "mushy"
+  is the weak-compressibility stiffness: a water particle reached J = 0.51. Both measured on the old
+  physics with a parameter sweep, before anything was edited.
+- Buoyancy needed no buoyancy force. Density enters as `p_mass = p_vol * rho`; the grid divides the
+  fluid's pressure impulse by node mass while gravity is applied to velocity, so `a = -g(1 - rf/rs)`
+  falls out. Snow floats, rubber and sand sink, and the SAME blob at four densities orders monotonically.
+- The reason snow and sand did not move is a gauge symmetry, not luck: a lone material is exactly
+  invariant under `(rho, E) -> (k rho, k E)` because the momentum balance only contains `E/rho`. Each
+  material's density was introduced with its stiffness scaled to match. Now a golden signature.
+- 9 new signatures (buoyancy x5, the density gauge x3, volume retention x2, per-material friction);
+  all 15 pre-existing ones stayed green.
+- Two honest negatives. "Rubber breaks too easily" could not be reproduced on any scene tried. And
+  water's WALL clinging got worse, not better -- and the ablation blamed the friction change, not the
+  stiffness, which was the opposite of the obvious guess. Frictionless water climbs a wall as freely as
+  it slides along a floor.
+- Found and halved a pre-existing artifact while building the pool scene: a randomly seeded pool
+  compacts as it settles (free surface -25% over 2.2 s) because the fluid's pressure comes from an
+  ADVECTED J, not from the actual packing. Lattice seeding (`seed_lattice`) cuts it to -12%. With the
+  random pool the falling surface hid the rubber blob sinking entirely.
+- Stability was checked on velocity and deformation, NOT positions: `simulate` clamps positions into the
+  domain, so a diverging run still returns finite in-range x and a check on x alone passes on a material
+  that has already exploded.

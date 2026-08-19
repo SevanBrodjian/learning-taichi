@@ -46,6 +46,8 @@ TAGS = {
     "webgpu-port-of-the-interactive-simulation":         ["materials", "demo"],
     "sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid": ["materials", "demo"],
     "the-demo-mvp-four-materials-on-webgpu-live-on-the-demo-page": ["materials", "demo", "rendering"],
+    "improve-material-realism-in-behavior": ["materials", "demo"],
+    "propose-new-rendering-for-each-of-the-four-materials": ["rendering", "demo"],
 }
 
 # ── the derived graph ───────────────────────────────────────────────────────────────────────────────
@@ -145,6 +147,18 @@ GRAPH = {
          "realises its four-materials-in-one-grid result as an interactive scene rather than a rollout"),
         ("interactive-simulation-of-one-material", "applies",
          "reuses its particle/grid/material render modes and its drag interaction"),
+    ],
+
+    "improve-material-realism-in-behavior": [
+        ("implement-nondifferentiable-material-variants", "re-does",
+         "redid that task's canonical material definitions properly. It established fluid/elastic/snow and"
+         " nobody re-measured them since: water was compressible enough to squash a particle to J=0.515 and"
+         " the elastic blob permanently lost a tenth of its area on every floor impact. Water's stiffness"
+         " and a per-material Poisson ratio fix both, so those parameter values are superseded."),
+        ("sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid", "extends",
+         "adds a density axis to the one-grid multi-material physics that task built, so the four materials"
+         " now interact by buoyancy rather than merely coexisting -- and buoyancy EMERGES from the mass"
+         " ratio in the transfer, with no buoyancy force anywhere"),
     ],
 
     "more-realistic-basic-fluid-sims": [

@@ -389,7 +389,7 @@
     {
       "id": "improve-material-realism-in-behavior",
       "title": "Improve material realism in behavior",
-      "status": "queued",
+      "status": "active",
       "note": "This task is meant to influence the demo, but should not yet be incorporated into it. We are going to try and improve the standard physics for each of the materials to make them more realistic. Currently, snow and sand are quite accurate. The issue with water is that it's a bit too mushy and sticky. It should be more smooth flowing. Also, rubber is currently kind of weird. It can compress so that the starting mass ends up taking far less area, which is weird. It also breaks too easily. \nFinally, it'd also be cool to see density. Sand and rubber should sink in water, but snow can float. \nFor this task you may change the canonical definitions of the materials. That's the point of the task.",
       "effort": "deep",
       "tags": [

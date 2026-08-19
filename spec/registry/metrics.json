@@ -229,5 +229,41 @@
     "range": "Measured on one RTX 4090 at 456x456: 1.04-5.23 ms, against 0.31-1.12 ms of actual device time for the same frames.",
     "source": "sim/material_render_cost.py:60 (measure)",
     "caution": "This is a property of the HARNESS, not of the algorithm. The gap to render_gpu_ms is Python-side launch overhead at ~55 us per kernel (dispatch_floor_us), which a WebGPU port that records its passes into one command buffer does not pay (1.11 us there). Never quote it as the cost of a treatment."
+  },
+  "grid_update_us": {
+    "label": "grid-update cost",
+    "short": "What ONE grid-update kernel costs per substep, isolated from the rest of the solver.",
+    "formula": "time for K substeps of (P2G + grid kernel) minus the same loop with a 'null' grid kernel that performs identical memory traffic (load the three atomic accumulators, zero them, write the node vec4) and no physics, divided by K. Differencing against a null kernel rather than against nothing is what removes the per-dispatch floor and the memory traffic from the number, leaving the kernel's own arithmetic.",
+    "units": "microseconds per substep",
+    "range": "Measured on one RTX 4090 in Chromium at n_grid=128: 0.03-0.09 for the analytic kernel (at the resolution floor of the differencing), 1.3 for a width-8 per-cell MLP, 3.4 at width 16, 41 at width 32, 48 at width 64. Flat in particle count for every variant.",
+    "source": "runs/material-variants/profile-a-nn-running-for-the-grid-update-on-webgpu/verify/harness.html (section 5, grid_us) and runs/material-variants/profile-a-nn-running-for-the-grid-update-on-webgpu/web/mpm-nn-webgpu.js (the 'null' grid kernel)",
+    "caution": "The analytic value sits within the run-to-run noise of the differencing and should be read as an upper bound, not a measurement. Multiply by substeps_per_frame before comparing to a frame budget. It excludes P2G, G2P and the dispatch floor by construction."
+  },
+  "node_velocity_mae_massw": {
+    "label": "mass-weighted node velocity error",
+    "short": "How wrong a learned grid update's node velocities are, weighted by how much any particle can gather from that node.",
+    "formula": "sum over cells of m_hat_i * |v_predicted_i - v_analytic_i| divided by sum of m_hat_i, where m_hat_i is the node mass in units of one particle mass. The weighting is exact rather than a convenience: P2G scattered w_pi * p_mass into node i from particle p and sum_p w_pi = m_hat_i, so m_hat_i * |dv_i| is precisely the total velocity error node i injects into the whole particle set.",
+    "units": "domain lengths per second (the same units as a node velocity)",
+    "range": "On canonical water at n_grid=128: 0.14 at hidden width 8 down to 0.027 at width 64, against a mass-weighted mean node speed near 1.0, so 14% down to 2.7%.",
+    "source": "runs/material-variants/profile-a-nn-running-for-the-grid-update-on-webgpu/train/train_mlp.py:train_one and runs/material-variants/profile-a-nn-running-for-the-grid-update-on-webgpu/train/train_grid.py:evaluate",
+    "caution": "Small values here do NOT imply a usable solver. Gravity contributes dt*g = 4.9e-4 of velocity per substep, so an error of 0.027 is 56x the entire per-substep effect of gravity and the fluid does not fall. Compare against the per-substep increment, never against the velocity scale."
+  },
+  "node_velocity_grad_rel_err": {
+    "label": "node velocity derivative error",
+    "short": "How wrong the SPATIAL DERIVATIVE of a learned node velocity field is, which is what G2P actually reads.",
+    "formula": "mean |d_pred - d_true| over occupied interior cells divided by mean |d_true|, where d is the first difference of the node velocity field across two cells in x and in y. G2P gathers the affine matrix C, whose entries carry a 1/dx^2 factor, so a particle reads a derivative of the grid update's output and not the output itself.",
+    "units": "dimensionless (relative)",
+    "range": "On canonical water at n_grid=128 with a per-cell MLP: 0.87 at width 8 down to 0.41 at width 64 with a cell-wise loss, improving only to 0.77 and 0.38 when the derivative is trained against directly.",
+    "source": "runs/material-variants/profile-a-nn-running-for-the-grid-update-on-webgpu/train/train_grid.py:evaluate",
+    "caution": "This is the error that matters and it is far larger than the pointwise velocity error on the same field -- fitting an operator cell by cell leaves the derivative of the fit free. A central difference over two cells is a proxy for the B-spline weighted derivative G2P really computes, not that derivative itself."
+  },
+  "frames_tracked_60fps": {
+    "label": "frames tracking ground truth",
+    "short": "How many 60 fps frames a learned rollout stays the same fluid as the canonical one.",
+    "formula": "number of consecutive rendered frames, each substeps_per_frame substeps long, for which the mean per-particle distance from the canonical rollout from the same seed stays under 0.05 of a domain length. 0.05 is about a fifth of the drop's own diameter.",
+    "units": "frames at 60 fps",
+    "range": "Per-cell MLP grid update on canonical water: 1 to 4 frames with a cell-wise loss, 5 to 8 with a derivative loss, against a 60-frame rollout. Anything under ~30 is not a usable simulator.",
+    "source": "runs/material-variants/profile-a-nn-running-for-the-grid-update-on-webgpu/verify/harness.html (section 6)",
+    "caution": "The threshold is a judgement call, and a rollout can leave the band and wander back. It reports the FIRST run of frames inside the band, so it is a lower bound on any looser notion of agreement. It says nothing about whether the rollout still looks like a plausible fluid after it stops tracking -- check the video for that."
   }
 }

@@ -1,0 +1,10 @@
+# Regenerable training data, and far too large to commit. Re-create with:
+#   .venv/Scripts/python.exe .../train/gen_data.py     -> gridop_data.npz  (350 MB, 21M cell samples)
+#   .venv/Scripts/python.exe .../train/gen_grids.py    -> grids.npz        (40 MB, 1301 whole grids)
+#   .venv/Scripts/python.exe .../train/rollout_check.py -> rollouts.npz
+# The TRAINED WEIGHTS (weights.npz, weights_grid.npz) are small and ARE committed, so nothing here has
+# to be re-run to reproduce the profiling result.
+gridop_data.npz
+grids.npz
+rollouts.npz
+__pycache__/

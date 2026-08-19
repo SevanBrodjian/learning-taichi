@@ -175,6 +175,15 @@ GRAPH = {
          " one of the two comparison scenes"),
     ],
 
+    "profile-a-nn-running-for-the-grid-update-on-webgpu": [
+        ("webgpu-port-of-the-interactive-simulation", "extends",
+         "builds on that port's WGSL engine, its timestamp-query protocol and its dispatch-floor anchor, and"
+         " swaps the analytic grid kernel for a per-cell MLP to price the substitution"),
+        ("learned-residual", "extends",
+         "the same seam that task chose -- the grid update -- but replacing it ENTIRELY rather than adding a"
+         " learned correction to it, and priced on a GPU rather than only fitted"),
+    ],
+
     "more-realistic-basic-fluid-sims": [
         ("gpu-accelerate-fluid-renderer", "applies", "only affordable because the GPU port made it ~130x faster"),
         ("improve-basic-fluid-sim-realism", "extends", "showcases the realism work at length"),

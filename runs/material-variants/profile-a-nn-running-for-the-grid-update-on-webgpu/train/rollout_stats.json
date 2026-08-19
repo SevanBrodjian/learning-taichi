@@ -1,0 +1,49 @@
+{
+  "scene": "drop",
+  "n": 6000,
+  "T": 1.0,
+  "frames": 60,
+  "physics_version": "phys-c518316a4a05",
+  "widths": {
+    "8": {
+      "stable": true,
+      "traj_rmse": 0.4546947479248047,
+      "traj_rmse_final": 0.48780128359794617,
+      "final_spread_width": 0.0,
+      "gt_final_spread_width": 0.935285210609436,
+      "final_pile_height": 0.0,
+      "gt_final_pile_height": 0.19029206037521362,
+      "mean_speed_final": 2.2247175365919247e-05
+    },
+    "16": {
+      "stable": true,
+      "traj_rmse": 0.5269380807876587,
+      "traj_rmse_final": 0.48701462149620056,
+      "final_spread_width": 0.0,
+      "gt_final_spread_width": 0.935285210609436,
+      "final_pile_height": 0.0,
+      "gt_final_pile_height": 0.19029206037521362,
+      "mean_speed_final": 2.2888913008500822e-05
+    },
+    "32": {
+      "stable": true,
+      "traj_rmse": 0.5414502620697021,
+      "traj_rmse_final": 0.4894786477088928,
+      "final_spread_width": 0.0,
+      "gt_final_spread_width": 0.935285210609436,
+      "final_pile_height": 0.0,
+      "gt_final_pile_height": 0.19029206037521362,
+      "mean_speed_final": 1.5506391719100066e-05
+    },
+    "64": {
+      "stable": true,
+      "traj_rmse": 0.4950198829174042,
+      "traj_rmse_final": 0.4878123104572296,
+      "final_spread_width": 0.0,
+      "gt_final_spread_width": 0.935285210609436,
+      "final_pile_height": 0.0,
+      "gt_final_pile_height": 0.19029206037521362,
+      "mean_speed_final": 0.0
+    }
+  }
+}

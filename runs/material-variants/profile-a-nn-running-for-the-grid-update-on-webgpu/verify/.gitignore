@@ -1,0 +1,6 @@
+# Raw float32 trajectory and grid dumps posted back by the browser harness: regenerable by re-running
+# harness.html, and large. bench.json (the measurements) IS committed.
+out/traj_*.f32
+out/infer_*.f32
+out/serve.log
+__pycache__/

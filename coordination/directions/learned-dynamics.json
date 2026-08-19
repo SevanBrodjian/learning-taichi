@@ -24,6 +24,10 @@
         {
           "id": "train-and-interpolate-nns-to-mimic-viscous-liquids",
           "dir": "material-variants"
+        },
+        {
+          "id": "profile-a-nn-running-for-the-grid-update-on-webgpu",
+          "dir": "material-variants"
         }
       ]
     }

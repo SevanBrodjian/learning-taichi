@@ -1,0 +1,430 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>NN grid update -- verification + profiling harness</title>
+<style>
+  body { background:#0a0e14; color:#dfe6ee; font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace; padding:14px; }
+  pre { white-space:pre-wrap; }
+  .ok{color:#7ee787} .bad{color:#ff8f8f} .hd{color:#6fd3ee} .wn{color:#ffd24d}
+</style>
+<h3 class="hd">learned grid update -- harness</h3>
+<pre id="log"></pre>
+<script src="/web/params.js"></script>
+<script src="/web/nnweights.js"></script>
+<script src="/web/mpm-nn-webgpu.js"></script>
+<script>
+// TIMING PROTOCOL. performance.now() is clamped to ~100 us in Chromium, so nothing short is ever
+// timed with it. Every GPU number is a timestamp-query over a compute pass covering >= 120 substeps
+// (several hundred dispatches), so the pass is milliseconds long and the clamp is irrelevant.
+//
+// TWO DISCIPLINES THAT THE FIRST PASS OF THIS HARNESS GOT WRONG, both of which produced nonsense:
+//   * INTERLEAVE THE VARIANTS. Measuring all reps of variant A, then all of variant B, lets clock
+//     drift under sustained load masquerade as a difference between A and B. The first run of this
+//     produced a NEGATIVE differenced cost for the analytic grid kernel and a sparse kernel that was
+//     twice as slow as the dense one it strictly does less work than. Variants are now measured
+//     round-robin inside each rep, so drift is shared, and the GPU is driven to a steady clock first.
+//   * DO NOT ADVANCE THE SIMULATION BETWEEN PROBES THAT MUST SEE THE SAME STATE. encodeFrame's
+//     default phases are 'pgG', which includes G2P, so three consecutive "read the grid" probes were
+//     reading three different particle states.
+//
+// NON-ZERO MOTION IS ASSERTED BEFORE ANY TIMING IS BELIEVED. An over-limit bind group makes every
+// dispatch a silent no-op and produces a flat, beautiful, meaningless curve.
+const LOG = document.getElementById('log');
+function say(s, c) { LOG.innerHTML += '<span class="' + (c || '') + '">' + s + '</span>\n'; window.scrollTo(0, 1e9); }
+async function post(name, body) { await fetch('/save?name=' + name, { method: 'POST', body: body }); }
+const now = () => performance.now();
+const med = a => { const b = a.slice().sort((x, y) => x - y); return b[b.length >> 1]; };
+// MIN, not mean or median, is the estimator for every GPU timing below. This desktop has a dozen
+// other GPU clients (compositor, chat apps, overlays) and contention can only ADD time, so the
+// minimum over many repetitions is the least contaminated estimate of the uncontended cost. The
+// timestamp clock's own quantum is measured in section 0 and is ~64 ns, far below any interval here,
+// so nothing is being hidden by resolution. Spread across repetitions is recorded alongside.
+const mn = a => a.reduce((x, y) => Math.min(x, y));
+
+async function main() {
+  const job = await (await fetch('/verify/job.json?t=' + Date.now())).json();
+  const out = { job_id: job.id, started: Date.now() };
+  if (!MPMNN.supported()) {
+    say('navigator.gpu MISSING (insecure origin?)', 'bad');
+    await post('done.json', JSON.stringify({ error: 'no webgpu' })); return;
+  }
+  await MPMNN.getDevice();
+  out.device = MPMNN.deviceInfo();
+  out.params = MPMNN.PARAMS;
+  out.user_agent = navigator.userAgent;
+  say('adapter ' + JSON.stringify(out.device), 'ok');
+  if (!out.device.timestampQuery) say('NO timestamp-query -- GPU timings unavailable', 'bad');
+  const SPF = MPMNN.PARAMS.substeps_per_frame;
+  say('substeps per 60fps frame at the canonical water dt: ' + SPF);
+
+  const ic = new Float32Array(await (await fetch('/verify/' + job.ic.pts_file)).arrayBuffer());
+  const ref = new Float32Array(await (await fetch('/verify/ref_drop.f32')).arrayBuffer());
+  const NIC = job.ic.n, NF = job.ic.n_frames;
+  const spfRender = Math.max(1, Math.round((job.ic.T / NF) / MPMNN.PARAMS.dt));
+  say('reference: ' + NF + ' frames x ' + spfRender + ' substeps');
+
+  function dist(a, ao, b, bo, cnt) {
+    let s = 0;
+    for (let i = 0; i < cnt; i++) {
+      const dx = a[ao + 2 * i] - b[bo + 2 * i], dy = a[ao + 2 * i + 1] - b[bo + 2 * i + 1];
+      s += Math.hypot(dx, dy);
+    }
+    return s / cnt;
+  }
+  const trajDist = (a, b) => dist(a, 0, b, 0, a.length >> 1);
+  function finite(a) { for (let i = 0; i < a.length; i++) if (!isFinite(a[i])) return false; return true; }
+  function spreadWidth(f, off, cnt) {
+    const xs = []; for (let i = 0; i < cnt; i++) xs.push(f[off + 2 * i]);
+    xs.sort((a, b) => a - b);
+    return xs[Math.floor(0.95 * (cnt - 1))] - xs[Math.floor(0.05 * (cnt - 1))];
+  }
+
+  // ================================================================ 1. analytic port vs canonical
+  say('--- 1. analytic WGSL fluid vs canonical Taichi ---', 'hd');
+  {
+    const sim = await MPMNN.createSim({ n: NIC, area: job.ic.area, net: 'point16' });
+    sim.seed(ic, 0, 0);
+    const traj = new Float32Array(NF * NIC * 2);
+    for (let f = 0; f < NF; f++) {
+      sim.encodeFrame(spfRender, { grid: 'analytic', readback: true });
+      traj.set(await sim.readPositions(), f * NIC * 2);
+    }
+    await post('traj_analytic.f32', traj.buffer);
+    out.analytic_check = {
+      finite: finite(traj), traj_rmse_vs_canonical: trajDist(traj, ref),
+      moved_by_frame1: dist(traj, 0, ic, 0, NIC),
+      final_spread_width: spreadWidth(traj, (NF - 1) * NIC * 2, NIC),
+      ref_final_spread_width: spreadWidth(ref, (NF - 1) * NIC * 2, NIC)
+    };
+    const a = out.analytic_check;
+    say('analytic: finite=' + a.finite + '  traj_rmse vs canonical=' + a.traj_rmse_vs_canonical.toFixed(5) +
+      '  moved by frame 1=' + a.moved_by_frame1.toFixed(5) + '  spread ' +
+      a.final_spread_width.toFixed(4) + ' vs ' + a.ref_final_spread_width.toFixed(4),
+      a.finite && a.moved_by_frame1 > 1e-4 ? 'ok' : 'bad');
+    sim.destroy();
+  }
+
+  // ================================================================ 2. WGSL MLP vs host weights
+  // Recovering the exact network INPUT is the trick. The 'null' grid kernel writes the raw node
+  // momentum into gv.xy and the node mass into gv.z, so one pass with 'null' captures (m, p) for
+  // every cell; a second pass over the SAME particle state runs the MLP over it. P2G's fixed-point
+  // accumulation is integer addition, which is exactly reproducible whatever order it happens in, so
+  // both passes see a bit-identical grid -- provided nothing advances the particles in between,
+  // which is why phases is pinned to 'pg' here.
+  say('--- 2. WGSL MLP vs the trained weights on the host ---', 'hd');
+  out.inference_check = [];
+  for (const key of ['point8', 'point16', 'point32', 'point64', 'deriv64']) {
+    const sim = await MPMNN.createSim({ n: NIC, area: job.ic.area, net: key });
+    sim.seed(ic, 0, 0);
+    for (let f = 0; f < 6; f++) sim.encodeFrame(spfRender, { grid: 'analytic' });   // a live state
+    sim.encodeFrame(1, { grid: 'null', phases: 'pg', gridReadback: true });
+    const gIn = await sim.readGrid();
+    sim.encodeFrame(1, { grid: 'nn', phases: 'pg', gridReadback: true });
+    const gNN = await sim.readGrid();
+    sim.encodeFrame(1, { grid: 'nnsparse', phases: 'pg', gridReadback: true });
+    const gSp = await sim.readGrid();
+    // sanity: the two later passes must see the same mass field the first one captured
+    let mismatch = 0, maxd = 0, nocc = 0;
+    for (let c = 0; c < gIn.length; c += 4) {
+      if (Math.abs(gIn[c + 2] - gNN[c + 2]) > 0) mismatch++;
+      if (gIn[c + 2] > 0) {
+        nocc++;
+        maxd = Math.max(maxd, Math.abs(gNN[c] - gSp[c]), Math.abs(gNN[c + 1] - gSp[c + 1]));
+      }
+    }
+    await post('infer_in_' + key + '.f32', gIn.buffer);
+    await post('infer_nn_' + key + '.f32', gNN.buffer);
+    out.inference_check.push({ net: key, hidden: sim.hidden, n_occupied: nocc,
+      grid_state_mismatch_cells: mismatch,
+      dense_vs_sparse_max_abs_diff: maxd, pMass: sim.params.pMass });
+    say('  ' + key + ': occupied=' + nocc + '  state mismatch=' + mismatch +
+      '  dense-vs-sparse max|dv|=' + maxd.toExponential(2),
+      (maxd === 0 && mismatch === 0) ? 'ok' : 'bad');
+    sim.destroy();
+  }
+
+  // ================================================================ 3. clock, quantum, floor
+  say('--- 3. timestamp quantum, steady clock, per-dispatch floor ---', 'hd');
+  {
+    const sc = MPMNN.boxScene(8192, 5);
+    const sim = await MPMNN.createSim({ n: 8192, area: sc.area, net: 'point32' });
+    sim.seed(sc.pts, 0, 0);
+    // Chromium quantises the timestamp clock for side-channel reasons. Find the quantum instead of
+    // assuming it: grow the pass until the clock stops reading zero and take the GCD.
+    const rows = [];
+    for (const s of [1, 2, 4, 8, 16, 32, 64]) {
+      const a = [];
+      for (let i = 0; i < 6; i++) { sim.encodeFrame(s, { grid: 'analytic', timed: true }); a.push(await sim.lastGpuNanos()); }
+      rows.push({ substeps: s, ns: a });
+    }
+    const all = rows.flatMap(r => r.ns).filter(v => v > 0);
+    const gcd = all.reduce((a, b) => { while (b) { [a, b] = [b, a % b]; } return a; }, 0);
+    out.timestamp_probe = { rows: rows, apparent_quantum_ns: gcd };
+    say('  timestamp quantum ~ ' + gcd + ' ns');
+    const t0 = now();
+    while (now() - t0 < 1500) { for (let i = 0; i < 4; i++) sim.encodeFrame(SPF, { grid: 'nn' }); await sim.idle(); }
+    say('  warmed ' + (now() - t0).toFixed(0) + ' ms under a heavy NN load');
+    out.dispatch_floor = [];
+    for (const s of job.floor_substeps) {
+      for (let i = 0; i < 2; i++) sim.encodeFrame(s, { grid: 'analytic', phases: 'e' });
+      await sim.idle();
+      const g = [];
+      for (let i = 0; i < 11; i++) {
+        sim.encodeFrame(s, { grid: 'analytic', phases: 'e', timed: true });
+        g.push(await sim.lastGpuNanos());
+      }
+      out.dispatch_floor.push({ dispatches: s, gpu_ns: mn(g), ns_per_dispatch: mn(g) / s });
+    }
+    say('  ' + out.dispatch_floor.map(r => r.dispatches + 'x -> ' +
+      (r.ns_per_dispatch / 1000).toFixed(3) + ' us').join('   '));
+    sim.destroy();
+  }
+
+  // ================================================================ 4. occupancy
+  // The dense grid update runs all 16384 cells no matter how many particles exist. What fraction of
+  // cells actually holds material -- and what fraction of 64-cell WORKGROUPS holds any -- decides
+  // whether skipping empty cells can turn a flat cost curve into a rising one.
+  say('--- 4. grid occupancy vs particle count ---', 'hd');
+  out.occupancy = [];
+  for (const n of job.occupancy_n) {
+    const sc = MPMNN.boxScene(n, 99);
+    const sim = await MPMNN.createSim({ n: n, area: sc.area, net: 'point16' });
+    sim.seed(sc.pts, 0, 0);
+    for (let f = 0; f < 20; f++) sim.encodeFrame(SPF, { grid: 'analytic' });
+    sim.encodeFrame(SPF, { grid: 'analytic', gridReadback: true });
+    const g = await sim.readGrid();
+    let occ = 0, maxM = 0, maxP = 0;
+    const WG = MPMNN.WG_G, nwg = MPMNN.N_CELL / WG, wgHit = new Uint8Array(nwg);
+    for (let c = 0, cell = 0; c < g.length; c += 4, cell++) {
+      if (g[c + 2] > 0) { occ++; wgHit[(cell / WG) | 0] = 1; }
+      if (g[c + 2] > maxM) maxM = g[c + 2];
+      if (g[c + 3] > maxP) maxP = g[c + 3];
+    }
+    let wgOcc = 0; for (let i = 0; i < nwg; i++) wgOcc += wgHit[i];
+    const r = { n: n, particles_per_cell: sc.particles_per_cell, side: sc.side,
+      occupied_cells: occ, occupied_frac: occ / MPMNN.N_CELL,
+      occupied_workgroups: wgOcc, occupied_wg_frac: wgOcc / nwg,
+      max_node_mass_pm: maxM, max_node_mom_pm: maxP,
+      mass_saturates_at_pm: Math.pow(2, 32 - MPMNN.PARAMS.kM),
+      mom_saturates_at_pm: Math.pow(2, 31 - MPMNN.PARAMS.kV) };
+    out.occupancy.push(r);
+    say('  n=' + n + '  cells ' + occ + ' (' + (100 * r.occupied_frac).toFixed(1) + '%)  workgroups ' +
+      wgOcc + '/' + nwg + ' (' + (100 * r.occupied_wg_frac).toFixed(1) + '%)  maxNodeMass ' +
+      maxM.toFixed(1) + 'pm (saturates ' + r.mass_saturates_at_pm + ')',
+      maxM < r.mass_saturates_at_pm * 0.5 ? 'ok' : 'wn');
+    sim.destroy();
+  }
+
+  // ================================================================ 5. THE SWEEP
+  say('--- 5. sweep: network width x particle count (interleaved) ---', 'hd');
+  out.sweep = [];
+  const TS = job.timed_substeps, REPS = job.reps, KINDS = job.grid_kinds;
+  for (const n of job.particle_counts) {
+    const sc = MPMNN.boxScene(n, 12345);
+    for (const h of job.widths) {
+      const sim = await MPMNN.createSim({ n: n, area: sc.area, net: 'point' + h });
+      sim.seed(sc.pts, 0, 0);
+      const row = { n: n, hidden: h, particles_per_cell: sc.particles_per_cell,
+        timed_substeps: TS, reps: REPS, net_floats: sim.params.net_floats,
+        flops_per_cell: 2 * (8 * h + h * h + h * 2), phases: {}, spread: {} };
+      // RE-SEED BEFORE EVERY TIMED MEASUREMENT THAT ADVANCES THE SIMULATION. The 'pgG' phase
+      // includes G2P, so it moves particles -- and the learned grid kernels move them wrongly. Left
+      // sharing one state, the four variants were being timed on four different scenes: by the time
+      // the analytic kernel's turn came round, the network had already piled the particles into a
+      // few cells and the analytic number came out seven times its true value, purely from P2G
+      // atomic contention on a scene the network had wrecked. ('pg' does not include G2P and cannot
+      // move anything, so it needs no re-seed, which is why those numbers were stable throughout.)
+      for (const ph of ['pg', 'pgG']) {
+        const moves = ph.indexOf('G') >= 0;
+        const acc = {}; KINDS.forEach(k => acc[k] = []);
+        for (const k of KINDS) {                                   // warm every variant first
+          for (let i = 0; i < 2; i++) { if (moves) sim.seed(sc.pts, 0, 0); sim.encodeFrame(TS, { grid: k, phases: ph }); }
+        }
+        await sim.idle();
+        for (let r = 0; r < REPS; r++) {                           // round robin, drift is shared
+          for (const k of KINDS) {
+            if (moves) { sim.seed(sc.pts, 0, 0); await sim.idle(); }
+            sim.encodeFrame(TS, { grid: k, phases: ph, timed: true });
+            acc[k].push(await sim.lastGpuNanos());
+          }
+        }
+        for (const k of KINDS) {
+          const v = acc[k].slice().sort((a, b) => a - b);
+          row.phases[k] = row.phases[k] || {};
+          row.phases[k][ph + '_us_per_substep'] = mn(acc[k]) / 1000 / TS;
+          row.phases[k][ph + '_us_median'] = med(acc[k]) / 1000 / TS;
+          row.spread[k + '_' + ph] = (v[v.length - 1] - v[0]) / Math.max(mn(acc[k]), 1);
+        }
+      }
+      const nul = row.phases['null'].pg_us_per_substep;
+      row.grid_us = {};
+      for (const k of KINDS) row.grid_us[k] = row.phases[k].pg_us_per_substep - nul;
+      row.null_pg_us = nul;
+      out.sweep.push(row);
+      say('  n=' + String(n).padStart(5) + ' h=' + String(h).padStart(2) +
+        '  grid us/substep: null ' + nul.toFixed(2) + ' | analytic +' + row.grid_us.analytic.toFixed(3) +
+        ' | nn +' + row.grid_us.nn.toFixed(2) + ' | sparse +' + row.grid_us.nnsparse.toFixed(2) +
+        '   full us/substep: an ' + row.phases.analytic.pgG_us_per_substep.toFixed(2) +
+        '  nn ' + row.phases.nn.pgG_us_per_substep.toFixed(2) +
+        '  sp ' + row.phases.nnsparse.pgG_us_per_substep.toFixed(2) +
+        '   [rep spread ' + (100 * row.spread['nn_pg']).toFixed(1) + '%]');
+      sim.destroy();
+    }
+  }
+
+  // ================================================================ 5b. fine width scan
+  // The trained widths jump 16 -> 32, and the cost jumps with them by far more than the arithmetic
+  // does. Cost does not depend on what is IN the weight buffer, so the width axis can be scanned at
+  // whatever resolution is needed using untrained networks, which is how a cliff gets located
+  // instead of being inferred from four points.
+  say('--- 5b. fine width scan (untrained nets; cost is independent of the weight values) ---', 'hd');
+  out.width_scan = [];
+  // Run the whole scan TWICE. The first pass produced a cost curve that is not monotonic in width,
+  // which is a strong enough claim to need a reproducibility check rather than a footnote.
+  for (const pass of [0, 1]) {
+    const n = 8192, sc = MPMNN.boxScene(n, 12345);
+    for (const h of job.width_scan) {
+      const sim = await MPMNN.createSim({ n: n, area: sc.area, synth: h });
+      sim.seed(sc.pts, 0, 0);
+      const acc = { 'null': [], nn: [] };
+      for (const k of ['null', 'nn']) for (let i = 0; i < 2; i++) sim.encodeFrame(TS, { grid: k, phases: 'pg' });
+      await sim.idle();
+      for (let r = 0; r < REPS; r++) {
+        for (const k of ['null', 'nn']) {
+          sim.encodeFrame(TS, { grid: k, phases: 'pg', timed: true });
+          acc[k].push(await sim.lastGpuNanos());
+        }
+      }
+      const g = (mn(acc.nn) - mn(acc['null'])) / 1000 / TS;
+      const fl = 2 * (8 * h + h * h + h * 2);
+      out.width_scan.push({ pass: pass, hidden: h, n: n, grid_us: g, flops_per_cell: fl,
+        net_floats: MPMNN.netSize(h), hidden_bytes: 2 * h * 4,
+        achieved_gflops: 16384 / Math.max(g, 1e-12) * 1e6 * fl / 1e9,
+        ns_per_cell: g * 1000 / 16384 * 1000 });
+      const r = out.width_scan[out.width_scan.length - 1];
+      say('  pass ' + pass + '  h=' + String(h).padStart(3) + '  grid ' + g.toFixed(2).padStart(7) + ' us  ' +
+        (r.achieved_gflops).toFixed(0).padStart(5) + ' GFLOP/s  ' +
+        'hidden state ' + r.hidden_bytes + ' B/thread  weights ' + r.net_floats * 4 + ' B');
+      sim.destroy();
+    }
+  }
+
+  // ================================================================ 5c. pricing a compacted dispatch
+  // A dense grid update costs the same at any particle count, because the cell count is fixed. The
+  // one design axis that changes that is compaction: dispatch only over the cells that hold
+  // material. The early-out variant does NOT achieve this -- it keeps all 256 workgroups and merely
+  // makes some of them exit -- so this prices the thing that would: the identical kernel dispatched
+  // over the number of workgroups an occupied-cell list would actually need. It measures the
+  // dispatch, not the list-building pass, which is priced separately from the 'null' kernel (one
+  // full-grid read) plus one dispatch floor.
+  say('--- 5c. cost of a compacted grid dispatch (proxy) ---', 'hd');
+  out.compaction = [];
+  {
+    for (const oc of out.occupancy) {
+      const wg = Math.max(1, Math.ceil(oc.occupied_cells / MPMNN.WG_G));
+      const sc = MPMNN.boxScene(oc.n, 12345);
+      for (const h of job.widths) {
+        const sim = await MPMNN.createSim({ n: oc.n, area: sc.area, net: 'point' + h });
+        sim.seed(sc.pts, 0, 0);
+        // Each dispatch width gets its OWN 'null' baseline at the same workgroup count, so the
+        // difference isolates the network's arithmetic and not the removal of 249 workgroups of
+        // memory traffic.
+        const acc = { full: [], comp: [], nulF: [], nulC: [] };
+        const cfg = [['full', { grid: 'nn', phases: 'pg' }],
+                     ['comp', { grid: 'nn', phases: 'pg', gridWG: wg }],
+                     ['nulF', { grid: 'null', phases: 'pg' }],
+                     ['nulC', { grid: 'null', phases: 'pg', gridWG: wg }]];
+        for (const [, o] of cfg) for (let i = 0; i < 2; i++) sim.encodeFrame(TS, o);
+        await sim.idle();
+        for (let r = 0; r < REPS; r++) {
+          for (const [k, o] of cfg) {
+            sim.encodeFrame(TS, Object.assign({ timed: true }, o));
+            acc[k].push(await sim.lastGpuNanos());
+          }
+        }
+        const nulF = mn(acc.nulF) / 1000 / TS, nulC = mn(acc.nulC) / 1000 / TS;
+        const full = mn(acc.full) / 1000 / TS - nulF;
+        const comp = mn(acc.comp) / 1000 / TS - nulC;
+        out.compaction.push({ n: oc.n, hidden: h, occupied_cells: oc.occupied_cells,
+          workgroups_full: MPMNN.GRID_WG, workgroups_compacted: wg,
+          grid_us_dense: full, grid_us_compacted: comp,
+          null_us_full: nulF, null_us_compacted: nulC,
+          speedup: full / Math.max(comp, 1e-9),
+          workgroup_reduction: MPMNN.GRID_WG / wg });
+        sim.destroy();
+      }
+      const r = out.compaction.filter(x => x.n === oc.n);
+      say('  n=' + String(oc.n).padStart(5) + '  ' + oc.occupied_cells + ' occupied cells -> ' +
+        wg + '/' + MPMNN.GRID_WG + ' workgroups   ' +
+        r.map(x => 'h' + x.hidden + ' ' + x.grid_us_dense.toFixed(1) + '->' +
+          x.grid_us_compacted.toFixed(1) + 'us').join('  '));
+    }
+  }
+
+  // ================================================================ 6. how long is it still water
+  // A per-node velocity error is applied 20000 times per simulated second. Survival is measured as
+  // the number of 60fps frames the learned rollout tracks the canonical reference to within 0.05 of
+  // a domain length -- about a fifth of the drop's own diameter, i.e. obvious to the eye.
+  say('--- 6. frames the learned rollout tracks canonical ---', 'hd');
+  out.survival = [];
+  const TOL = 0.05;
+  for (const key of job.survival.nets) {
+    const sim = await MPMNN.createSim({ n: NIC, area: job.ic.area, net: key });
+    sim.seed(ic, 0, 0);
+    let tracked = 0, died = null, reason = '', curve = [];
+    for (let f = 0; f < NF; f++) {
+      sim.encodeFrame(spfRender, { grid: 'nn', readback: true });
+      const p = await sim.readPositions();
+      if (!finite(p)) { died = f; reason = 'non-finite'; break; }
+      const d = dist(p, 0, ref, f * NIC * 2, NIC);
+      curve.push(d);
+      if (d <= TOL) tracked = f + 1; else if (died === null && reason === '') reason = 'drifted';
+      const sw = spreadWidth(p, 0, NIC);
+      if (sw < 1e-4) { died = f; reason = 'collapsed to a point'; break; }
+    }
+    const r = { net: key, hidden: sim.hidden, frames_tracked: tracked,
+      substeps_tracked: tracked * spfRender, tol: TOL,
+      final_dist: curve.length ? curve[curve.length - 1] : null,
+      dist_curve: curve, died_at_frame: died, reason: reason,
+      sim_seconds_tracked: tracked * spfRender * MPMNN.PARAMS.dt,
+      frames_60fps_tracked: tracked * spfRender / SPF };
+    out.survival.push(r);
+    say('  ' + key.padEnd(9) + ' tracked ' + String(tracked).padStart(3) + '/' + NF +
+      ' render frames (' + r.frames_60fps_tracked.toFixed(2) + ' frames at 60fps, ' +
+      r.sim_seconds_tracked.toFixed(3) + ' s sim)  final dist ' +
+      (r.final_dist === null ? 'n/a' : r.final_dist.toFixed(3)) +
+      (reason ? '  [' + reason + ']' : ''), tracked > 0 ? 'wn' : 'bad');
+    sim.destroy();
+  }
+
+  // ================================================================ 7. trajectories for the video
+  say('--- 7. learned trajectories for the comparison video ---', 'hd');
+  out.traj = [];
+  for (const key of job.traj_nets) {
+    const sim = await MPMNN.createSim({ n: NIC, area: job.ic.area, net: key });
+    sim.seed(ic, 0, 0);
+    const traj = new Float32Array(NF * NIC * 2);
+    for (let f = 0; f < NF; f++) {
+      sim.encodeFrame(spfRender, { grid: 'nn', readback: true });
+      traj.set(await sim.readPositions(), f * NIC * 2);
+    }
+    await post('traj_' + key + '.f32', traj.buffer);
+    const rr = { net: key, hidden: sim.hidden, file: 'traj_' + key + '.f32',
+      finite: finite(traj), traj_rmse_vs_canonical: trajDist(traj, ref) };
+    out.traj.push(rr);
+    say('  ' + key + ' finite=' + rr.finite + ' traj_rmse=' + rr.traj_rmse_vs_canonical.toFixed(4));
+    sim.destroy();
+  }
+
+  out.finished = Date.now();
+  out.webgpu_errors = MPMNN.errors();
+  if (out.webgpu_errors.length) say('WEBGPU ERRORS: ' + out.webgpu_errors.join(' | '), 'bad');
+  await post('bench.json', JSON.stringify(out, null, 2));
+  await post('done.json', JSON.stringify({ ok: true, at: Date.now() }));
+  say('DONE', 'ok');
+}
+
+main().catch(async e => {
+  say('ERROR ' + (e && e.stack ? e.stack : e), 'bad');
+  try { await post('done.json', JSON.stringify({ error: String((e && e.message) || e) })); } catch (_) {}
+});
+</script>

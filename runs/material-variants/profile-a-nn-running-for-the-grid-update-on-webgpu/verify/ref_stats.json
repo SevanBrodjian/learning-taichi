@@ -1,0 +1,14 @@
+{
+  "n": 4096,
+  "T": 1.0,
+  "frames": 60,
+  "stable_a": true,
+  "stable_b": true,
+  "self_noise": 0.0018936695996671915,
+  "final_spread_width": 0.9404011964797974,
+  "final_pile_height": 0.28510069847106934,
+  "physics_version": "phys-c518316a4a05",
+  "dt": 5e-05,
+  "area": 0.0380132711084365,
+  "substeps_per_frame_render": 333
+}

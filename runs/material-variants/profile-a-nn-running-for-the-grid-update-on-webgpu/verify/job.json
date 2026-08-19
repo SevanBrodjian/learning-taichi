@@ -1,0 +1,83 @@
+{
+  "id": "nn-grid-profile-1",
+  "ic": {
+    "name": "drop",
+    "pts_file": "ic_drop.f32",
+    "n": 4096,
+    "area": 0.0380132711084365,
+    "T": 1.0,
+    "n_frames": 60,
+    "v0": [
+      0.0,
+      0.0
+    ]
+  },
+  "widths": [
+    8,
+    16,
+    32,
+    64
+  ],
+  "particle_counts": [
+    512,
+    2048,
+    8192,
+    16384,
+    32768
+  ],
+  "grid_kinds": [
+    "null",
+    "analytic",
+    "nn",
+    "nnsparse"
+  ],
+  "timed_substeps": 200,
+  "reps": 11,
+  "floor_substeps": [
+    64,
+    256,
+    512
+  ],
+  "occupancy_n": [
+    512,
+    2048,
+    8192,
+    16384,
+    32768
+  ],
+  "survival": {
+    "n": 4096,
+    "max_substeps": 8000,
+    "check_every": 100,
+    "nets": [
+      "point8",
+      "point16",
+      "point32",
+      "point64",
+      "deriv8",
+      "deriv16",
+      "deriv32",
+      "deriv64"
+    ]
+  },
+  "traj_nets": [
+    "point64",
+    "deriv64",
+    "point16"
+  ],
+  "width_scan": [
+    4,
+    8,
+    12,
+    16,
+    20,
+    24,
+    28,
+    32,
+    40,
+    48,
+    64,
+    96,
+    128
+  ]
+}

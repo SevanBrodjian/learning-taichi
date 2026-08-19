@@ -223,33 +223,160 @@ immediately and grows linearly. Chaos starts at rounding scale and grows exponen
 A port that is genuinely wrong in one term looks nothing like the reference's own self-noise on a log axis,
 even when a single summary number happens to be small.
 
-## What this implies for learned dynamics
+## What a learned operator inside the substep actually costs
 
-The budget equation prices a learned step before any training happens. A network placed inside the substep
-is evaluated $S$ times per frame, so its cost is multiplied by 167, and it must therefore be *cheaper* than
-the analytic update it replaces. It never is. Even a very small multilayer perceptron evaluated per active
-cell costs a couple of orders of magnitude more than the handful of arithmetic operations in the analytic
-grid update, which is a division by mass, a gravity term, and a boundary branch. On a GPU the two can look
-equally cheap, but only because both are hidden under launch overhead, which is a statement about the
-launch and not about the model.
+The budget equation prices a learned step before any training happens, and the price is worth working out
+carefully because the naive arithmetic makes the idea look affordable and the measurement does not.
 
-So the honest framing is that a learned per-substep update is optimising the wrong term. The term that
-matters is $S$, and $S$ is set by $\Delta t$. The version of the idea that could pay for itself is a model
-that maps the state at $t$ directly to the state one *frame* later, taking one evaluation per frame instead
-of 167, and absorbing the stability constraint that forces the small timestep into learned weights instead
-of obeying it. That is a genuinely different proposition from the residual-inside-the-step models of
-[[hybrid-learned-residual]] and the material networks of [[learned-materials]], and it is a conjecture here
-rather than a result. What would settle it is training on coarse-time transitions and measuring both the
-trajectory error against a canonical rollout and the cost per frame.
+Take the whole grid update as the thing to be replaced. It reads a node's accumulated mass and momentum and
+writes its velocity, and on a $128 \times 128$ grid that is $16\,384$ evaluations per substep. At water's
+timestep the solver runs $1/\Delta t = 20\,000$ substeps per simulated second, so a dense learned grid update
+is evaluated
+
+$$
+16\,384 \times 20\,000 \;\approx\; 3.3 \times 10^{8} \ \text{times per simulated second.}
+$$
+
+A two-hidden-layer perceptron of width $h$ with a handful of inputs costs roughly $2h^2$ floating-point
+operations per evaluation once $h$ is large enough for the square term to dominate. At $h = 16$ that is about
+830 FLOP, so $2.7 \times 10^{11}$ FLOP/s, and at $h = 64$ about $9.5 \times 10^3$ FLOP, so $3 \times 10^{12}$
+FLOP/s. Against a large GPU's tens of teraFLOP/s of fp32 those are single-digit and low-double-digit
+percentages of *peak*. On paper the idea is not absurd, which is exactly why it has to be measured.
+
+**Peak is not what a tiny per-cell network gets, and the reason is not arithmetic.** Measured on one RTX 4090
+in a browser, with P2G and G2P left analytic and only the grid update swapped, the grid kernel's own cost per
+substep came out at roughly
+
+| hidden width | 8 | 16 | 32 | 64 |
+|---|---|---|---|---|
+| grid update, microseconds per substep | 1.3 | 3.4 | 41 | 48 |
+
+against an analytic grid update measured at **under 0.1 microseconds** on the same device. That is a factor of
+about 30 at the smallest width tested and about 1000 at width 64. The learned operator is not somewhat more
+expensive than the formula it replaces; it is three orders of magnitude more expensive.
+
+![Whole-solver cost per substep against particle count, with the analytic grid update as the baseline and the 60 fps budget drawn as a line, both at full device throughput and derated to a quarter of it. The learned curves are flat because the cell count does not depend on the particle count.](/api/data/learning-taichi/runs/material-variants/profile-a-nn-running-for-the-grid-update-on-webgpu/cost_vs_budget.png)
+
+### The cost does not fall when the problem gets smaller
+
+Three properties of that measurement are more instructive than the numbers themselves, and all three are
+consequences of one fact.
+
+**The cost is flat in particle count.** A dense grid update evaluates the network once per cell, and the cell
+count is a property of the resolution, not of the scene. Sixty-four times more particles cost the analytic
+solver four times more (its bill is P2G's scatter) and cost the learned grid update nothing extra at all.
+A flat curve here is the *expected* result rather than a diagnosis of the kind described earlier on this page.
+
+**Skipping empty cells is exact and does not help.** G2P gathers from precisely the cells P2G scattered into,
+so a cell with zero mass cannot be read by any particle and whatever is written there is unobservable.
+Skipping the network on those cells is therefore not an approximation. On a scene where only 2.4% of the grid
+held material, it saved a few percent.
+
+**Compacting the dispatch does not help either.** Running the identical kernel over the number of workgroups
+an occupied-cell list would need — seven instead of 256, a thirty-six-fold cut in the work issued — changed
+the time by one or two percent.
+
+Issuing thirty-six times less work for the same elapsed time has only one explanation: **the kernel is
+latency-bound, not throughput-bound.** With 64 cells per workgroup, $16\,384$ cells is 256 workgroups, and a
+GPU with more than a hundred multiprocessors is nowhere near occupied by that. The elapsed time is set by how
+long *one* thread takes to walk its own network — a serial chain of dependent multiply-accumulates, each
+waiting on a weight load — and adding threads is free until the machine fills up. On this device it does not
+fill up.
+
+The practical consequence inverts the usual instinct. Sparsity, culling and level-of-detail all attack the
+number of evaluations, and here the number of evaluations is not the bill. **The only lever that shortens the
+time is a shorter dependency chain per cell, which means a smaller network.** A corollary worth keeping: this
+conclusion is scoped to a small grid on a large GPU, and a much finer grid would push the same kernel into the
+throughput-bound regime where the usual instincts return.
+
+A second measured surprise, in the same vein: cost is not even monotonic in width. Sweeping the width finely
+with untrained networks — cost does not depend on what is in the weight buffer, so this needs no training —
+shows achieved throughput around 3,500 GFLOP/s at widths 4 to 20, collapsing to about 1,000 across widths 24
+to 40, and recovering above 48. Width 48 costs *less in absolute terms* than width 40 despite 44% more
+arithmetic. The likely mechanism is that the hidden activation vectors stop fitting in registers and spill to
+scratch memory over part of the range, which is a statement about a shader compiler rather than about
+networks, and it is a hypothesis rather than something isolated here. The transferable lesson is the one that
+survives either way: **for a small fused network, cost is governed by where its working set lives, not by how
+many operations it contains.**
+
+### Fitting the output is not fitting the physics
+
+The cost is only half the story, and the accuracy half is the more interesting one because it is not a
+training-effort problem.
+
+Almost everything the grid update *outputs* is the division $\mathbf{v}_i = \mathbf{p}_i / m_i$, which carries
+no physics at all — it is a change of variables from momentum to velocity. The physics is a small perturbation
+on top of it. Gravity is one line, $v_{i,y} \mathrel{-}= \Delta t\, g$, and at water's timestep that is
+
+$$
+\Delta t \cdot g \;=\; 5 \times 10^{-5} \times 9.8 \;\approx\; 4.9 \times 10^{-4}
+$$
+
+of velocity per substep, roughly a thousandth of a typical node speed. It only becomes a falling drop because
+it is applied twenty thousand times a second.
+
+Now put that next to what a fitted network achieves. Trained per cell against the canonical kernel on water,
+the mass-weighted error in the node velocity came out at $1.4 \times 10^{-1}$ at width 8 and
+$2.7 \times 10^{-2}$ at width 64 — that is, **56 to 289 times gravity's entire per-substep contribution**. The
+term the whole simulation is driven by sits far below the network's own noise floor. The visible consequence
+is exactly what that predicts: the learned fluid does not fall. It hovers, frays, and drifts, while the
+analytic reference from the same seed falls, splashes and settles.
+
+![Left: mean particle height against simulated time for the canonical solver, its analytic port, and three learned grid updates from the same seed. The canonical drop falls, hits the floor and settles; two learned rollouts leave the frame upward and the best one descends at a small constant rate instead of accelerating. Right: the mass-weighted node velocity error of each trained width, against the single green line marking gravity's whole contribution to one substep.](/api/data/learning-taichi/runs/material-variants/profile-a-nn-running-for-the-grid-update-on-webgpu/gravity_below_noise.png)
+
+This is not fixed by training harder. At width 64 the network would have to become fifty-six times more
+accurate before gravity was even *visible* to it, and the errors it does make are not the sign-consistent kind
+that would average out.
+
+There is a second, independent version of the same trap. G2P does not read the node velocity; it reads the
+affine matrix $\mathbf{C}_p$, whose entries carry a $1/\Delta x^2$ factor, so what reaches a particle is a
+weighted spatial **derivative** of whatever the grid update wrote. Fitting an operator cell by cell leaves the
+derivative of the fit completely free, and small pointwise errors with no spatial correlation produce a
+derivative error of the same order as the derivative itself. Measured on the fitted fields, the relative error
+in the first difference of the velocity field ran from 87% at width 8 to 41% at width 64 — against 14% and
+2.7% in the velocity itself. Adding a term on the derivative directly to the training objective moved it to
+77% and 38% and no further.
+
+The general principle is worth stating on its own, because it applies to any learned operator placed inside a
+loop:
+
+> **An operator applied $N$ times per unit of simulated time must be fitted to an accuracy finer than the
+> increment it contributes per application, and in whatever functional the consumer actually reads.** A loss
+> on the operator's output, at an error scale set by the output's magnitude, guarantees neither.
+
+Both failures are the same shape. The magnitude of the output is dominated by a term that carries no physics,
+so a loss written on that magnitude spends its capacity in the wrong place.
+
+### So what is the version of this idea that could work
+
+The honest framing is that a learned per-substep update is optimising the wrong term twice over. It pays $S$
+evaluations per frame for a kernel that has to beat a division and a branch, and it is asked to resolve a
+perturbation three orders of magnitude below the thing it is fitted to.
+
+The version that could pay for itself maps the state at $t$ directly to the state one *frame* later, taking
+one evaluation per frame instead of hundreds, and absorbs the stability constraint that forces the small
+timestep into learned weights rather than obeying it. Crucially it also changes the accuracy arithmetic:
+across a whole frame gravity contributes $S \Delta t\, g$, which is hundreds of times larger than the
+per-substep increment, so it is no longer buried under a plausible fitting error. That is a genuinely
+different proposition from the residual-inside-the-step models of [[hybrid-learned-residual]] and the material
+networks of [[learned-materials]], and it remains a conjecture. What would settle it is training on
+coarse-time transitions and measuring both the trajectory error against a canonical rollout and the cost per
+frame.
 
 ## What's open
 
-The substep-count argument is exact, but the constant in "a substep may cost 100 microseconds" is a
-statement about one machine, one language, and one problem size, and it moves with all three. The
-batched-submission result above says the same thing more sharply: that constant moved by a factor of fifty
-without a line of arithmetic changing. Whether a
-coarse-time learned model can hold a rollout together at one evaluation per frame is untested and is the
-interesting question, because a positive answer would decouple interactive simulation from the CFL condition
-entirely, and a negative one would say that explicit stability is a floor no amount of learning removes.
-Also untested is whether the sparse-grid rewrite still pays at high occupancy, where the material fills most
-of the domain and the touched-cell list stops being a small fraction of the grid.
+The substep-count argument is exact, but the constant in "a substep may cost 100 microseconds" is a statement
+about one machine, one language, and one problem size, and it moves with all three. The batched-submission
+result above says the same thing more sharply: that constant moved by a factor of fifty without a line of
+arithmetic changing.
+
+The learned-operator numbers carry the same caveat and one more. They are one grid resolution on one very
+large GPU, and the latency-bound finding is specifically a claim about $16\,384$ cells failing to occupy that
+device. A grid four times finer in each direction would put the same kernel in a regime where compaction and
+sparsity start to matter again, and the analytic baseline would rise too, so the ratio between them is the
+quantity that would need re-measuring rather than either number alone. Whether a coarse-time learned model can
+hold a rollout together at one evaluation per frame is untested and is the interesting question, because a
+positive answer would decouple interactive simulation from the CFL condition entirely, and a negative one
+would say that explicit stability is a floor no amount of learning removes. Also untested is whether the
+sparse-grid rewrite still pays at high occupancy, where the material fills most of the domain and the
+touched-cell list stops being a small fraction of the grid.

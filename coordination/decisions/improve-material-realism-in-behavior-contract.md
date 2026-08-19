@@ -42,3 +42,6 @@ must state *qualitative truths*, never pin a number just measured.
 ## The headline visual
 Each solid dropped into a pool of water, sink/float ordering annotated — plus old-physics vs new-physics on
 the same scene and seed, as video, for every change. The old behaviour is the mandatory baseline.
+
+
+**Resolution: APPROVED**

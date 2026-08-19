@@ -394,7 +394,8 @@
       "effort": "deep",
       "tags": [
         "demo"
-      ]
+      ],
+      "budget_minutes": 60
     }
   ]
 }

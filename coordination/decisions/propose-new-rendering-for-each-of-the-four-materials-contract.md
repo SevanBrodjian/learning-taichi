@@ -38,3 +38,6 @@ included even when unflattering.
 Water shows up in both queued tasks with two different diagnoses — "looks like a smoothie" (rendering) and
 "too mushy and sticky" (physics). Same symptom, two candidate causes. Running the physics first means this
 task can tell how much of the water complaint was actually the rendering.
+
+
+**Resolution: APPROVED**

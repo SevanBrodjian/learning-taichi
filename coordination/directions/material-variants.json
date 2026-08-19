@@ -380,7 +380,7 @@
       "title": "Propose new rendering for each of the four materials",
       "status": "queued",
       "note": "Do not update the actual demo page yet. Even though this task is meant to lead to updates there, the objective for now is to just propose improved rendering for each of the four materials. Only after we finalize a nice appearance for each, which may take a sequence of tasks, will we incorporate it into the demo page. This is the start of that sequence. The main issue is that all the materials currently look the exact same, only differing in color. Some thoughts of where to start:\n1. Elastic solids can have a strong border to separate it, and the interior should be less mushy looking.\n2. The current material appearance is best fit for snow -- mushy and diffuse textured. The others should change and be more individually customized.\n3. Water should be more smooth and clear. For this material we actually did a whole deeper rendering work on it, so you may be able to take inspiration from there. More clear and fluid-like. Right now it looks like a smoothie.\n4. Sand should be granular, like sand is. Maybe render it as particles or macroparticles with random changes in the size of each granule and irregularities. It should be fine-grained.",
-      "effort": "standard",
+      "effort": "deep",
       "tags": [
         "demo"
       ]

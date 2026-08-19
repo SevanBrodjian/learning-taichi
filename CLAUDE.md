@@ -113,6 +113,19 @@ restarts the server if it dies or stops responding on `/api/health`, so a worker
 the dashboard showing an API error. (The server also sanitizes NaN/Inf out of JSON responses, so a
 degenerate metric in a manifest can't hang a task page.)
 
+## Never `git add -A` while a worker is running
+The orchestrator shares one working tree with every worker it spawns. A blanket `git add -A` therefore
+sweeps in whatever a live worker happens to have written **so far** — committing a half-finished run,
+unreviewed, under a commit message about something else entirely. Stage **explicit paths** for any commit
+made while a worker is active, and check `git status` against the set of files you actually intend to
+commit before staging.
+
+If it happens anyway: **do not `git revert` or `git checkout` those paths.** The worker is still writing to
+them, and yanking files out from under it can destroy work in progress or wedge the run. Leave the tree
+alone, let the worker finish, do the full review then, and say plainly in the follow-up commit that part of
+the run landed early by mistake and has now been reviewed. (Hard-won: an `add -A` during the rendering task
+committed its manifest, task page, two training pages and three `sim/` modules mid-run.)
+
 ## Persistence — the filesystem is the backbone
 Durable state lives in the repo, on disk, as files (mostly Markdown + JSON). **Do not rely on auto-memory
 or session context for anything that must survive.** A worker's value is its output on disk, not its

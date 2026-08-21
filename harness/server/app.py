@@ -95,7 +95,7 @@ def build_index(roots: dict[str, Path] | None = None) -> dict:
     for rid, root in roots.items():
         # Recursive: branch slugs contain slashes (runs/<branch>/<run-id>/manifest.json),
         # so the run dir sits at a variable depth under runs/.
-        for mf in sorted(root.glob("runs/**/manifest.json")):
+        for mf in sorted(_iter_manifests(root)):
             try:
                 m = json.loads(mf.read_text(encoding="utf-8"))
             except Exception:
@@ -244,11 +244,32 @@ def resolve_decision(decision_id: str, resolution: str, note: str = "") -> dict:
 # runs/<direction>/<task-id>/manifest.json (schema_version "2"). The Overview<->Task link is structural:
 # a task has a detail iff that manifest exists. No agent maintains the link.
 
+# Walking runs/ has to tolerate a tree that is CHANGING UNDER IT. A worker taking screenshots drops a
+# browser profile under its run dir, and those files churn constantly -- `Path.glob("runs/**/manifest.json")`
+# then hits a directory that vanished mid-walk and raises FileNotFoundError, which took the whole board
+# down with a 500 while the worker was mid-task. Two defences: skip unreadable/vanished directories
+# instead of dying, and prune scratch we know we never want to descend into (a browser profile is also
+# tens of thousands of files that /api/overview would otherwise re-walk every four seconds).
+_SCRATCH_DIRS = {".git", "node_modules", "__pycache__", ".venv", "out"}
+_SCRATCH_PREFIXES = ("_shotprof", "_profile", ".chrome", ".playwright", "tmp_")
+
+
+def _iter_manifests(root: Path):
+    runs = root / "runs"
+    if not runs.is_dir():
+        return
+    for dirpath, dirnames, filenames in os.walk(runs, onerror=lambda _e: None):
+        dirnames[:] = [d for d in dirnames
+                       if d not in _SCRATCH_DIRS and not d.startswith(_SCRATCH_PREFIXES)]
+        if "manifest.json" in filenames:
+            yield Path(dirpath) / "manifest.json"
+
+
 def _v2_tasks() -> dict:
     """(direction, task_id) -> artifact info, for every schema-2 manifest across all roots."""
     out: dict = {}
     for rid, root in list_roots().items():
-        for mf in sorted(root.glob("runs/**/manifest.json")):
+        for mf in sorted(_iter_manifests(root)):
             try:
                 m = json.loads(mf.read_text("utf-8"))
             except Exception:

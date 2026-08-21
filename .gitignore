@@ -232,3 +232,8 @@ runs/**/status.json
 # Skills are durable, portable harness artifacts (e.g. /execute) — version them.
 !.claude/skills/
 !.claude/skills/**
+
+# Scratch a worker drops inside its run dir (browser profiles for screenshotting, etc). These churn
+# constantly and must never be committed -- and the data server prunes them when walking runs/.
+runs/**/_shotprof_*/
+runs/**/_profile_*/

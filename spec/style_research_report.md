@@ -1,14 +1,27 @@
 # Style: research report
 
-> The long-prompt for `reports/research_report.md` — the conservative, shippable deliverable. Distinct
-> from training reports (which teach me) and from running logs (which track work). Co-authored.
+> **WRITTEN BY SEVAN, BY HAND, ALONE.** This changed on 2026-08-20 and it is the most important rule in
+> this file. The agent does **not** draft, edit, co-author, tidy, or fill gaps in
+> `reports/research_report.md` — not one sentence. It **grades** it, against `spec/examination.md`, and
+> sends it back when it does not clear the bar.
+>
+> Why: the project's real output is what Sevan understands, and a report the agent helped write proves
+> nothing about him. A report he wrote alone is the only artifact that can.
+>
+> The agent's own running notes about where the research should go live in
+> `coordination/research_directions.md`, which is a different file with a different purpose. It must not
+> leak into the report.
+>
+> Everything below still describes the TARGET the report is aiming at — the standard he is writing
+> toward, and the standard the grader marks against. Read it as the spec for the artifact, not as an
+> instruction to produce one.
 
 ## Current use vs end target (read this first)
 This spec describes the **end target**: a conservative, shippable technical research report, the kind of
 thing that could sit on a portfolio next to a paper. Everything below defines that target, and it is
 genuinely where `reports/research_report.md` is headed.
 
-**Right now the file is not that yet — it is an evolving scratchpad.** Early in a project it is a short,
+**Right now the file is not that yet.** The first hand-written report is due at the first epoch (the demo wrap-up). Early in a project it is a short,
 living note of **proposed research directions and the threads worth pulling**, added to carefully as real
 results land. Treat it like a researcher's running notes *toward* a paper, not the paper. Concretely, for
 now:

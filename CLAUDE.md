@@ -47,7 +47,8 @@ A session must know which role it is, and the rule is deterministic.
 **one** orchestrator and it operates on **main**, where it owns all of `coordination/` and the single
 dashboard, talks with the user, expands queued tasks into briefs, and **spawns worker subagents** to
 execute them. It plans and integrates; it does not do the deep task execution itself, and it is the only
-role that touches `reports/research_report.md`. A *direction* is an organizing axis inside
+role that **grades** `reports/research_report.md` — which Sevan writes BY HAND and the agent never
+edits (see below). A *direction* is an organizing axis inside
 `coordination/directions/`, **not** a separate session — parallelism comes from spawning several workers
 at once (each isolatable in its own worktree), not from running multiple orchestrators.
 
@@ -132,6 +133,35 @@ them, and yanking files out from under it can destroy work in progress or wedge 
 alone, let the worker finish, do the full review then, and say plainly in the follow-up commit that part of
 the run landed early by mistake and has now been reviewed. (Hard-won: an `add -A` during the rendering task
 committed its manifest, task page, two training pages and three `sim/` modules mid-run.)
+
+## The report is Sevan's, and the agent examines it
+`reports/research_report.md` is **hand-written by Sevan, alone**. The agent does not draft, edit,
+co-author, tidy, or fill a gap in it — not one sentence. It **grades** it against `spec/examination.md`
+and sends it back with a verdict when it does not clear the bar.
+
+The reason is the whole point of the project: its real output is what Sevan *understands*, and a report
+the agent helped write proves nothing about him. Two rules make the grading real rather than theatrical:
+
+- **Name the gap, never supply the content.** "§3 generalises from one task" is feedback; "§3 should say
+  it was launch overhead" is the answer. Point at study material, not at conclusions, and name only the
+  two or three gaps that matter — a list of twelve is a fill-in-the-blanks form.
+- **Grade in a fresh subagent that has not seen the working conversation.** The collaborating agent knows
+  every answer and is structurally inclined to be agreeable; that is a bad examiner. The grader gets the
+  rubric, the repo and the submission, and nothing else. Relay its verdict without softening it.
+
+The agent's own notes on where the research should go live in `coordination/research_directions.md` — a
+different file, and it must not leak into the report.
+
+## Notebook — Sevan's thinking space
+`reports/notebook/` is his slow-moving, semi-structured, high-level scratchpad: where his head is at, what
+he is interested in, what to try next, sketches and diagrams over time. **Also hand-written and never
+edited by the agent**, which may read it (it is useful context for proposing work) and must not tidy it.
+
+## Epochs — cut the project at inflection points
+An **epoch** bundles, at one instant: Sevan's passed report, a frozen loadable demo build, the
+`physics_version`, and the task set and graph. Those four are only meaningful together — a frozen demo
+whose physics version is unknown is a curiosity. Cut at inflection points, never on a schedule. See
+`coordination/epochs/README.md`.
 
 ## Persistence — the filesystem is the backbone
 Durable state lives in the repo, on disk, as files (mostly Markdown + JSON). **Do not rely on auto-memory
@@ -321,7 +351,8 @@ harness/         PORTABLE skeleton — project-agnostic; lift into a new project
   spec_templates/  blank researcher_profile / objectives / style_* to fill per project.
 spec/            USER-AUTHORED calibration (the "flesh") — profile, objectives, report styles. Read first.
 coordination/    research_directions.md (backlog), decisions/ (the I/O inbox), threads/, shared_memory/
-reports/         training/ (multi-file ground-up textbook) + research_report.md (shippable)
+reports/         training/ (agent-written textbook) + research_report.md + notebook/ (BOTH hand-written
+                 by Sevan; the agent grades the report and never edits either)
 runs/            <branch>/<run-id>/manifest.json + metrics/media — served live by harness/server
 agents/          <branch>/STATUS.md, LOG.md, memory/  (per-branch bookkeeping)
 sim/             project Taichi code (seeded from mpm88.py → diffmpm)

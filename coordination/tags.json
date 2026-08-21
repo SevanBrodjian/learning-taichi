@@ -1,0 +1,28 @@
+{
+  "tags": [
+    {
+      "name": "gradients",
+      "color": "#4cc2ff"
+    },
+    {
+      "name": "materials",
+      "color": "#ffb037"
+    },
+    {
+      "name": "learned",
+      "color": "#c98bff"
+    },
+    {
+      "name": "rendering",
+      "color": "#5ee0c8"
+    },
+    {
+      "name": "demo",
+      "color": "#ff7bb0"
+    },
+    {
+      "name": "zz-smoke-test",
+      "color": "#ffd24d"
+    }
+  ]
+}

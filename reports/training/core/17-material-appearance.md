@@ -109,6 +109,61 @@ Its identity is *high-frequency speckle and a ragged boundary*. Suits any granul
 **geometric**, not pixel-bound: $K$ sprites per particle is $K$ times the instance count, which is the
 one treatment here whose price grows with how much material is on screen.
 
+## The same treatments, re-measured in the API that ships them
+
+The table below is Taichi device time, and it ranks the treatments correctly *for Taichi*. Shipping the
+same four treatments as WGSL fragment shaders inside a browser's render passes changes the numbers by an
+order of magnitude, and changes which part of the pipeline is worth worrying about.
+
+| | splat + one resolve | four treatments + grains |
+| --- | --- | --- |
+| GPU ms at $512^2$ | 0.034 | 0.087 |
+| GPU ms at $1024^2$ | 0.097 | 0.147 |
+
+Two readings matter. First, the whole drawing stage is now **under 1% of a 60 Hz frame**, against a solver
+that costs about 7 ms of the same frame at 16,384 particles. Rendering stopped being the thing to budget
+for the moment the passes were recorded into a command buffer instead of launched from Python, which is
+the dispatch-floor result [[real-time-cost]] measures. Second, the *increase* is almost entirely a fixed
++0.05 ms that does not grow with resolution, because it is the per-grain sprite pass, whose cost is
+$K \times N$ instances and not pixels. The resolution-dependent part of the resolve barely moved (0.063 ms
+before, 0.060 ms after) even though it now carries four different shading models, because the extra work
+is arithmetic on values that were already loaded.
+
+That is worth stating as a rule, because it generalises past this renderer. **Branching per material
+inside one full-screen pass is close to free; adding a pass, or adding geometry, is not.** Shading is
+arithmetic on data already in registers. Structure is memory traffic and launches.
+
+### Four materials in one resolve, without a fourth pass
+
+The pass-count rule creates an obvious problem. Four treatments implies either four resolve passes or a
+way to tell, per pixel, which material is there. Storing a material id per pixel is a second render
+target; running four passes multiplies the fill.
+
+The trick that avoids both is to change what the accumulation buffer *means*. The standard splat
+accumulates premultiplied colour and weight, $(c_p w, w)$, in four channels. Accumulating the
+**per-material weight** instead,
+
+$$
+A(u) = \left(A_{\mathrm{fluid}},\; A_{\mathrm{elastic}},\; A_{\mathrm{snow}},\; A_{\mathrm{sand}}\right),
+$$
+
+uses the same four channels, the same format and the same fill, and carries strictly more information.
+The total weight is $\sum_m A_m$, which is what the iso-surface and its gradient need. The colour is
+recoverable as $\left(\sum_m A_m c_m\right) / \sum_m A_m$, which is exactly what the old buffer stored.
+And the material identity of a pixel is $\operatorname*{argmax}_m A_m$, which the old buffer had thrown
+away. One resolve pass then branches to the right treatment with no extra target, no extra pass and no
+extra bandwidth.
+
+The general form is that **a premultiplied colour is a lossy projection of a composition**. Any time a
+renderer accumulates $c \cdot w$ and later wishes it knew what the material was, the fix is usually to
+accumulate the composition and defer the colour, because the palette is a cheap function evaluated once
+per pixel rather than data that has to be carried per fragment.
+
+The cost is a hard switch at interfaces. A pixel takes one treatment, the dominant one, so a water and
+sand boundary is a one-pixel-wide change of shading model rather than a blend. At the scale these
+materials are drawn it is not visible, but it is a real approximation and it would become visible with a
+much larger splat radius.
+
 ## What this costs, and which number to trust
 
 Measured on one RTX 4090 at the demo's own canvas size and particle count (16,384 particles,
@@ -169,7 +224,7 @@ material identity is decided — and the greyscale test that checks it.
 
 **Code:** `sim/material_render.py` (treatments and the baseline port), `sim/material_render_cost.py`
 (the device-time measurement).
-**Related:** [[fluid-rendering]] for the water pipeline in full, [[filters-and-samples]] for the
+**Related:** [[fluid-rendering]] for the water pipeline in full, [[scattering-material-properties]] for the other half of making four materials share one pipeline (the solver half), [[filters-and-samples]] for the
 filtering and sampling facts underneath all of it, [[real-time-cost]] and [[fixed-point-atomics]] for
 the dispatch-overhead result the cost section leans on, [[material-showcase]] for what the four
 canonical materials actually do.

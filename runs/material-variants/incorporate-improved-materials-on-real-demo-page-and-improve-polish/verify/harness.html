@@ -1,0 +1,208 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>T-027 verification + benchmark harness</title>
+<style>
+  body { background:#0a0e14; color:#dfe6ee; font:13px/1.5 ui-monospace,Menlo,Consolas,monospace; padding:14px; }
+  pre { white-space:pre-wrap; }
+  .ok { color:#7ee787 } .bad { color:#ff8f8f } .hd { color:#6fd3ee } .wn { color:#ffd24d }
+</style>
+<h3 class="hd">T-027 harness — new physics + shipped renderer, on the demo's own solver</h3>
+<pre id="log"></pre>
+<canvas id="cv" width="512" height="512" style="width:256px;height:256px;border:1px solid #1d3441"></canvas>
+<script src="/web/params.js"></script>
+<script src="/web/mpm4-webgpu.js"></script>
+<script>
+// Drives every browser-side measurement in one page load, then POSTs the artifacts to serve.py.
+//
+// TIMING PROTOCOL (the part that is easy to get wrong, and did go wrong upstream):
+//   * performance.now() is clamped to ~100 us in Chromium, so nothing short is ever timed with it.
+//     Solver cost comes from timestamp-query (the GPU's own clock across the pass).
+//   * RENDER COST IS TIMED WITH timestamp-query AND MEASURED AT TWO RESOLUTIONS. A screen-space
+//     treatment's cost is per PIXEL, so if the number does not move between 512^2 and 1024^2 the
+//     clock is being measured, not the GPU. T-020 read an identical ~3.3 ms at 360^2 and 1080^2 on
+//     a host clock and nearly published it.
+//   * MOTION IS ASSERTED BEFORE ANY TIMING IS BELIEVED. Exceeding the 8-storage-buffer limit makes
+//     the bind group invalid, every dispatch is silently dropped, and the result is a beautiful
+//     flat timing curve over trajectories of pure zeros.
+const LOG = document.getElementById('log');
+function say(s, cls) { LOG.innerHTML += '<span class="' + (cls || '') + '">' + s + '</span>\n'; }
+async function post(name, body) { await fetch('/save?name=' + name, { method: 'POST', body: body }); }
+function now() { return performance.now(); }
+function disp(a, b) {
+  let s = 0, k = Math.min(a.length, b.length) / 2;
+  for (let i = 0; i < k; i++) s += Math.hypot(a[2 * i] - b[2 * i], a[2 * i + 1] - b[2 * i + 1]);
+  return k ? s / k : 0;
+}
+
+async function main() {
+  const p = MPM4.probe();
+  if (!p.ok) { say('NO WEBGPU: ' + p.why, 'bad'); await post('done.json', JSON.stringify({ error: p.why })); return; }
+  const job = await (await fetch('/verify/job.json?t=' + Date.now())).json();
+  await MPM4.getDevice();
+  const out = { job_id: job.id, started: Date.now(), device: MPM4.deviceInfo(),
+                user_agent: navigator.userAgent, params_physics_version: MPM4.PARAMS.physics_version,
+                has_timestamp: MPM4.hasTimestamp(), rollouts: [] };
+  say('adapter: ' + JSON.stringify(out.device), 'ok');
+  say('params physics_version: ' + MPM4.PARAMS.physics_version + '   job: ' + job.physics_version,
+      MPM4.PARAMS.physics_version === job.physics_version ? 'ok' : 'bad');
+  say('timestamp-query: ' + MPM4.hasTimestamp(), MPM4.hasTimestamp() ? 'ok' : 'wn');
+
+  // ---------------------------------------------------------------- 1. verification rollouts
+  for (const ic of job.ics) {
+    const pts = new Float32Array(await (await fetch('/verify/' + ic.pts_file)).arrayBuffer());
+    const mats = new Int32Array(await (await fetch('/verify/' + ic.mat_file)).arrayBuffer());
+    const sim = await MPM4.createSim({ capacity: ic.n, pVol: ic.p_vol, dt: ic.dt });
+    let i0 = 0;                                     // groups are contiguous; walk runs of equal id
+    for (let i = 1; i <= mats.length; i++) {
+      if (i === mats.length || mats[i] !== mats[i0]) {
+        sim.add(MPM4.ORDER.find(nm => MPM4.ID[nm] === mats[i0]), pts.subarray(2 * i0, 2 * i), 0, 0);
+        i0 = i;
+      }
+    }
+    if (sim.n !== ic.n) say('SEEDING MISMATCH ' + ic.name + ' ' + sim.n + ' != ' + ic.n, 'bad');
+    const t0 = now();
+    const traj = new Float32Array(ic.n_frames * ic.n * 2);
+    for (let f = 0; f < ic.n_frames; f++) {
+      sim.encodeFrame(ic.spf, { readback: true });
+      traj.set(await sim.readPositions(), f * ic.n * 2);
+    }
+    let bad = 0;
+    for (let i = 0; i < traj.length; i++) if (!isFinite(traj[i])) bad++;
+    const moved = disp(traj.subarray(0, ic.n * 2), traj.subarray((ic.n_frames - 1) * ic.n * 2));
+    await post('traj_' + ic.name + '.f32', traj.buffer);
+    out.rollouts.push({ ic: ic.name, n: ic.n, dt: ic.dt, spf: ic.spf, frames: ic.n_frames,
+      n_nonfinite: bad, mean_displacement: moved, wall_ms: now() - t0,
+      pVol: sim.params.pVol, pMassRef: sim.params.pMass });
+    say('rollout ' + ic.name.padEnd(14) + (now() - t0).toFixed(0).padStart(6) + ' ms   nonfinite=' +
+      bad + '   moved=' + moved.toFixed(4), (bad || moved < 1e-4) ? 'bad' : 'ok');
+    sim.destroy();
+  }
+
+  // ---------------------------------------------------------------- 2. the shipped scene, timed
+  const SDT = MPM4.sharedDt(['fluid', 'elastic', 'snow', 'sand']);
+  const SPF = Math.round((1 / 60) / SDT);
+  out.shared_dt = SDT; out.substeps_per_frame = SPF;
+  say('shared dt = ' + SDT + '  ->  ' + SPF + ' substeps/frame, ' + (3 * SPF) + ' dispatches/frame', 'wn');
+
+  function fourBlobs(n, spread) {
+    const k = Math.floor(n / 4), R = spread || 0.11, g = [], cx = [0.24, 0.42, 0.60, 0.78];
+    for (let i = 0; i < 4; i++)
+      g.push({ material: MPM4.ORDER[i], pts: MPM4.seedDisk(cx[i], 0.30 + 0.12 * (i % 2), R, k, 900 + i) });
+    return { groups: g, n: 4 * k, pVol: Math.PI * R * R / k };
+  }
+
+  out.realtime = [];
+  for (const n of job.bench.realtime_n) {
+    const sc = fourBlobs(n);
+    const sim = await MPM4.createSim({ capacity: sc.n, pVol: sc.pVol, dt: SDT });
+    for (const g of sc.groups) sim.add(g.material, g.pts, 0, 0);
+    for (let i = 0; i < 3; i++) sim.encodeFrame(SPF);
+    await sim.idle();
+    sim.encodeFrame(0, { readback: true });
+    const before = await sim.readPositions();
+    const F = job.bench.realtime_frames, t0 = now();
+    for (let f = 0; f < F; f++) sim.encodeFrame(SPF);
+    await sim.idle();
+    const sustained = (now() - t0) / F;
+    sim.encodeFrame(0, { readback: true });
+    const moved = disp(before, await sim.readPositions());
+    const g = [];
+    for (let i = 0; i < 5; i++) { sim.encodeFrame(SPF, { timed: true }); g.push(await sim.lastGpuNanos()); }
+    g.sort((a, b) => a - b);
+    out.realtime.push({ n: sc.n, dt: SDT, substeps: SPF, frames: F, sustained_ms: sustained,
+      gpu_ms: g[2] / 1e6, fps: 1000 / sustained, us_per_substep_gpu: g[2] / 1e3 / SPF,
+      mean_displacement_over_bench: moved, motion_ok: moved > 1e-4 });
+    say('solver n=' + String(sc.n).padStart(6) + '  sustained ' + sustained.toFixed(2) + ' ms (' +
+      (1000 / sustained).toFixed(1) + ' fps)  gpu ' + (g[2] / 1e6).toFixed(2) + ' ms  moved ' +
+      moved.toFixed(4), moved > 1e-4 ? 'ok' : 'bad');
+    sim.destroy();
+  }
+
+  // ---------------------------------------------------------------- 3. render cost, timestamp-query
+  // Every treatment at TWO resolutions. A per-pixel cost must scale with the pixel count; one that
+  // does not is a clock reading, not a GPU reading.
+  out.render = [];
+  const cv = document.getElementById('cv');
+  {
+    const sc = fourBlobs(16384);
+    const sim = await MPM4.createSim({ capacity: sc.n, pVol: sc.pVol, dt: SDT });
+    for (const g of sc.groups) sim.add(g.material, g.pts, 0, 0);
+    for (let i = 0; i < 40; i++) sim.encodeFrame(SPF);          // settle into a real-looking state
+    await sim.idle();
+    const ren = await MPM4.createRenderer(cv, sim);
+    for (const res of job.bench.render_res) {
+      cv.width = res; cv.height = res;
+      for (const view of ['blob', 'pts', 'grid']) {
+        for (let i = 0; i < 8; i++) ren.draw({ view: view, radius: view === 'pts' ? 0.0072 : 0.034, iso: 2.6, massRef: 5.0 });
+        await sim.idle();
+        const F = job.bench.render_frames, t0 = now();
+        for (let f = 0; f < F; f++) ren.draw({ view: view, radius: view === 'pts' ? 0.0072 : 0.034, iso: 2.6, massRef: 5.0 });
+        await sim.idle();
+        const wall = (now() - t0) / F;
+        const g = [];
+        for (let i = 0; i < 7; i++) {
+          ren.draw({ view: view, radius: view === 'pts' ? 0.0072 : 0.034, iso: 2.6, massRef: 5.0, timed: true });
+          const ns = await ren.lastGpuNanos();
+          if (ns !== null && ns > 0) g.push(ns);
+        }
+        g.sort((a, b) => a - b);
+        const gpu = g.length ? g[g.length >> 1] / 1e6 : null;
+        out.render.push({ res: res, view: view, n: sc.n, frames: F, wall_ms: wall, gpu_ms: gpu,
+          treatment: MPM4.RENDER_TREATMENT || 'unknown' });
+        say('render ' + String(res).padStart(5) + '^2 ' + view.padEnd(5) + '  gpu ' +
+          (gpu === null ? '  n/a' : gpu.toFixed(3)) + ' ms   wall ' + wall.toFixed(3) + ' ms',
+          gpu === null ? 'wn' : 'ok');
+      }
+    }
+    ren.destroy(); sim.destroy();
+  }
+
+  // ---------------------------------------------------------------- 4. fixed-point headroom
+  // Per-material density eats into the u32 mass accumulator's range: it counts in REFERENCE particle
+  // masses (rho=1), so the heaviest material reaches the 2^(32-kM) ceiling sooner. Re-measured under
+  // deliberate piling rather than inherited from the MVP's measurement at rho = 1 everywhere.
+  out.pile = [];
+  for (const n of [8192, 16384]) {
+    const k = Math.floor(n / 4);
+    const sim = await MPM4.createSim({ capacity: 4 * k, pVol: Math.PI * 0.09 * 0.09 / k, dt: SDT });
+    for (let i = 0; i < 4; i++) sim.add(MPM4.ORDER[i], MPM4.seedDisk(0.30 + 0.14 * i, 0.55, 0.09, k, 500 + i), 0, 0);
+    sim.poke.on = true; sim.poke.radius = 0.30; sim.poke.rate = 2600; sim.poke.spring = -34;
+    let maxM = 0, maxP = 0;
+    for (let f = 0; f < 90; f++) {
+      sim.poke.x = 0.12; sim.poke.y = 0.10; sim.poke.vx = -2.2; sim.poke.vy = -2.6;
+      sim.syncUniform();
+      sim.encodeFrame(SPF, { gridReadback: true });
+      const gg = await sim.readGrid();
+      for (let c = 0; c < gg.length; c += 4) { if (gg[c + 2] > maxM) maxM = gg[c + 2]; if (gg[c + 3] > maxP) maxP = gg[c + 3]; }
+    }
+    sim.poke.on = false; sim.syncUniform();
+    const kM = MPM4.PARAMS.kM, kV = MPM4.PARAMS.kV;
+    const row = { n: 4 * k, kM: kM, kV: kV, max_node_mass_pm: maxM, max_node_mom_pm: maxP,
+      mass_saturates_at_pm: Math.pow(2, 32 - kM), mom_saturates_at_pm: Math.pow(2, 31 - kV),
+      mass_headroom: Math.pow(2, 32 - kM) / Math.max(maxM, 1e-9),
+      mom_headroom: Math.pow(2, 31 - kV) / Math.max(maxP, 1e-9) };
+    out.pile.push(row);
+    say('pile n=' + String(4 * k).padStart(6) + '  maxNodeMass ' + maxM.toFixed(1) +
+      ' ref-pm (sat ' + row.mass_saturates_at_pm + ', headroom x' + row.mass_headroom.toFixed(2) + ')',
+      row.mass_headroom > 1.5 ? 'ok' : 'bad');
+    sim.destroy();
+  }
+
+  out.substep_table = [
+    { present: ['fluid'] }, { present: ['fluid', 'sand'] },
+    { present: ['fluid', 'elastic', 'sand'] }, { present: ['fluid', 'elastic', 'snow', 'sand'] }
+  ].map(r => ({ present: r.present, dt: MPM4.sharedDt(r.present),
+                substeps_per_frame: Math.round((1 / 60) / MPM4.sharedDt(r.present)) }));
+
+  out.finished = Date.now();
+  out.webgpu_errors = MPM4.errors();
+  if (out.webgpu_errors.length) say('WEBGPU ERRORS: ' + out.webgpu_errors.join(' | '), 'bad');
+  await post('bench.json', JSON.stringify(out, null, 2));
+  await post('done.json', JSON.stringify({ ok: true, at: Date.now() }));
+  say('DONE', 'ok');
+}
+main().catch(async function (e) {
+  say('ERROR ' + (e && e.stack ? e.stack : e), 'bad');
+  try { await post('done.json', JSON.stringify({ error: String(e && e.message || e), stack: String(e && e.stack || '') })); } catch (_) {}
+});
+</script>

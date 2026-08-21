@@ -169,3 +169,13 @@ side by side and notice they disagreed.
 
 **The difference is not effort or polish. It is that one page was designed around the finding and the
 other was a dump of everything produced.**
+
+## Verify the EMBEDDED page, not just the standalone file
+`custom_html` is delivered to the dashboard through an iframe **`srcdoc` attribute**, and the HTML parser
+**entity-decodes that attribute before the script inside it is parsed**. So a page can render perfectly
+when you open `bespoke_page.html` from disk and be **completely blank** in the dashboard — opening the
+standalone file proves nothing about the embedded copy. Anything that survives decoding differently
+(`&`, `<`, `>`, quotes, and especially `&&`, `<`, `>` inside script) is a candidate.
+
+**Open the task page IN THE DASHBOARD and confirm the content is actually there** before shipping. A
+build step that `node --check`s the *decoded* script is the reliable version of this check.

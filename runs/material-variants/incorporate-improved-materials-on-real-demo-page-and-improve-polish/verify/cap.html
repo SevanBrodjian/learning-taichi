@@ -1,0 +1,127 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>T-027 before/after capture</title>
+<style>
+  body { background:#0a0e14; color:#dfe6ee; font:13px/1.5 ui-monospace,Menlo,Consolas,monospace; padding:10px; margin:0 }
+  #cv { border:1px solid #1d3441; image-rendering:pixelated }
+  .ok { color:#7ee787 } .bad { color:#ff8f8f }
+</style>
+<pre id="log"></pre>
+<canvas id="cv"></canvas>
+<script>
+// Deterministic before/after capture, driven by the page itself rather than by a screencast.
+//
+// WHY NOT A SCREENCAST: the two builds have to be compared FRAME FOR FRAME on the same scene, and a
+// compositor screencast delivers whatever frames the compositor felt like delivering. Here the loop
+// is `stepOnce -> draw -> toDataURL -> POST`, so frame f of the "before" clip and frame f of the
+// "after" clip have had EXACTLY the same number of substeps applied to exactly the same initial
+// conditions. What is left between them is the change under test and nothing else.
+//
+// ?b=old|new   which bundle to load -- /old/ is the previously shipped one (physics
+//              phys-bebeaafbe73e + the MVP renderer), /web/ is this task's.
+// ?scene=shipped|three   the demo's own opening scene, or the three-solids-in-one-pool buoyancy
+//              scene whose initial conditions come from verify/ic_pool_three.f32 (the same file
+//              canonical Taichi was run on, so all three sides start identical).
+var Q = new URLSearchParams(location.search);
+var B = Q.get('b') || 'new';
+var SCENE = Q.get('scene') || 'shipped';
+var FRAMES = parseInt(Q.get('frames') || '90', 10);
+var RES = parseInt(Q.get('res') || '600', 10);
+var SPF = parseInt(Q.get('spf') || '0', 10);
+var TREAT = Q.get('t') || 'new';    // 'mvp' draws with the previously shipped treatment
+var BASE = (B === 'old') ? '/old/' : '/web/';
+var L = document.getElementById('log');
+function say(s, c) { L.innerHTML += '<span class="' + (c || '') + '">' + s + '</span>\n'; }
+
+function load(src) {
+  return new Promise(function (res, rej) {
+    var e = document.createElement('script');
+    e.src = src; e.onload = res; e.onerror = function () { rej(new Error('load ' + src)); };
+    document.head.appendChild(e);
+  });
+}
+async function post(name, body) { await fetch('/save?name=' + name, { method: 'POST', body: body }); }
+function pngBytes(cv) {
+  var b64 = cv.toDataURL('image/png').split(',')[1];
+  var bin = atob(b64), a = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+  return a;
+}
+
+async function main() {
+  await load(BASE + 'params.js');
+  await load(BASE + 'mpm4-webgpu.js');
+  var M = window.MPM4;
+  say('bundle ' + B + '   physics_version ' + M.PARAMS.physics_version +
+      '   treatment ' + (M.RENDER_TREATMENT || 'mvp'), 'ok');
+  var cv = document.getElementById('cv');
+  cv.width = RES; cv.height = RES;
+  cv.style.width = Math.min(RES, 520) + 'px'; cv.style.height = Math.min(RES, 520) + 'px';
+
+  var sim, spf, tag = B + '_' + SCENE + (TREAT === 'mvp' ? '_mvp' : '');
+  if (SCENE === 'three') {
+    var job = await (await fetch('/verify/job.json')).json();
+    var ic = job.ics.find(function (x) { return x.name === 'pool_three'; });
+    var pts = new Float32Array(await (await fetch('/verify/ic_pool_three.f32')).arrayBuffer());
+    var mats = new Int32Array(await (await fetch('/verify/ic_pool_three_mat.i32')).arrayBuffer());
+    sim = await M.createSim({ capacity: ic.n, pVol: ic.p_vol, dt: ic.dt });
+    var i0 = 0;
+    for (var i = 1; i <= mats.length; i++) {
+      if (i === mats.length || mats[i] !== mats[i0]) {
+        sim.add(M.ORDER.find(function (nm) { return M.ID[nm] === mats[i0]; }),
+                pts.subarray(2 * i0, 2 * i), 0, 0);
+        i0 = i;
+      }
+    }
+    spf = SPF || ic.spf;
+  } else {
+    // the demo's own opening scene, rebuilt from the same constants demo4.js uses
+    var DENSITY = 500 / (Math.PI * 0.075 * 0.075);
+    var P = M.PARAMS;
+    sim = await M.createSim({ capacity: 16384, pVol: 1 / DENSITY,
+                              dt: M.sharedDt(['fluid', 'elastic', 'snow', 'sand']) });
+    function rnd32(seed) { var s = (seed >>> 0) || 1;
+      return function () { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+    function box(x0, x1, y0, y1, seed) {
+      var k = Math.max(1, Math.round(DENSITY * (x1 - x0) * (y1 - y0))), r = rnd32(seed);
+      var a = new Float32Array(2 * k);
+      for (var i = 0; i < k; i++) { a[2 * i] = x0 + r() * (x1 - x0); a[2 * i + 1] = y0 + r() * (y1 - y0); }
+      return a;
+    }
+    function disk(cx, cy, rr, seed) {
+      return M.seedDisk(cx, cy, rr, Math.max(1, Math.round(DENSITY * Math.PI * rr * rr)), seed);
+    }
+    sim.add('fluid', box(0.05, 0.95, P.floor_y, P.floor_y + 0.155, 7), 0, 0);
+    sim.add('elastic', disk(0.19, 0.60, 0.115, 11), 0, 0);
+    sim.add('snow', box(0.37, 0.58, 0.50, 0.92, 12), 0, 0);
+    sim.add('sand', disk(0.79, 0.64, 0.130, 13), 0, 0);
+    spf = SPF || 333;
+  }
+  say('n=' + sim.n + '  dt=' + sim.getDt() + '  spf=' + spf + '  frames=' + FRAMES);
+
+  var ren = await M.createRenderer(cv, sim);
+  sim.encodeFrame(0, { readback: true });
+  var p0 = await sim.readPositions();
+  for (var f = 0; f < FRAMES; f++) {
+    sim.encodeFrame(spf, {});
+    ren.draw({ view: 'blob', radius: 0.034, iso: 2.6, massRef: 5.0, odd: 0xffffffff,
+               treatment: TREAT });
+    await sim.idle();
+    await post('cap/' + tag + '/f_' + String(f).padStart(4, '0') + '.png', pngBytes(cv));
+    if (f % 20 === 0) say('  frame ' + f);
+  }
+  sim.encodeFrame(0, { readback: true });
+  var p1 = await sim.readPositions();
+  var moved = 0;
+  for (var i = 0; i < p0.length; i++) moved += Math.abs(p0[i] - p1[i]);
+  moved /= p0.length;
+  await post('cap_' + tag + '.json', JSON.stringify({
+    bundle: B, scene: SCENE, treatment_drawn: TREAT, frames: FRAMES, res: RES, spf: spf, n: sim.n,
+    dt: sim.getDt(), physics_version: M.PARAMS.physics_version,
+    treatment: M.RENDER_TREATMENT || 'mvp', mean_abs_motion: moved,
+    errors: M.errors() }, null, 2));
+  say('DONE  mean|dx| = ' + moved.toFixed(5), moved > 1e-4 ? 'ok' : 'bad');
+  document.title = 'CAPDONE';
+}
+main().catch(function (e) { say('ERROR ' + (e && e.stack || e), 'bad'); document.title = 'CAPFAIL'; });
+</script>

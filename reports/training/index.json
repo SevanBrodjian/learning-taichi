@@ -142,6 +142,11 @@
      "id": "material-appearance",
      "title": "Four materials, one shader: reconstruction is what makes them different",
      "file": "core/17-material-appearance.md"
+    },
+    {
+     "id": "scattering-material-properties",
+     "title": "Scattering a material property to a shared grid",
+     "file": "core/18-scattering-material-properties.md"
     }
    ]
   }

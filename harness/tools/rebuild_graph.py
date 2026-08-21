@@ -49,6 +49,7 @@ TAGS = {
     "improve-material-realism-in-behavior": ["materials", "demo"],
     "propose-new-rendering-for-each-of-the-four-materials": ["rendering", "demo"],
     "profile-a-nn-running-for-the-grid-update-on-webgpu": ["learned", "demo"],
+    "incorporate-improved-materials-on-real-demo-page-and-improve-polish": ["demo", "rendering", "materials"],
 }
 
 # ── the derived graph ───────────────────────────────────────────────────────────────────────────────
@@ -182,6 +183,18 @@ GRAPH = {
         ("learned-residual", "extends",
          "the same seam that task chose -- the grid update -- but replacing it ENTIRELY rather than adding a"
          " learned correction to it, and priced on a GPU rather than only fitted"),
+    ],
+
+    "incorporate-improved-materials-on-real-demo-page-and-improve-polish": [
+        ("the-demo-mvp-four-materials-on-webgpu-live-on-the-demo-page", "extends",
+         "the same page, brought up to the current standard: it carried phys-bebeaafbe73e with one global"
+         " NU and no density, and it drew all four materials with a single treatment"),
+        ("improve-material-realism-in-behavior", "applies",
+         "puts that task's per-material rho/nu/friction into the shipped WGSL solver, so the sink/float"
+         " ordering it established now reproduces on the demo's OWN engine rather than only in Taichi"),
+        ("propose-new-rendering-for-each-of-the-four-materials", "applies",
+         "implements the treatments that task proposed and Sevan chose -- water film, snow powder, sand"
+         " grains -- and REJECTS both of its rubber options in favour of tuning the existing one"),
     ],
 
     "more-realistic-basic-fluid-sims": [

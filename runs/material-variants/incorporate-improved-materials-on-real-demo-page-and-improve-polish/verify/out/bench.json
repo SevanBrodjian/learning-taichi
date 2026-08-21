@@ -1,0 +1,265 @@
+{
+  "job_id": "mpm4-t027",
+  "started": 1787278180032,
+  "device": {
+    "vendor": "nvidia",
+    "architecture": "lovelace",
+    "device": "",
+    "description": "",
+    "timestampQuery": true,
+    "limits": {
+      "maxStorageBuffersPerShaderStage": 8,
+      "maxStorageBufferBindingSize": 134217728,
+      "maxBufferSize": 268435456,
+      "maxComputeWorkgroupsPerDimension": 65535,
+      "maxComputeInvocationsPerWorkgroup": 256
+    }
+  },
+  "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Claude/1.32885.1 Chrome/148.0.7778.280 Electron/42.9.2 Safari/537.36 MSIX",
+  "params_physics_version": "phys-c518316a4a05",
+  "has_timestamp": true,
+  "rollouts": [
+    {
+      "ic": "pool_snow",
+      "n": 8429,
+      "dt": 0.00005,
+      "spf": 667,
+      "frames": 60,
+      "n_nonfinite": 0,
+      "mean_displacement": 0.08794621763925564,
+      "wall_ms": 947.4000000357628,
+      "pVol": 0.00003534291735288518,
+      "pMassRef": 0.00003534291735288518
+    },
+    {
+      "ic": "pool_elastic",
+      "n": 8429,
+      "dt": 0.00005,
+      "spf": 667,
+      "frames": 60,
+      "n_nonfinite": 0,
+      "mean_displacement": 0.078791438570864,
+      "wall_ms": 920,
+      "pVol": 0.00003534291735288518,
+      "pMassRef": 0.00003534291735288518
+    },
+    {
+      "ic": "pool_sand",
+      "n": 8429,
+      "dt": 0.00005,
+      "spf": 667,
+      "frames": 60,
+      "n_nonfinite": 0,
+      "mean_displacement": 0.08970200215909235,
+      "wall_ms": 937,
+      "pVol": 0.00003534291735288518,
+      "pMassRef": 0.00003534291735288518
+    },
+    {
+      "ic": "pool_fluid",
+      "n": 8429,
+      "dt": 0.00005,
+      "spf": 667,
+      "frames": 60,
+      "n_nonfinite": 0,
+      "mean_displacement": 0.08407731675461665,
+      "wall_ms": 923.5,
+      "pVol": 0.00003534291735288518,
+      "pMassRef": 0.00003534291735288518
+    },
+    {
+      "ic": "pool_three",
+      "n": 8328,
+      "dt": 0.00005,
+      "spf": 667,
+      "frames": 60,
+      "n_nonfinite": 0,
+      "mean_displacement": 0.12305426047910631,
+      "wall_ms": 935.1999999880791,
+      "pVol": 0.00003534291735288518,
+      "pMassRef": 0.00003534291735288518
+    },
+    {
+      "ic": "mixed4",
+      "n": 3245,
+      "dt": 0.00005,
+      "spf": 533,
+      "frames": 60,
+      "n_nonfinite": 0,
+      "mean_displacement": 0.41662089387780954,
+      "wall_ms": 577.5,
+      "pVol": 0.00003534291735288518,
+      "pMassRef": 0.00003534291735288518
+    }
+  ],
+  "shared_dt": 0.00005,
+  "substeps_per_frame": 333,
+  "realtime": [
+    {
+      "n": 4096,
+      "dt": 0.00005,
+      "substeps": 333,
+      "frames": 24,
+      "sustained_ms": 3.241666667163372,
+      "gpu_ms": 3.017728,
+      "fps": 308.48329044116446,
+      "us_per_substep_gpu": 9.062246246246247,
+      "mean_displacement_over_bench": 0.26752238630715136,
+      "motion_ok": true
+    },
+    {
+      "n": 8192,
+      "dt": 0.00005,
+      "substeps": 333,
+      "frames": 24,
+      "sustained_ms": 4.333333333333333,
+      "gpu_ms": 4.345856,
+      "fps": 230.76923076923077,
+      "us_per_substep_gpu": 13.050618618618618,
+      "mean_displacement_over_bench": 0.26761727936947055,
+      "motion_ok": true
+    },
+    {
+      "n": 12288,
+      "dt": 0.00005,
+      "substeps": 333,
+      "frames": 24,
+      "sustained_ms": 5.462500000993411,
+      "gpu_ms": 5.556224,
+      "fps": 183.0663615227716,
+      "us_per_substep_gpu": 16.685357357357358,
+      "mean_displacement_over_bench": 0.26649440044503653,
+      "motion_ok": true
+    },
+    {
+      "n": 16384,
+      "dt": 0.00005,
+      "substeps": 333,
+      "frames": 24,
+      "sustained_ms": 6.920833331843217,
+      "gpu_ms": 6.914048,
+      "fps": 144.49127035019512,
+      "us_per_substep_gpu": 20.762906906906906,
+      "mean_displacement_over_bench": 0.2656673513443593,
+      "motion_ok": true
+    }
+  ],
+  "render": [
+    {
+      "res": 512,
+      "view": "blob",
+      "n": 16384,
+      "frames": 60,
+      "wall_ms": 0.125,
+      "gpu_ms": 0.08704,
+      "treatment": "t027-per-material"
+    },
+    {
+      "res": 512,
+      "view": "pts",
+      "n": 16384,
+      "frames": 60,
+      "wall_ms": 0.08833333253860473,
+      "gpu_ms": 0.011264,
+      "treatment": "t027-per-material"
+    },
+    {
+      "res": 512,
+      "view": "grid",
+      "n": 16384,
+      "frames": 60,
+      "wall_ms": 0.09166666666666666,
+      "gpu_ms": 0.002048,
+      "treatment": "t027-per-material"
+    },
+    {
+      "res": 1024,
+      "view": "blob",
+      "n": 16384,
+      "frames": 60,
+      "wall_ms": 0.2,
+      "gpu_ms": 0.147456,
+      "treatment": "t027-per-material"
+    },
+    {
+      "res": 1024,
+      "view": "pts",
+      "n": 16384,
+      "frames": 60,
+      "wall_ms": 0.1,
+      "gpu_ms": 0.011264,
+      "treatment": "t027-per-material"
+    },
+    {
+      "res": 1024,
+      "view": "grid",
+      "n": 16384,
+      "frames": 60,
+      "wall_ms": 0.09166666666666666,
+      "gpu_ms": 0.004096,
+      "treatment": "t027-per-material"
+    }
+  ],
+  "pile": [
+    {
+      "n": 8192,
+      "kM": 24,
+      "kV": 22,
+      "max_node_mass_pm": 55.63482666015625,
+      "max_node_mom_pm": 51.2863883972168,
+      "mass_saturates_at_pm": 256,
+      "mom_saturates_at_pm": 512,
+      "mass_headroom": 4.601434305956747,
+      "mom_headroom": 9.983155687129358
+    },
+    {
+      "n": 16384,
+      "kM": 24,
+      "kV": 22,
+      "max_node_mass_pm": 91.18514251708984,
+      "max_node_mom_pm": 86.14196014404297,
+      "mass_saturates_at_pm": 256,
+      "mom_saturates_at_pm": 512,
+      "mass_headroom": 2.80747491239618,
+      "mom_headroom": 5.943677148091999
+    }
+  ],
+  "substep_table": [
+    {
+      "present": [
+        "fluid"
+      ],
+      "dt": 0.00005,
+      "substeps_per_frame": 333
+    },
+    {
+      "present": [
+        "fluid",
+        "sand"
+      ],
+      "dt": 0.00005,
+      "substeps_per_frame": 333
+    },
+    {
+      "present": [
+        "fluid",
+        "elastic",
+        "sand"
+      ],
+      "dt": 0.00005,
+      "substeps_per_frame": 333
+    },
+    {
+      "present": [
+        "fluid",
+        "elastic",
+        "snow",
+        "sand"
+      ],
+      "dt": 0.00005,
+      "substeps_per_frame": 333
+    }
+  ],
+  "finished": 1787278191812,
+  "webgpu_errors": []
+}

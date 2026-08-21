@@ -1,0 +1,174 @@
+{
+  "id": "mpm4-t027",
+  "frames": 60,
+  "ics": [
+    {
+      "name": "pool_snow",
+      "kind": "multi",
+      "pts_file": "ic_pool_snow.f32",
+      "mat_file": "ic_pool_snow_mat.i32",
+      "n": 8429,
+      "p_vol": 3.534291735288518e-05,
+      "dt": 5e-05,
+      "spf": 667,
+      "n_frames": 60,
+      "materials": [
+        "fluid",
+        "snow"
+      ]
+    },
+    {
+      "name": "pool_elastic",
+      "kind": "multi",
+      "pts_file": "ic_pool_elastic.f32",
+      "mat_file": "ic_pool_elastic_mat.i32",
+      "n": 8429,
+      "p_vol": 3.534291735288518e-05,
+      "dt": 5e-05,
+      "spf": 667,
+      "n_frames": 60,
+      "materials": [
+        "fluid",
+        "elastic"
+      ]
+    },
+    {
+      "name": "pool_sand",
+      "kind": "multi",
+      "pts_file": "ic_pool_sand.f32",
+      "mat_file": "ic_pool_sand_mat.i32",
+      "n": 8429,
+      "p_vol": 3.534291735288518e-05,
+      "dt": 5e-05,
+      "spf": 667,
+      "n_frames": 60,
+      "materials": [
+        "fluid",
+        "sand"
+      ]
+    },
+    {
+      "name": "pool_fluid",
+      "kind": "multi",
+      "pts_file": "ic_pool_fluid.f32",
+      "mat_file": "ic_pool_fluid_mat.i32",
+      "n": 8429,
+      "p_vol": 3.534291735288518e-05,
+      "dt": 5e-05,
+      "spf": 667,
+      "n_frames": 60,
+      "materials": [
+        "fluid",
+        "fluid"
+      ]
+    },
+    {
+      "name": "pool_three",
+      "kind": "multi",
+      "pts_file": "ic_pool_three.f32",
+      "mat_file": "ic_pool_three_mat.i32",
+      "n": 8328,
+      "p_vol": 3.534291735288518e-05,
+      "dt": 5e-05,
+      "spf": 667,
+      "n_frames": 60,
+      "materials": [
+        "fluid",
+        "snow",
+        "elastic",
+        "sand"
+      ]
+    },
+    {
+      "name": "mixed4",
+      "kind": "multi",
+      "pts_file": "ic_mixed4.f32",
+      "mat_file": "ic_mixed4_mat.i32",
+      "n": 3245,
+      "p_vol": 3.534291735288518e-05,
+      "dt": 5e-05,
+      "spf": 533,
+      "n_frames": 60,
+      "materials": [
+        "fluid",
+        "elastic",
+        "snow",
+        "sand",
+        "fluid"
+      ]
+    }
+  ],
+  "physics_version": "phys-c518316a4a05",
+  "p_vol": 3.534291735288518e-05,
+  "density": 28294.212105225837,
+  "bench": {
+    "realtime_n": [
+      4096,
+      8192,
+      12288,
+      16384
+    ],
+    "realtime_frames": 24,
+    "render_frames": 60,
+    "render_res": [
+      512,
+      1024
+    ]
+  },
+  "canonical": {
+    "pool_snow": {
+      "rest_depth_0": 0.13087967038154602,
+      "rest_depth": -0.011792302131652832,
+      "submerged_fraction": 0.396,
+      "rho": 0.3,
+      "rest_depth_change": -0.14267197251319885
+    },
+    "pool_elastic": {
+      "rest_depth_0": 0.13157343864440918,
+      "rest_depth": 0.19284376502037048,
+      "submerged_fraction": 1.0,
+      "rho": 1.2,
+      "rest_depth_change": 0.061270326375961304
+    },
+    "pool_sand": {
+      "rest_depth_0": 0.1317235678434372,
+      "rest_depth": 0.2102002203464508,
+      "submerged_fraction": 1.0,
+      "rho": 1.6,
+      "rest_depth_change": 0.07847665250301361
+    },
+    "pool_fluid": {
+      "rest_depth_0": 0.1313774585723877,
+      "rest_depth": 0.20431625843048096,
+      "submerged_fraction": 1.0,
+      "rho": 1.0,
+      "rest_depth_change": 0.07293879985809326
+    },
+    "pool_three": {
+      "snow": {
+        "rho": 0.3,
+        "rest_depth_0": 0.12756085395812988,
+        "rest_depth": -0.025933772325515747,
+        "submerged_fraction": 0.254,
+        "mean_y_end": 0.29317018389701843,
+        "rest_depth_change": -0.15349462628364563
+      },
+      "elastic": {
+        "rho": 1.2,
+        "rest_depth_0": 0.1284005045890808,
+        "rest_depth": 0.15771383047103882,
+        "submerged_fraction": 1.0,
+        "mean_y_end": 0.10952257364988327,
+        "rest_depth_change": 0.029313325881958008
+      },
+      "sand": {
+        "rho": 1.6,
+        "rest_depth_0": 0.1296951323747635,
+        "rest_depth": 0.18447400629520416,
+        "submerged_fraction": 1.0,
+        "mean_y_end": 0.08276240527629852,
+        "rest_depth_change": 0.054778873920440674
+      }
+    }
+  }
+}

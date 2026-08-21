@@ -1,0 +1,282 @@
+{
+  "before_phone_portrait": {
+    "vw": 390,
+    "vh": 844,
+    "dpr": 3.0000001192092896,
+    "field_w": 392,
+    "field_h": 676,
+    "field_square": false,
+    "aspect_error_pct": 42.02898655376216,
+    "field_frac_of_viewport": 0.8052934888356916,
+    "canvas_backing": [
+      780,
+      780
+    ],
+    "canvas_css": [
+      390,
+      675
+    ],
+    "controls_h": 169,
+    "controls_w": 390,
+    "min_button_h": 29,
+    "n_buttons": 11,
+    "doc_overflow_x": 0,
+    "n": 9121,
+    "page": "before",
+    "viewport": "phone_portrait",
+    "physics_version": "phys-bebeaafbe73e",
+    "treatment": "mvp"
+  },
+  "before_phone_landscape": {
+    "vw": 844,
+    "vh": 390,
+    "dpr": 3.0000001192092896,
+    "field_w": 141,
+    "field_h": 141,
+    "field_square": true,
+    "aspect_error_pct": 0,
+    "field_frac_of_viewport": 0.060014288971470195,
+    "canvas_backing": [
+      277,
+      277
+    ],
+    "canvas_css": [
+      139,
+      139
+    ],
+    "controls_h": 251,
+    "controls_w": 844,
+    "min_button_h": 28,
+    "n_buttons": 11,
+    "doc_overflow_x": 0,
+    "n": 9121,
+    "page": "before",
+    "viewport": "phone_landscape",
+    "physics_version": "phys-bebeaafbe73e",
+    "treatment": "mvp"
+  },
+  "before_tablet_portrait": {
+    "vw": 820,
+    "vh": 1180,
+    "dpr": 2.0000000298023224,
+    "field_w": 822,
+    "field_h": 930,
+    "field_square": false,
+    "aspect_error_pct": 11.67015910808029,
+    "field_frac_of_viewport": 0.789800841382498,
+    "canvas_backing": [
+      1640,
+      1640
+    ],
+    "canvas_css": [
+      820,
+      929
+    ],
+    "controls_h": 251,
+    "controls_w": 820,
+    "min_button_h": 28,
+    "n_buttons": 11,
+    "doc_overflow_x": 0,
+    "n": 9121,
+    "page": "before",
+    "viewport": "tablet_portrait",
+    "physics_version": "phys-bebeaafbe73e",
+    "treatment": "mvp"
+  },
+  "before_laptop": {
+    "vw": 1280,
+    "vh": 800,
+    "dpr": 2.0000000298023224,
+    "field_w": 660,
+    "field_h": 660,
+    "field_square": true,
+    "aspect_error_pct": 0,
+    "field_frac_of_viewport": 0.424810728904009,
+    "canvas_backing": [
+      1315,
+      1315
+    ],
+    "canvas_css": [
+      658,
+      658
+    ],
+    "controls_h": 142,
+    "controls_w": 1280,
+    "min_button_h": 28,
+    "n_buttons": 11,
+    "doc_overflow_x": 0,
+    "n": 9121,
+    "page": "before",
+    "viewport": "laptop",
+    "physics_version": "phys-bebeaafbe73e",
+    "treatment": "mvp"
+  },
+  "before_desktop": {
+    "vw": 1920,
+    "vh": 1080,
+    "dpr": 1.0000000149011612,
+    "field_w": 940,
+    "field_h": 940,
+    "field_square": true,
+    "aspect_error_pct": 0,
+    "field_frac_of_viewport": 0.4257109276435994,
+    "canvas_backing": [
+      937,
+      937
+    ],
+    "canvas_css": [
+      938,
+      938
+    ],
+    "controls_h": 142,
+    "controls_w": 1920,
+    "min_button_h": 28,
+    "n_buttons": 11,
+    "doc_overflow_x": 0,
+    "n": 9121,
+    "page": "before",
+    "viewport": "desktop",
+    "physics_version": "phys-bebeaafbe73e",
+    "treatment": "mvp"
+  },
+  "after_phone_portrait": {
+    "vw": 390,
+    "vh": 844,
+    "dpr": 3.0000001192092896,
+    "field_w": 390,
+    "field_h": 390,
+    "field_square": true,
+    "aspect_error_pct": 0,
+    "field_frac_of_viewport": 0.4630336469631032,
+    "canvas_backing": [
+      777,
+      777
+    ],
+    "canvas_css": [
+      389,
+      389
+    ],
+    "controls_h": 147,
+    "controls_w": 390,
+    "min_button_h": 40,
+    "n_buttons": 11,
+    "doc_overflow_x": 0,
+    "n": 9121,
+    "page": "after",
+    "viewport": "phone_portrait",
+    "physics_version": "phys-c518316a4a05",
+    "treatment": "t027-per-material"
+  },
+  "after_phone_landscape": {
+    "vw": 844,
+    "vh": 390,
+    "dpr": 3.0000001192092896,
+    "field_w": 390,
+    "field_h": 390,
+    "field_square": true,
+    "aspect_error_pct": 0,
+    "field_frac_of_viewport": 0.4630040396378508,
+    "canvas_backing": [
+      777,
+      777
+    ],
+    "canvas_css": [
+      389,
+      389
+    ],
+    "controls_h": 390,
+    "controls_w": 279,
+    "min_button_h": 34,
+    "n_buttons": 11,
+    "doc_overflow_x": 0,
+    "n": 9121,
+    "page": "after",
+    "viewport": "phone_landscape",
+    "physics_version": "phys-c518316a4a05",
+    "treatment": "t027-per-material"
+  },
+  "after_tablet_portrait": {
+    "vw": 820,
+    "vh": 1180,
+    "dpr": 2.0000000298023224,
+    "field_w": 820,
+    "field_h": 820,
+    "field_square": true,
+    "aspect_error_pct": 0,
+    "field_frac_of_viewport": 0.6949152542372882,
+    "canvas_backing": [
+      1636,
+      1636
+    ],
+    "canvas_css": [
+      818,
+      818
+    ],
+    "controls_h": 251,
+    "controls_w": 820,
+    "min_button_h": 28,
+    "n_buttons": 11,
+    "doc_overflow_x": 0,
+    "n": 9121,
+    "page": "after",
+    "viewport": "tablet_portrait",
+    "physics_version": "phys-c518316a4a05",
+    "treatment": "t027-per-material"
+  },
+  "after_laptop": {
+    "vw": 1280,
+    "vh": 800,
+    "dpr": 2.0000000298023224,
+    "field_w": 658,
+    "field_h": 658,
+    "field_square": true,
+    "aspect_error_pct": 0,
+    "field_frac_of_viewport": 0.4227360877990723,
+    "canvas_backing": [
+      1312,
+      1312
+    ],
+    "canvas_css": [
+      656,
+      656
+    ],
+    "controls_h": 142,
+    "controls_w": 1280,
+    "min_button_h": 28,
+    "n_buttons": 11,
+    "doc_overflow_x": 0,
+    "n": 9121,
+    "page": "after",
+    "viewport": "laptop",
+    "physics_version": "phys-c518316a4a05",
+    "treatment": "t027-per-material"
+  },
+  "after_desktop": {
+    "vw": 1920,
+    "vh": 1080,
+    "dpr": 1.0000000149011612,
+    "field_w": 938,
+    "field_h": 938,
+    "field_square": true,
+    "aspect_error_pct": 0,
+    "field_frac_of_viewport": 0.42425094227731963,
+    "canvas_backing": [
+      936,
+      936
+    ],
+    "canvas_css": [
+      936,
+      936
+    ],
+    "controls_h": 142,
+    "controls_w": 1920,
+    "min_button_h": 28,
+    "n_buttons": 11,
+    "doc_overflow_x": 0,
+    "n": 9121,
+    "page": "after",
+    "viewport": "desktop",
+    "physics_version": "phys-c518316a4a05",
+    "treatment": "t027-per-material"
+  }
+}

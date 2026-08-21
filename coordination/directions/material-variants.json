@@ -546,7 +546,7 @@
           "note": "forced test"
         }
       ],
-      "review_state": "running",
+      "review_state": "reviewed",
       "review_updated": 1787286932
     }
   ]

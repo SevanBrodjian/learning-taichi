@@ -513,7 +513,8 @@
           "kind": "extends"
         }
       ],
-      "effort": "deep"
+      "effort": "deep",
+      "budget_minutes": 60
     }
   ]
 }

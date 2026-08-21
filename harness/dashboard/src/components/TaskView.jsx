@@ -259,7 +259,8 @@ function TaskRef({ r, onOpenRef }) {
   );
 }
 
-export default function TaskView({ detail, reloadToken, onChange, onDeleted, onOpenRef, onOpenTraining }) {
+export default function TaskView({ detail, reloadToken, onChange, onDeleted, onOpenRef, onOpenTraining,
+                                   onOpenOnMap }) {
   const defs = useDefinitions();
   const [task, setTask] = useState(null);
   const [refs, setRefs] = useState([]);
@@ -383,6 +384,7 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
     <div className="taskview">
       <div className="task-head">
         <div className="task-head-title">
+          {task.ref && <span className="task-handle" title="Permanent reference for this task">{task.ref}</span>}
           <h1>{task.title}</h1>
           <span className={`status status-${isDone ? "done" : "active"}`}>{isDone ? "Done" : "Active"}</span>
         </div>
@@ -395,6 +397,9 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
               <button className="act-btn" onClick={() => setSendBack(true)}>Send back to queue</button>
             </>
           )}
+          <button className="act-btn" onClick={() => onOpenOnMap && onOpenOnMap(task.direction, task.id)}>
+            View on Map
+          </button>
           <button className="act-btn" onClick={() => setProposing((p) => !p)}>Propose follow-up</button>
           <button className="act-btn danger" onClick={() => setConfirmDelete(true)}>Delete</button>
         </div>

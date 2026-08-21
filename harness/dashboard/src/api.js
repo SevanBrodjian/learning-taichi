@@ -101,3 +101,9 @@ export const addTaskNote = (direction, task, text) =>
   post("/api/task-note", { direction, task, text });
 export const deleteTaskNote = (direction, task, ts) =>
   post("/api/task-note-delete", { direction, task, ts });
+
+// Tag registry. Tags used to be a hard-coded array duplicated across three components, so a new one
+// needed a code edit; they come from the server now (registry file UNION tags in use).
+export const fetchTags = () => get("/api/tags", "json");
+export const createTag = (name, color) =>
+  post("/api/tag-create", { name, color });

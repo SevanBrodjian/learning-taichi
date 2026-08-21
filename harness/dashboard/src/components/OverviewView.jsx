@@ -1,3 +1,4 @@
+import TagPicker from "./TagPicker.jsx";
 import { useEffect, useState } from "react";
 import { setTaskStatus, setTaskEffort, setTaskBudget, createTask, editTask, deleteTask } from "../api.js";
 import { EFFORTS, effortMeta } from "../effort.js";
@@ -137,10 +138,19 @@ function TaskModal({ task, onClose, onChanged }) {
 
 // New-task authoring. Directions are gone from the UI entirely — a task is described by its TAGS and its
 // place in the graph, and the storage direction is chosen server-side as an implementation detail.
+// Compact date shown on a card so the board reads chronologically at a glance.
+const shortDate = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d)) return "";
+  const s = d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  return d.getFullYear() === new Date().getFullYear() ? s : `${s} ${String(d.getFullYear()).slice(2)}`;
+};
+
 const TAGS = ["gradients", "materials", "learned", "rendering", "demo"];
 const TAG_COLORS = { gradients: "#4cc2ff", materials: "#ffb037", learned: "#c98bff", rendering: "#5ee0c8", demo: "#ff7bb0" };
 
-function AuthorModal({ onClose, onChanged }) {
+function AuthorModal({ onClose, onChanged, tagOptions, onTagCreated }) {
   const [form, setForm] = useState({ title: "", note: "", tags: [] });
   const [busy, setBusy] = useState(false);
   const toggle = (t) =>
@@ -166,14 +176,11 @@ function AuthorModal({ onClose, onChanged }) {
           <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
                  placeholder="What the task should accomplish" />
           <label>Tags</label>
-          <div className="tagpick">
-            {TAGS.map((t) => (
-              <button key={t} type="button"
-                      className={`tagpick-opt ${form.tags.includes(t) ? "on" : ""}`}
-                      style={{ "--tc": TAG_COLORS[t] }}
-                      onClick={() => toggle(t)}>{t}</button>
-            ))}
-          </div>
+          <TagPicker options={tagOptions && tagOptions.length ? tagOptions
+                                : TAGS.map((t) => ({ name: t, color: TAG_COLORS[t] }))}
+                     value={form.tags}
+                     onChange={(tags) => setForm((f) => ({ ...f, tags }))}
+                     onTagCreated={onTagCreated} />
           <label>Note (seed for the worker brief)</label>
           <textarea rows={5} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
                     placeholder="A sentence or two; the orchestrator expands this into a full brief." />
@@ -191,7 +198,8 @@ function AuthorModal({ onClose, onChanged }) {
   );
 }
 
-export default function OverviewView({ overview, onOpenTask, onChange, focus, onFocusHandled }) {
+export default function OverviewView({ overview, onOpenTask, onChange, focus, onFocusHandled,
+                                       tagOptions, onTagCreated }) {
   const [filter, setFilter] = useState("all");
   const [showDone, setShowDone] = useState(false);
   const [modal, setModal] = useState(null);
@@ -271,6 +279,10 @@ export default function OverviewView({ overview, onOpenTask, onChange, focus, on
                 onClick={() => openCard(t)}
               >
                 <div className="task-card-title">{t.title}</div>
+                <div className="task-card-stamp">
+                  {t.ref && <span className="task-card-ref">{t.ref}</span>}
+                  {t.created && <span className="task-card-date">{shortDate(t.created)}</span>}
+                </div>
                 <div className="task-card-dir">
                   {t.directionName}
                   {t.rework_history?.length > 0 && <span className="card-flag" title="sent back with notes">⚑</span>}
@@ -315,7 +327,7 @@ export default function OverviewView({ overview, onOpenTask, onChange, focus, on
       )}
 
       {author && (
-        <AuthorModal onClose={() => setAuthor(null)} onChanged={refresh} />
+        <AuthorModal tagOptions={tagOptions} onTagCreated={onTagCreated} onClose={() => setAuthor(null)} onChanged={refresh} />
       )}
     </div>
   );

@@ -62,7 +62,7 @@ export default function InboxView({ notifData }) {
   const visible = (notifs?.notifications || []).filter((n) => !dismissed.has(n.id));
 
   return (
-    <div className="inbox">
+    <div className="inbox inbox-2col">
       <section className="inbox-block">
         <h2>Decisions</h2>
         {decisions.length === 0 ? (
@@ -113,7 +113,7 @@ export default function InboxView({ notifData }) {
         )}
       </section>
 
-      <section className="inbox-block">
+      <section className="inbox-block inbox-notifs">
         <h2>Notifications</h2>
         {notifs == null ? (
           <div className="muted">Loading…</div>

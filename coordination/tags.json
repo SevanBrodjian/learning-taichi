@@ -19,10 +19,6 @@
     {
       "name": "demo",
       "color": "#ff7bb0"
-    },
-    {
-      "name": "zz-smoke-test",
-      "color": "#ffd24d"
     }
   ]
 }

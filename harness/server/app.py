@@ -21,6 +21,7 @@ rewrite_manifest) so they are unit-testable without a running server.
 """
 from __future__ import annotations
 
+import datetime
 import json
 import os
 import re
@@ -258,7 +259,12 @@ def _v2_tasks() -> dict:
             if not d or not t or (d, t) in out:
                 continue
             out[(d, t)] = {"root": rid, "rel": mf.relative_to(root).as_posix(),
-                           "status": m.get("status", "done")}
+                           "status": m.get("status", "done"),
+                           # Fall back to the manifest's mtime: a worker that forgot the field should
+                           # still sort by date rather than show a blank.
+                           "created": m.get("created") or datetime.datetime.fromtimestamp(
+                               mf.stat().st_mtime, datetime.timezone.utc).replace(
+                               microsecond=0).isoformat()}
     return out
 
 
@@ -330,6 +336,11 @@ def overview() -> dict:
                 "effort": t.get("effort", "standard"),
                 "budget_minutes": t.get("budget_minutes") or default_budget(t.get("effort", "standard")),
                 "tags": t.get("tags", []),
+                "ref": t.get("ref"),
+                # A sortable date. Tasks created from the dashboard stamp their own `created`;
+                # older ones inherit it from their run manifest, which is the only record of when
+                # the work actually happened.
+                "created": t.get("created") or (arts.get((did, tid)) or {}).get("created"),
                 "live": live.get((did, tid)),
                 "has_artifact": has, "detail": f"/api/task/{did}/{tid}" if has else None,
                 "rework_history": t.get("rework_history", []),
@@ -456,6 +467,10 @@ def task_detail(direction: str, task: str) -> dict | None:
 
             this = by_id.get(task, {})
             m["status"] = this.get("status", m.get("status"))
+            # The permanent handle + date, so the task PAGE can show them too (the overview's copy
+            # is a separate code path and adding it there did not reach here).
+            m["ref"] = this.get("ref")
+            m["created"] = this.get("created") or info.get("created") or m.get("created")
             m["effort"] = this.get("effort", "standard")
             m["budget_minutes"] = this.get("budget_minutes") or default_budget(this.get("effort", "standard"))
             m["live"] = live_statuses().get((direction, task))
@@ -646,6 +661,82 @@ def write_file(rid: str, path: str, content: str) -> dict:
 
 # Tags are the user-facing axis. A direction file is only where a task is STORED (and it fixes the run
 # path runs/<direction>/<task>/), so the server picks it rather than asking. Preferred tag -> file.
+# -- tag registry ------------------------------------------------------------------------------------
+# Tags used to be a hard-coded list duplicated in three front-end files, so a new one could not be made
+# without editing code. They live here now. The served list is the UNION of the registry and every tag
+# actually in use, so a tag can never vanish from the UI just because it is missing from the file.
+TAGS_FILE = MAIN_ROOT / "coordination" / "tags.json"
+TAG_PALETTE = ["#4cc2ff", "#ffb037", "#c98bff", "#5ee0c8", "#ff7bb0",
+               "#ffd24d", "#8ea9ff", "#7ee081", "#ff9d5c", "#e6ecff"]
+
+
+def _read_tags_file() -> list:
+    try:
+        d = json.loads(TAGS_FILE.read_text("utf-8"))
+        return [t for t in d.get("tags", []) if isinstance(t, dict) and t.get("name")]
+    except Exception:
+        return []
+
+
+def tags_registry() -> dict:
+    """Every known tag with a stable colour: the registry file UNION every tag in use on the board."""
+    reg = _read_tags_file()
+    known = {t["name"]: t for t in reg}
+    in_use = {}
+    for _key, t in _task_index().items():
+        for name in (t.get("tags") or []):
+            in_use[name] = in_use.get(name, 0) + 1
+    for name in in_use:
+        known.setdefault(name, {"name": name})
+    out = []
+    for i, name in enumerate(sorted(known)):
+        e = dict(known[name])
+        e.setdefault("color", TAG_PALETTE[i % len(TAG_PALETTE)])
+        e["count"] = in_use.get(name, 0)
+        out.append(e)
+    return {"tags": out}
+
+
+def create_tag(name: str, color: str | None = None) -> dict:
+    """Add a tag to the registry so it can be picked before any task uses it."""
+    name = (name or "").strip().lower().replace(" ", "-")
+    if not name or not re.fullmatch(r"[a-z0-9][a-z0-9-]*", name):
+        return {"ok": False, "error": "tag must be lowercase letters, digits and dashes"}
+    reg = _read_tags_file()
+    if any(t["name"] == name for t in reg):
+        return {"ok": True, "id": name, "existing": True}
+    if not color:
+        color = TAG_PALETTE[len(reg) % len(TAG_PALETTE)]
+    reg.append({"name": name, "color": color})
+    TAGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    TAGS_FILE.write_text(json.dumps({"tags": reg}, indent=2) + "\n", encoding="utf-8")
+    _git_commit(TAGS_FILE, "dashboard: add tag " + name)
+    return {"ok": True, "id": name}
+
+
+# -- persistent task refs ----------------------------------------------------------------------------
+# A task's slug id is stable but long. `ref` is a short human handle ("T-014") assigned once at creation
+# and never reused, so a task can be referred to without quoting a 60-character slug.
+REF_RE = re.compile(r"^T-([0-9]+)$")
+
+
+def _max_ref() -> int:
+    n = 0
+    for _key, t in _task_index().items():
+        m = REF_RE.match(str(t.get("ref") or ""))
+        if m:
+            n = max(n, int(m.group(1)))
+    return n
+
+
+def _now_iso() -> str:
+    return datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat()
+
+
+def _next_ref() -> str:
+    return "T-%03d" % (_max_ref() + 1)
+
+
 TAG_HOME = {
     "gradients": "long-rollout-pathologies",
     "materials": "material-variants",
@@ -687,7 +778,9 @@ def create_task(title: str, note: str = "", status: str = "proposed", task_id: s
         while tid in existing:
             tid, i = f"{base}-{i}", i + 1
     effort = effort if effort in EFFORTS else "standard"
-    entry = {"id": tid, "title": title, "status": status, "note": note, "effort": effort}
+    entry = {"id": tid, "ref": _next_ref(), "created": _now_iso(), "title": title, "status": status,
+             "note": note,
+             "effort": effort}
     if tags:
         entry["tags"] = tags
     data.setdefault("tasks", []).append(entry)
@@ -806,7 +899,8 @@ def propose_follow_up(direction: str, parents, title: str, note: str = "", tags:
         tid, i = f"{base}-{i}", i + 1
     # Written in the normalized {id, dir, kind} form. The kind is a PLACEHOLDER: the user's citation is a
     # hint, and the orchestrator re-derives the real edges (and their kinds) when it reviews the task.
-    entry = {"id": tid, "title": title, "status": "proposed", "note": note,
+    entry = {"id": tid, "ref": _next_ref(), "created": _now_iso(), "title": title,
+             "status": "proposed", "note": note,
              "follow_up_of": [{"id": p, "dir": direction, "kind": DEFAULT_KIND} for p in parents]}
     tags = [t for t in (tags or []) if isinstance(t, str) and t.strip()]
     if tags:
@@ -998,6 +1092,17 @@ def _build_app():
         return create_task(title, payload.get("note", ""), payload.get("status", "proposed"),
                            payload.get("id"), payload.get("effort", "standard"),
                            payload.get("tags"), payload.get("direction"))
+
+    @app.get("/api/tags")
+    def api_tags():
+        return tags_registry()
+
+    @app.post("/api/tag-create")
+    def api_tag_create(payload: dict):
+        name = payload.get("name")
+        if not name:
+            raise HTTPException(400, "name required")
+        return create_tag(name, payload.get("color"))
 
     @app.post("/api/task-effort")
     def api_task_effort(payload: dict):

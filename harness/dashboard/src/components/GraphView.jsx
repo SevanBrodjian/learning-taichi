@@ -75,7 +75,7 @@ function hash01(s, salt) {
   return ((h >>> 0) % 100000) / 100000;
 }
 
-export default function GraphView({ overview, onOpenTask, onOpenRef }) {
+export default function GraphView({ overview, onOpenTask, onOpenRef, focusTask, onFocusHandled }) {
   const dirs = overview?.directions || [];
 
   const sig = dirs.map((d) =>
@@ -398,6 +398,21 @@ export default function GraphView({ overview, onOpenTask, onOpenRef }) {
   // the map animates for its own sake, and it is short — you should see WHERE things moved, not watch a
   // demo. Falls back to an instant snap if rAF is unavailable, so it can never leave the map half-moved.
   const [organizing, setOrganizing] = useState(false);
+
+  // "View on Map" from a task page: select that node and bring it to the middle. Runs after the solve so
+  // the node has coordinates; clearing the request means a second click re-centres rather than no-ops.
+  useEffect(() => {
+    if (!focusTask || !byKey.size) return;
+    const n = byKey.get(focusTask);
+    if (n) {
+      setSelected(focusTask);
+      const el = wrapRef.current;
+      const w = el ? el.clientWidth : width;
+      const h = el ? el.clientHeight : height;
+      setView((v) => ({ ...v, x: w / 2 - n.x * v.k, y: h / 2 - n.y * v.k }));
+    }
+    onFocusHandled && onFocusHandled();
+  }, [focusTask, byKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const organize = useCallback(() => {
     const from = nodes.map((n) => ({ n, x: n.x, y: n.y }));
     saveLayout({});                       // forget the saved arrangement...

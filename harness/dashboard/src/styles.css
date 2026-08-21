@@ -690,3 +690,58 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
 .author-hint { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 4px 0 0; }
 /* Board filter chips now carry the tag colour when active. */
 .chip.tagchip.active { color: var(--bg); background: var(--tc); border-color: var(--tc); }
+
+/* ── Tasks page: tag filter + sort + identity ──────────────────────────────────────────────────────
+   The list was a flat 26 rows grouped by a direction the user does not think in, with no date and no
+   handle — "very hard to tell what's what". It now filters by tag (same chips as the Map), sorts, and
+   every row carries its permanent ref and its date. */
+.task-tagbar { display: flex; flex-wrap: wrap; gap: 5px; padding: 8px 10px 6px; }
+.task-sortbar { display: flex; align-items: center; gap: 8px; padding: 2px 10px 8px;
+  border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+.task-count { font-size: 11px; color: var(--muted); flex: 1 1 auto; }
+.task-sort { background: var(--panel); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 3px 6px; font-size: 11px; }
+.runitem { display: flex; flex-direction: column; align-items: stretch; gap: 3px; }
+.runline { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
+.runref { flex: 0 0 auto; font-size: 10px; letter-spacing: .04em; color: var(--muted);
+  font-variant-numeric: tabular-nums; }
+.runitem.active .runref { color: var(--accent); }
+.runmeta { display: flex; align-items: center; gap: 8px; }
+.rundate { font-size: 10.5px; color: var(--muted); flex: 1 1 auto; }
+
+/* The permanent handle, shown beside a task's title so it can be referred to in conversation.
+   NOT `.task-ref` — that class was already taken by the follow-up reference buttons further up. */
+.task-handle { flex: 0 0 auto; font-size: 12px; letter-spacing: .05em; color: var(--muted);
+  border: 1px solid var(--border); border-radius: 5px; padding: 2px 7px;
+  font-variant-numeric: tabular-nums; }
+
+/* Overview cards carry the same stamp so the board is scannable by date. */
+.task-card-stamp { display: flex; gap: 8px; align-items: baseline; margin-top: 3px; }
+.task-card-ref { font-size: 10px; letter-spacing: .04em; color: var(--muted);
+  font-variant-numeric: tabular-nums; }
+.task-card-date { font-size: 10px; color: var(--muted); }
+
+/* ── Tag creation ─────────────────────────────────────────────────────────────────────────────────
+   Tags were a hard-coded array in three files; a new one now gets made inline, here. */
+.tagpick-add { background: transparent; border: 1px dashed var(--border); color: var(--muted);
+  border-radius: 999px; padding: 3px 10px; font-size: 11.5px; cursor: pointer; }
+.tagpick-add:hover { color: var(--text); border-color: var(--accent); }
+.tagpick-new { display: inline-flex; align-items: center; gap: 4px; }
+.tagpick-new input { width: 110px; background: var(--bg); color: var(--text);
+  border: 1px solid var(--accent); border-radius: 999px; padding: 3px 10px; font-size: 11.5px; }
+.tagpick-ok, .tagpick-x { background: transparent; border: 1px solid var(--border); color: var(--text);
+  border-radius: 6px; padding: 2px 7px; font-size: 11px; cursor: pointer; }
+.tagpick-err { font-size: 11px; color: #ff9d9d; flex-basis: 100%; }
+
+/* ── Inbox: notifications beside the decisions, not buried under them ──────────────────────────────
+   Decisions render a full document, so anything below it needed scrolling past to reach. On a wide
+   screen the two live side by side; on a narrow one notifications come FIRST, since they are the
+   glanceable half. */
+.inbox-2col { display: grid; gap: 18px; align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); }
+.inbox-2col .inbox-notifs { position: sticky; top: 0; max-height: calc(100dvh - 90px);
+  overflow-y: auto; }
+@media (max-width: 900px) {
+  .inbox-2col { grid-template-columns: 1fr; }
+  .inbox-2col .inbox-notifs { order: -1; position: static; max-height: none; }
+}

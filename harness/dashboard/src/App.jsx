@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchOverview, fetchTraining, fetchNotifications } from "./api.js";
+import { fetchOverview, fetchTraining, fetchNotifications, fetchTags } from "./api.js";
 import OverviewView from "./components/OverviewView.jsx";
 import GraphView from "./components/GraphView.jsx";
 import TaskView from "./components/TaskView.jsx";
@@ -35,6 +35,17 @@ const loadSeen = () => {
 
 // A field is focused when the user is typing/selecting; we pause background refetches then so a
 // mid-keystroke re-render can't stutter the input (the reported typing lag).
+// Compact date for the task list: "12 Aug" this year, "12 Aug 25" otherwise.
+const shortDate = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d)) return "";
+  const s = d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  return d.getFullYear() === new Date().getFullYear()
+    ? s
+    : `${s} ${String(d.getFullYear()).slice(2)}`;
+};
+
 const isTyping = () => {
   const el = document.activeElement;
   return !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable);
@@ -60,8 +71,11 @@ export default function App() {
   const [error, setError] = useState(null);
   const [selected, setSelected] = useState(null);
   const [taskFilter, setTaskFilter] = useState(place.taskFilter || "all");
+  const [taskSort, setTaskSort] = useState(place.taskSort || "newest");
   const [reloadToken, setReloadToken] = useState(0); // bump to force task-detail refetch
   const [overviewFocus, setOverviewFocus] = useState(null); // follow-up nav target on the board
+  const [mapFocus, setMapFocus] = useState(null);         // "dir/id" to centre + select on the Map
+  const [tagReg, setTagReg] = useState(null);             // server tag registry (see fetchTags)
 
   // Badge data: the training TOC (for New sections) and the ntfy feed (for unread), lifted here so the
   // counts can sit on the nav. InboxView reuses the same feed instead of re-fetching.
@@ -77,9 +91,9 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(
       PLACE_KEY,
-      JSON.stringify({ section, taskFilter, selectedKey: selected?.key })
+      JSON.stringify({ section, taskFilter, taskSort, selectedKey: selected?.key })
     );
-  }, [section, taskFilter, selected?.key]);
+  }, [section, taskFilter, taskSort, selected?.key]);
 
   // After any write-back (drag / Mark Done) re-pull the board and re-fetch the open task.
   const reloadOverview = () => fetchOverview().then(setOverview).catch((e) => setError(String(e)));
@@ -98,6 +112,7 @@ export default function App() {
     const loadBadges = () => {
       fetchTraining().then(setTrainingToc).catch(() => {});
       fetchNotifications().then(setNotifData).catch(() => {});
+      fetchTags().then(setTagReg).catch(() => {});
     };
     loadBadges();
     const id = setInterval(() => { if (!document.hidden) loadBadges(); }, 20000);
@@ -134,21 +149,48 @@ export default function App() {
     setSection("overview");
   };
 
+  // Jump from a task page to that task on the Map, selected and centred.
+  const openOnMap = (direction, id) => { setMapFocus(`${direction}/${id}`); setSection("map"); };
+
   const onTaskDeleted = () => { setSelected(null); setSection("overview"); };
 
   // A task page's embedded textbook section links out to the full Training view, opened on that section.
   const openTraining = (sectionId) => { setTrainingTarget(sectionId); setSection("training"); };
 
-  const groups = useMemo(() => {
+  // One source of truth for tags. The registry can contain a tag no task uses yet (that is the point of
+  // being able to make one), and the board can contain a tag the registry has not caught up with, so the
+  // union is what the UI shows.
+  const allTags = useMemo(() => {
     const m = new Map();
-    for (const t of realTasks) {
-      if (!m.has(t.direction)) m.set(t.direction, { name: t.directionName, tasks: [] });
-      m.get(t.direction).tasks.push(t);
-    }
-    return [...m.entries()].map(([id, v]) => ({ id, ...v }));
-  }, [realTasks]);
+    for (const t of tagReg?.tags || []) m.set(t.name, t.color);
+    for (const t of realTasks) for (const tg of t.tags || []) if (!m.has(tg)) m.set(tg, null);
+    return [...m.entries()].map(([name, color]) => ({ name, color }));
+  }, [tagReg, realTasks]);
+  const tagColor = (name) => allTags.find((t) => t.name === name)?.color || "#7f8ea3";
 
-  const visibleGroups = taskFilter === "all" ? groups : groups.filter((g) => g.id === taskFilter);
+
+  // Tasks are filtered by TAG now, not by direction — directions are storage, not the user's model
+  // (CLAUDE.md), and the Map already sorts by tag. A 26-item flat list was hard to scan, so it also
+  // sorts, and every row carries its ref and date.
+  const visibleTasks = useMemo(() => {
+    const list = taskFilter === "all"
+      ? realTasks
+      : realTasks.filter((t) => (t.tags || []).includes(taskFilter));
+    const when = (t) => (t.created ? Date.parse(t.created) || 0 : 0);
+    const refNum = (t) => {
+      const m = /^T-(\d+)$/.exec(t.ref || "");
+      return m ? Number(m[1]) : Number.MAX_SAFE_INTEGER;
+    };
+    const cmp = {
+      newest: (a, b) => when(b) - when(a) || refNum(b) - refNum(a),
+      oldest: (a, b) => when(a) - when(b) || refNum(a) - refNum(b),
+      ref: (a, b) => refNum(a) - refNum(b),
+      title: (a, b) => String(a.title).localeCompare(String(b.title)),
+      active: (a, b) =>
+        (a.status === "done" ? 1 : 0) - (b.status === "done" ? 1 : 0) || when(b) - when(a),
+    }[taskSort] || ((a, b) => when(b) - when(a));
+    return [...list].sort(cmp);
+  }, [realTasks, taskFilter, taskSort]);
 
   // Badge counts. New training = sections never opened or edited since last open (per this device).
   const trainingSections = useMemo(() => (trainingToc?.groups || []).flatMap((g) => g.sections), [trainingToc]);
@@ -186,12 +228,16 @@ export default function App() {
           overview={overview}
           onOpenTask={openTask}
           onChange={reloadAll}
+          tagOptions={allTags}
+          onTagCreated={() => fetchTags().then(setTagReg).catch(() => {})}
           focus={overviewFocus}
           onFocusHandled={() => setOverviewFocus(null)}
         />
       )}
       {section === "map" && (
-        <GraphView overview={overview} onOpenTask={openTask} onOpenRef={openRef} />
+        <GraphView overview={overview} onOpenTask={openTask} onOpenRef={openRef}
+                   focusTask={mapFocus} onFocusHandled={() => setMapFocus(null)}
+                   tagColors={allTags} />
       )}
       {section === "tasks" && (
         <TaskView
@@ -200,6 +246,9 @@ export default function App() {
           onChange={reloadAll}
           onDeleted={onTaskDeleted}
           onOpenRef={openRef}
+          onOpenOnMap={openOnMap}
+          tagOptions={allTags}
+          onTagCreated={() => fetchTags().then(setTagReg).catch(() => {})}
           onOpenTraining={openTraining}
         />
       )}
@@ -220,30 +269,55 @@ export default function App() {
   // the shell (where it sat as a blank spacer on every other page).
   const taskSidebar = (
     <nav className="task-nav">
-      {groups.length > 1 && (
-        <select className="task-filter" value={taskFilter} onChange={(e) => setTaskFilter(e.target.value)}>
-          <option value="all">All directions</option>
-          {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-        </select>
-      )}
-      {visibleGroups.map((g) => (
-        <div className="task-group" key={g.id}>
-          <div className="side-label">{g.name}</div>
-          {g.tasks.map((t) => (
-            <button
-              key={t.key}
-              className={`runitem ${selected?.key === t.key ? "active" : ""}`}
-              onClick={() => setSelected(t)}
-            >
-              <span className="runtitle">{t.title}</span>
-              <span className={`status status-${t.status === "done" ? "done" : "active"}`}>
-                {t.status === "done" ? "Done" : "Active"}
-              </span>
+      {allTags.length > 0 && (
+        <div className="task-tagbar">
+          <button className={`gtag ${taskFilter === "all" ? "active" : ""}`}
+                  style={{ "--tc": "#7f8ea3" }}
+                  onClick={() => setTaskFilter("all")}>all</button>
+          {allTags.map((t) => (
+            <button key={t.name}
+                    className={`gtag ${taskFilter === t.name ? "active" : ""}`}
+                    style={{ "--tc": tagColor(t.name) }}
+                    onClick={() => setTaskFilter(taskFilter === t.name ? "all" : t.name)}>
+              {t.name}
             </button>
           ))}
         </div>
-      ))}
-      {groups.length === 0 && <div className="muted pad">No tasks with results yet.</div>}
+      )}
+      <div className="task-sortbar">
+        <span className="task-count">{visibleTasks.length} task{visibleTasks.length === 1 ? "" : "s"}</span>
+        <select className="task-sort" value={taskSort} onChange={(e) => setTaskSort(e.target.value)}>
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="ref">By ref</option>
+          <option value="title">By title</option>
+          <option value="active">Active first</option>
+        </select>
+      </div>
+      <div className="task-group">
+        {visibleTasks.map((t) => (
+          <button
+            key={t.key}
+            className={`runitem ${selected?.key === t.key ? "active" : ""}`}
+            onClick={() => setSelected(t)}
+          >
+            <span className="runline">
+              {t.ref && <span className="runref">{t.ref}</span>}
+              <span className="runtitle">{t.title}</span>
+            </span>
+            <span className="runmeta">
+              <span className="rundate">{shortDate(t.created)}</span>
+              <span className={`status status-${t.status === "done" ? "done" : "active"}`}>
+                {t.status === "done" ? "Done" : "Active"}
+              </span>
+            </span>
+          </button>
+        ))}
+      </div>
+      {realTasks.length === 0 && <div className="muted pad">No tasks with results yet.</div>}
+      {realTasks.length > 0 && visibleTasks.length === 0 && (
+        <div className="muted pad">No tasks tagged “{taskFilter}”.</div>
+      )}
     </nav>
   );
 
@@ -258,16 +332,14 @@ export default function App() {
               return <option key={s.id} value={s.id}>{s.label}{b > 0 ? ` (${b})` : ""}</option>;
             })}
           </select>
-          {section === "tasks" && groups.length > 0 && (
+          {section === "tasks" && visibleTasks.length > 0 && (
             <select
               className="mobile-select"
               value={selected?.key || ""}
               onChange={(e) => { const t = realTasks.find((x) => x.key === e.target.value); if (t) setSelected(t); }}
             >
-              {groups.map((g) => (
-                <optgroup key={g.id} label={g.name}>
-                  {g.tasks.map((t) => <option key={t.key} value={t.key}>{t.title}</option>)}
-                </optgroup>
+              {visibleTasks.map((t) => (
+                <option key={t.key} value={t.key}>{t.ref ? `${t.ref} · ` : ""}{t.title}</option>
               ))}
             </select>
           )}

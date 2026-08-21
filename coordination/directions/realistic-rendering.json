@@ -6,6 +6,7 @@
   "tasks": [
     {
       "id": "non-differentiable-fluid-renderer",
+      "ref": "T-023",
       "title": "Non-Differentiable Fluid Renderer",
       "status": "done",
       "note": "Implement a non-differentiable renderer which will make our 2D simulation of a fluid look highly realistic. It doesn't need to be fast, it doesn't need to be particularly simple, the purpose of this is just to see how good of something you can make (visually). Under the hood use MPM fluid simulation, and show a few things happening like dropping a fluid ball, or a fluid tower collapse. It should look very realistic, like an actual real-life liquid. Enough to make someone double glance if it was real.",
@@ -21,6 +22,7 @@
     },
     {
       "id": "improve-basic-fluid-sim-realism",
+      "ref": "T-024",
       "title": "Improve basic fluid sim realism",
       "status": "done",
       "note": "This simulation rendering looks decent. But the liquid doesn’t really behave like water, it moves a bit too slowly and also the behavior is off, hard to explain exactly. The rendering looks good but there are like holes inside the continuous portions of the liquid, which doesn’t seem right. See if you can push the realism even further. Goal is photorealistic.",
@@ -57,6 +59,7 @@
     },
     {
       "id": "gpu-accelerate-fluid-renderer",
+      "ref": "T-025",
       "title": "GPU-accelerate the fluid renderer",
       "status": "done",
       "note": "The screen-space fluid renderer (sim/fluid_render2.py) is pure numpy/scipy on the CPU and takes ~0.5-2 s per 1080^2 frame, so a multi-scene showcase took ~25 min while the 4090 sat idle. Port the renderer to the GPU with Taichi so it renders orders of magnitude faster (target: a few ms per frame, whole scenes in seconds) while preserving the visual quality (metaball surface, FILLED interior / no holes, depth color, refraction/Fresnel/specular, foam). Benchmark CPU vs GPU on a clean GPU. Becomes the renderer the showcase re-run uses.",
@@ -83,6 +86,7 @@
     },
     {
       "id": "more-realistic-basic-fluid-sims",
+      "ref": "T-026",
       "title": "Further Realistic Basic Fluid Sims",
       "status": "done",
       "note": "These results look closer to the photorealistic target, but they are very short and limited. Generate a more diverse and extensive set of examples showcasing the capabilities, such as more starting conditions, different viscosities, even things like mixing liquids of different colors. Also, make the animations much longer, these ones are WAY too short.",

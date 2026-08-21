@@ -6,6 +6,7 @@
   "tasks": [
     {
       "id": "nan-root-cause",
+      "ref": "T-004",
       "title": "Root-cause and fix the long-rollout NaN",
       "status": "done",
       "tags": [
@@ -27,6 +28,7 @@
     },
     {
       "id": "softened-wall",
+      "ref": "T-005",
       "title": "Softened wall contact for smooth boundary gradients",
       "status": "done",
       "note": "The hard wall clamp is a non-smooth kink in the gradient. Replace it with a smooth ramp and measure whether gradient quality improves, independent of the (already-fixed) mass overflow. Tests the contact-differentiability hypothesis directly.",
@@ -43,6 +45,7 @@
     },
     {
       "id": "resolution-memory",
+      "ref": "T-006",
       "title": "Gradient memory and throughput vs resolution",
       "status": "done",
       "note": "How do grid and particle counts trade against GPU throughput and the memory of the stored backward tape? Maps the practical envelope of what is differentiable, at what cost.",

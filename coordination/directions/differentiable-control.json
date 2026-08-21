@@ -6,6 +6,7 @@
   "tasks": [
     {
       "id": "throw-to-target",
+      "ref": "T-001",
       "title": "Throw a blob to a target by backprop",
       "status": "done",
       "tags": [
@@ -32,6 +33,7 @@
     },
     {
       "id": "optimizer-comparison",
+      "ref": "T-002",
       "title": "SGD vs Adam vs L-BFGS through the rollout",
       "status": "done",
       "note": "How much does the optimizer matter when the gradient comes through 500+ sim steps? Compare convergence and stability of SGD, Adam, and L-BFGS on the throw task. Cheap, and a clean way to build intuition for the loss landscape of a physics rollout.",

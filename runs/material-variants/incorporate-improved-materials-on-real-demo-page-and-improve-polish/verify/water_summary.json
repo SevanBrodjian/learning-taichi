@@ -1,0 +1,234 @@
+{
+  "water_c1080_1080": {
+    "tag": "c1080",
+    "scene": "shipped",
+    "res": 1080,
+    "frames": 40,
+    "spf": 333,
+    "n": 9121,
+    "dt": 5e-05,
+    "treatment": "t027r-per-material-water-isosurface",
+    "physics_version": "phys-c518316a4a05",
+    "mean_abs_motion": 0.1806051705443876,
+    "cost_ms": {
+      "after": {
+        "ms": 0.152576,
+        "n": 80,
+        "passes": 13
+      },
+      "before": {
+        "ms": 0.100352,
+        "n": 80,
+        "passes": 2
+      },
+      "mvp": {
+        "ms": 0.068608,
+        "n": 80,
+        "passes": 2
+      },
+      "amp": [
+        {
+          "k": 1,
+          "ms": 0.151552
+        },
+        {
+          "k": 2,
+          "ms": 0.200704
+        },
+        {
+          "k": 4,
+          "ms": 0.297984
+        },
+        {
+          "k": 8,
+          "ms": 0.72704
+        }
+      ],
+      "chain_ms": 0.08221257142857143,
+      "chain_ms_direct": 0.05222399999999999,
+      "frame_ms": 0.151552
+    },
+    "errors": []
+  },
+  "water_c480_480": {
+    "tag": "c480",
+    "scene": "shipped",
+    "res": 480,
+    "frames": 40,
+    "spf": 333,
+    "n": 9121,
+    "dt": 5e-05,
+    "treatment": "t027r-per-material-water-isosurface",
+    "physics_version": "phys-c518316a4a05",
+    "mean_abs_motion": 0.1806051705443876,
+    "cost_ms": {
+      "after": {
+        "ms": 0.078848,
+        "n": 80,
+        "passes": 12
+      },
+      "before": {
+        "ms": 0.0512,
+        "n": 80,
+        "passes": 2
+      },
+      "mvp": {
+        "ms": 0.019456,
+        "n": 80,
+        "passes": 2
+      },
+      "amp": [
+        {
+          "k": 1,
+          "ms": 0.079872
+        },
+        {
+          "k": 2,
+          "ms": 0.105472
+        },
+        {
+          "k": 4,
+          "ms": 0.157696
+        },
+        {
+          "k": 8,
+          "ms": 0.262144
+        }
+      ],
+      "chain_ms": 0.02603885714285714,
+      "chain_ms_direct": 0.027648,
+      "frame_ms": 0.079872
+    },
+    "errors": []
+  },
+  "water_c720_720": {
+    "tag": "c720",
+    "scene": "shipped",
+    "res": 720,
+    "frames": 40,
+    "spf": 333,
+    "n": 9121,
+    "dt": 5e-05,
+    "treatment": "t027r-per-material-water-isosurface",
+    "physics_version": "phys-c518316a4a05",
+    "mean_abs_motion": 0.1806051705443876,
+    "cost_ms": {
+      "after": {
+        "ms": 0.098304,
+        "n": 80,
+        "passes": 12
+      },
+      "before": {
+        "ms": 0.065536,
+        "n": 80,
+        "passes": 2
+      },
+      "mvp": {
+        "ms": 0.033792,
+        "n": 80,
+        "passes": 2
+      },
+      "amp": [
+        {
+          "k": 1,
+          "ms": 0.099328
+        },
+        {
+          "k": 2,
+          "ms": 0.129024
+        },
+        {
+          "k": 4,
+          "ms": 0.18944
+        },
+        {
+          "k": 8,
+          "ms": 0.310272
+        }
+      ],
+      "chain_ms": 0.03013485714285714,
+      "chain_ms_direct": 0.032768000000000005,
+      "frame_ms": 0.099328
+    },
+    "errors": []
+  },
+  "water_pool_600": {
+    "tag": "pool",
+    "scene": "pool",
+    "res": 600,
+    "frames": 90,
+    "spf": 333,
+    "n": 5982,
+    "dt": 5e-05,
+    "treatment": "t027r-per-material-water-isosurface",
+    "physics_version": "phys-c518316a4a05",
+    "mean_abs_motion": 0.1131698211914396,
+    "cost_ms": null,
+    "errors": []
+  },
+  "water_shipped_600": {
+    "tag": "shipped",
+    "scene": "shipped",
+    "res": 600,
+    "frames": 90,
+    "spf": 333,
+    "n": 9121,
+    "dt": 5e-05,
+    "treatment": "t027r-per-material-water-isosurface",
+    "physics_version": "phys-c518316a4a05",
+    "mean_abs_motion": 0.1819263197197365,
+    "cost_ms": {
+      "after": {
+        "ms": 0.090112,
+        "n": 60,
+        "passes": 12
+      },
+      "before": {
+        "ms": 0.059392,
+        "n": 60,
+        "passes": 2
+      },
+      "mvp": {
+        "ms": 0.028672,
+        "n": 60,
+        "passes": 2
+      },
+      "amp": [
+        {
+          "k": 1,
+          "ms": 0.090112
+        },
+        {
+          "k": 2,
+          "ms": 0.11776
+        },
+        {
+          "k": 4,
+          "ms": 0.17408
+        },
+        {
+          "k": 8,
+          "ms": 0.285696
+        }
+      ],
+      "chain_ms": 0.02794057142857143,
+      "chain_ms_direct": 0.030719999999999997,
+      "frame_ms": 0.090112
+    },
+    "errors": []
+  },
+  "water_smoke_600": {
+    "tag": "smoke",
+    "scene": "shipped",
+    "res": 600,
+    "frames": 4,
+    "spf": 333,
+    "n": 9121,
+    "dt": 5e-05,
+    "treatment": "t027r-per-material-water-isosurface",
+    "physics_version": "phys-c518316a4a05",
+    "mean_abs_motion": 0.008659521484066063,
+    "cost_ms": null,
+    "errors": []
+  }
+}

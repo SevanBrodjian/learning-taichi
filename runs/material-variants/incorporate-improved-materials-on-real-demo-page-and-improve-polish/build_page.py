@@ -38,6 +38,7 @@ DATA = {
     "layout": M["layout"],
     "viewports": VIEWPORTS,
     "pile": M["pile"],
+    "water": M["water_reconstruction"],
 }
 
 HTML = r"""<!doctype html>
@@ -122,6 +123,10 @@ add('<div class="verdict"><p><b>The Demo page was running materials with no conc
     'canonical\'s own run-to-run noise. Snow, sand and water are on their chosen new treatments and ' +
     'rubber is on the old one with two tweaks. The field is now genuinely square on a phone, where ' +
     'it previously stretched the simulation by 42%.</p>' +
+    '<p class="miss">Corrected after review: the first version of this task claimed water was on ' +
+    'its new treatment, and it was only half on it. The SHADING was ported and the RECONSTRUCTION ' +
+    'that shading reads was not, so the water still came out as the speckled "smoothie" the ' +
+    'proposal existed to replace. Section 4 is the fix and its evidence.</p>' +
     '<p class="miss">What did not make it in: nothing was done about the shared timestep, so a ' +
     'phone still runs this in labelled slow motion; and every number below is one GPU, one browser, ' +
     'one scene.</p></div>');
@@ -260,8 +265,165 @@ add('<div class="card"><video src="' + D.media + 'cmp_render.mp4" controls loop 
       'time &mdash; which is why the rendering half of this task was allowed to be the ambitious one.</p>');
 })();
 
+// ---------------------------------------------------------------- 4. THE WATER REWORK
+add('<h2>4 &nbsp;The water: the shading was never the treatment</h2>');
+add('<p>This section is a <b>correction</b>. The version of this task that first shipped ported ' +
+    'T-020\'s water <em>shading</em> faithfully &mdash; Beer&ndash;Lambert absorption, a tight ' +
+    'specular, a Fresnel rim, motion-gated foam, every line of it present in the resolve pass ' +
+    '&mdash; and shipped water that still looked like the old water. Every quantity that shading ' +
+    'reads (how thick the water is here, which way the surface faces here, how opaque it is here) ' +
+    'came from four neighbour taps of the raw splat accumulation, and a splat accumulation is a ' +
+    'sum of a few thousand overlapping bumps. It is lumpy at the particle scale, so the shading ' +
+    'faithfully lit a lumpy thing.</p>');
+add('<p>What was missing is the <b>reconstruction</b>: blur the density, threshold it to a binary ' +
+    'body, and take optical thickness from a <b>distance transform</b> of that body instead of ' +
+    'from a local density count. A distance field cannot carry particle-scale noise, because it ' +
+    'does not know where the particles are &mdash; only where the surface is.</p>');
+
+(function () {
+  var wrap = add('<div></div>');
+  var tabs = document.createElement('div'); tabs.className = 'tabs';
+  var card = document.createElement('div'); card.className = 'card';
+  var CLIPS = [
+    ['the demo\'s own scene', 'cmp_water.mp4',
+     'The page\'s opening scene. Same build, same physics, same particle positions, same snow, ' +
+     'sand and rubber in both halves &mdash; the ONLY difference is where the water reads its ' +
+     'thickness and its normal from.'],
+    ['water alone, with a splash', 'cmp_water_pool.mp4',
+     'Water plus one rubber ball, so the surface and the spray are both in frame and nothing else ' +
+     'competes for attention. Watch the surface line, and watch the interior when the ball lands.']
+  ];
+  var vid = document.createElement('video');
+  vid.controls = vid.loop = vid.muted = vid.playsInline = true; vid.style.width = '100%';
+  var cap = document.createElement('p'); cap.className = 'note'; cap.style.marginTop = '10px';
+  function pick(i) {
+    vid.src = D.media + CLIPS[i][1]; cap.innerHTML = CLIPS[i][2];
+    [].forEach.call(tabs.children, function (b, k) { b.classList.toggle('on', k === i); });
+  }
+  CLIPS.forEach(function (c, i) {
+    var b = document.createElement('button'); b.textContent = c[0];
+    b.onclick = function () { pick(i); }; tabs.appendChild(b);
+  });
+  card.appendChild(vid); card.appendChild(cap);
+  wrap.appendChild(tabs); wrap.appendChild(card);
+  pick(0);
+})();
+
+add('<p style="margin-top:18px">And the question that actually decides it &mdash; did it land where ' +
+    'the proposal was? The left panel is T-020\'s own Taichi render of option B. Different scene, ' +
+    'different resolution, different graphics API, so this compares the <em>treatment</em>, never ' +
+    'the pixels.</p>');
+add('<div class="card"><img src="' + D.media + 'cmp_water_target.png" style="width:100%">' +
+    '<p class="note" style="margin-top:10px">Interior colour at mid-depth, sampled: T-020\'s film ' +
+    'render reads (50, 90, 112); the page now reads (51, 90, 109). Nothing was tuned against that ' +
+    'number &mdash; it falls out of using T-020\'s palette, its absorption coefficient and its tone ' +
+    'curve. Read it as a check that the colour pipeline was ported correctly, <em>not</em> as proof ' +
+    'the two images are equivalent: T-020\'s pool is deeper (optical depth ~3.2 against ~1.7 here) ' +
+    'and the absorption curve happens to be flat across that range.</p></div>');
+
+(function () {
+  var STAGES = [
+    ['splat', '1, full res', 'Four-channel per-material weight. Untouched &mdash; this is still ' +
+      'what the other three treatments shade off.'],
+    ['blur', '2, half res', 'Separable Gaussian. The horizontal pass also does the 2x downsample, ' +
+      'and its sigma is picked so that the splat kernel\'s own width PLUS this blur equals the ' +
+      'smoothing T-020 applied to a point histogram.'],
+    ['threshold + seed', '1', 'Binary body at a fixed fraction (0.24) of full packing &mdash; a ' +
+      'physical reference rather than a per-frame percentile, which is what keeps a thin sheet of ' +
+      'spray reading as thin. Every pixel OUTSIDE the body seeds itself.'],
+    ['jump flood', '6-7', 'log2(range) doublings turn those seeds into the distance to the nearest ' +
+      'outside pixel, for every interior pixel. This is the step that makes a distance transform ' +
+      'affordable in a real-time frame at all.'],
+    ['seeds &rarr; distance', '1', 'Plus a 3x3 box: a distance field off a thresholded mask is ' +
+      'quantised in whole pixels, and Beer&ndash;Lambert turns quantisation into visible banding.'],
+    ['resolve', '1, full res', 'Opacity, normal and optical thickness all read out of the distance ' +
+      'field. Premultiplied, so the alpha carries the transmission.']
+  ];
+  var h = '<p style="margin-top:18px">The chain, in the order it runs. Everything between the splat ' +
+    'and the resolve is at <b>half resolution</b>: optical thickness is the one quantity in the ' +
+    'frame that is genuinely low-frequency, so halving it costs a quarter of the pixels on eleven ' +
+    'passes and shows up nowhere in the image.</p><table>' +
+    '<tr><th>stage</th><th>passes</th><th>what it is for</th></tr>';
+  STAGES.forEach(function (r) {
+    h += '<tr><td><b>' + r[0] + '</b></td><td class="n">' + r[1] + '</td><td>' + r[2] + '</td></tr>';
+  });
+  h += '</table>';
+  add(h);
+})();
+
+(function () {
+  var W = D.water, b = D.budget;
+  var h = '<p style="margin-top:18px">What it costs, from <code>timestamp-query</code> across the ' +
+    'whole blob draw at 16,384 particles. <b>before</b> is this task exactly as it originally ' +
+    'shipped and <b>after</b> is the same build with the reconstruction switched on &mdash; same ' +
+    'run, same instrument, same frame, so the difference is the chain and nothing else.</p>' +
+    '<table><tr><th>resolution</th><th>pixels</th><th>before</th><th>after</th>' +
+    '<th>chain, direct</th><th>chain, amplified</th><th>passes</th></tr>';
+  ['480', '720', '1080'].forEach(function (r) {
+    var v = W.by_res[r];
+    h += '<tr><td>' + r + '&sup2;</td><td class="n">' + v.pixels.toLocaleString() + '</td>' +
+      '<td class="n">' + f(v.before_gpu_ms) + '</td><td class="n">' + f(v.after_gpu_ms) + '</td>' +
+      '<td class="n">' + f(v.chain_gpu_ms_direct) + '</td>' +
+      '<td class="n">' + f(v.chain_gpu_ms_slope) + '</td>' +
+      '<td class="n">' + v.passes_after + '</td></tr>';
+  });
+  h += '</table>';
+  add(h);
+  add('<p class="note"><b>Two independent measurements of the same thing, because one of them was ' +
+      'not trustworthy on its own.</b> Chromium quantises <code>timestamp-query</code>; with ' +
+      'quantisation disabled the residual granularity was still 16&ndash;33 &micro;s, which is the ' +
+      'same size as the thing being measured. So the chain is priced twice: once as the difference ' +
+      'against a matched control, and once as the slope of running it K times inside one timed ' +
+      'region. The two columns agree to within one quantum, and the 1080&sup2; row is the loosest ' +
+      'of the three &mdash; exactly one quantum apart, because its K=8 point was contaminated by ' +
+      'running hundreds of render passes in a single submission. A first pass at all of this, ' +
+      'before the flag went on, reported exact multiples of 32,768 ns for everything &mdash; that ' +
+      'number is the quantum, not a cost.</p>');
+  add('<p class="note">The cost is <b>sub-linear in pixels</b> (&times;1.9 for &times;5.1 the ' +
+      'pixels), which is the honest shape of twelve render passes: a fixed ~0.020 ms of attachment ' +
+      'setup dominates at demo resolutions, and ~0.025 ms per megapixel is what a bigger canvas ' +
+      'actually buys. It does move with resolution, which is what says the instrument is reading ' +
+      'the GPU and not the clock.</p>');
+  add('<div class="kv">' +
+    '<div><span>solver, 16,384 particles</span><b>' + f(b.solver_gpu_ms, 2) + ' ms</b></div>' +
+    '<div><span>drawing, before</span><b>' + f(b.render_gpu_ms_1024, 2) + ' ms</b></div>' +
+    '<div><span>drawing, with the reconstruction</span><b>' +
+      f(b.render_gpu_ms_1024_water_rework, 2) + ' ms</b></div>' +
+    '<div><span>60 fps budget</span><b>' + f(b.budget_60fps_ms, 2) + ' ms</b></div>' +
+    '</div>');
+  add('<p class="note">The frame goes from ' + f(b.total_gpu_ms, 2) + ' ms to ' +
+      f(b.total_gpu_ms_water_rework, 2) + ' ms of GPU work against a ' + f(b.budget_60fps_ms, 2) +
+      ' ms budget. The solver is still ' + f(100 * b.solver_gpu_ms / b.budget_60fps_ms, 0) +
+      '% of it and drawing is ' +
+      f(100 * b.render_gpu_ms_1024_water_rework / b.budget_60fps_ms, 1) + '%. Note that the two ' +
+      'drawing figures come from different instruments &mdash; only the DELTA was measured against ' +
+      'a matched control, and only the delta is carried across.</p>');
+  add('<p class="note">One thing that was checked rather than assumed: the foam term is gated on ' +
+      'motion, and a gate that never opens looks exactly like a gate that was never written. At the ' +
+      'splash peak the reworked water has <b>' + W.foam_gate.peak_near_white_px_after + '</b> ' +
+      'whitewater pixels against <b>' + W.foam_gate.peak_near_white_px_before + '</b> before, so it ' +
+      'fires. It is restrained, which is what T-020\'s film option is.</p>');
+})();
+
+add('<div class="scope" style="margin-top:18px"><b>The trade this treatment makes, found by driving ' +
+    'the real page rather than by reasoning about it.</b> Option B makes <em>shallow</em> water ' +
+    'nearly invisible, and that is not a bug in the port &mdash; it is what the treatment is. ' +
+    'Transmission goes as <code>exp(-absorb&middot;t)</code>, so a thin sheet transmits almost ' +
+    'everything, and the demo\'s background is nearly black. Pouring water into an empty scene ' +
+    'gives a sheet reading about (16,&nbsp;36,&nbsp;44) against a (6,&nbsp;9,&nbsp;13) background ' +
+    'until it pools. The default scene\'s pool is 0.155 of the domain deep and is well clear of ' +
+    'this; a small hand-poured puddle is not. The water that shipped before had the opposite ' +
+    'failing &mdash; equally bright at every depth, which is why it had no depth cue at all. If the ' +
+    'shallow case matters more than the deep one, the knob is <code>absorb</code> (0.52) or a small ' +
+    'ambient floor; neither was touched, because neither is T-020\'s.</div>');
+add('<p class="note" style="margin-top:14px"><b>What did not change, and was checked rather than ' +
+    'assumed:</b> snow, sand and rubber take the same branch they took before and are visible in ' +
+    'both halves of every clip above; <code>sim/physics/</code> was not opened; and the layout ' +
+    're-measures byte-for-byte identical at all five viewports &mdash; field 390x390 on a phone, ' +
+    '658x658 on a laptop, smallest control 40 px, no horizontal overflow.</p>');
+
 // ---------------------------------------------------------------- 4. LAYOUT
-add('<h2>4 &nbsp;The page, at five viewport sizes</h2>');
+add('<h2>5 &nbsp;The page, at five viewport sizes</h2>');
 add('<p>A claim about what fits on a screen cannot be made from a stylesheet, so these are real ' +
     'screenshots of the real page in a real GPU-backed window, with the device metrics overridden ' +
     'per size. The measurements under each pair are read off the live layout, not the CSS.</p>');
@@ -324,7 +486,7 @@ add('<p class="note">The failure the old layout had is not crowding, it is ' +
     'bar took 251 px of a 390 px viewport and left the field a 141 px square.</p>');
 
 // ---------------------------------------------------------------- 5. scope
-add('<h2>5 &nbsp;What this does and does not show</h2>');
+add('<h2>6 &nbsp;What this does and does not show</h2>');
 add('<div class="scope"><b>Scope.</b> Every timing here is <b>one GPU (' + esc(D.device) + '), one ' +
     'browser (Chromium/WebGPU), one scene</b>, and the solver numbers move by ~15% between repeat ' +
     'runs of the identical build, so treat differences under that as noise. "Looks better" is a ' +
@@ -336,7 +498,7 @@ add('<div class="scope"><b>Scope.</b> Every timing here is <b>one GPU (' + esc(D
     'sizes are device-metric overrides in a desktop browser, so they establish what fits and what ' +
     'the layout does, not how a real phone\'s touch handling or thermal budget behaves.</div>');
 
-add('<h2>6 &nbsp;The whole page, before and after</h2>');
+add('<h2>7 &nbsp;The whole page, before and after</h2>');
 add('<p class="note">Both changes at once, which is what a visitor actually sees. Kept separate ' +
     'from the two single-variable comparisons above on purpose.</p>');
 add('<div class="card"><video src="' + D.media + 'cmp_page.mp4" controls loop muted playsinline ' +

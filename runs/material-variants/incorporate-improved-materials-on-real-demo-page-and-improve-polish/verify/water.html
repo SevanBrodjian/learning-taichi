@@ -1,0 +1,207 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>T-027 water rework: stills + cost</title>
+<style>
+  body { background:#0a0e14; color:#dfe6ee; font:13px/1.5 ui-monospace,Menlo,Consolas,monospace; padding:10px; margin:0 }
+  #cv { border:1px solid #1d3441 }
+  .ok { color:#7ee787 } .bad { color:#ff8f8f } .warn { color:#ffd479 }
+</style>
+<pre id="log"></pre>
+<canvas id="cv"></canvas>
+<script>
+// The rework's own harness. It answers three questions the previous attempt did not:
+//
+//  1. DOES THE WATER LOOK DIFFERENT?  Step the SAME scene to the SAME frame, then draw that ONE
+//     particle state three ways from ONE build, in one submit sequence: with the iso-surface
+//     reconstruction, with T-027's originally shipped water instead, and with the pre-T-027 single
+//     treatment. The first two differ in the water and in nothing else -- same snow, same sand,
+//     same rubber, same physics, same particles -- so anything visible between them is the
+//     reconstruction. The third is context, not the before.
+//
+//  2. WHAT DOES IT COST?  timestamp-query, never performance.now(): Chromium clamps the host clock
+//     to ~100 us and the whole reconstruction is a few hundred microseconds. Measured at three
+//     resolutions, because a cost that does NOT move with resolution is a cost that is not being
+//     measured -- it is the clock.
+//
+//  3. DID ANYTHING SILENTLY FAIL?  The 8-storage-buffer ceiling drops dispatches without erroring,
+//     so the run asserts the particles actually moved and reports every captured GPU error before
+//     any number below it is allowed to mean anything.
+var Q = new URLSearchParams(location.search);
+var SCENE = Q.get('scene') || 'shipped';       // 'shipped' (the demo's opening scene) | 'pool'
+var FRAMES = parseInt(Q.get('frames') || '90', 10);
+var RES = parseInt(Q.get('res') || '600', 10);
+var SPF = parseInt(Q.get('spf') || '0', 10);
+var TAG = Q.get('tag') || SCENE;
+var REPS = parseInt(Q.get('reps') || '60', 10);
+var COST = Q.get('cost') === '1';
+var CLIP = Q.get('clip') === '1';
+var L = document.getElementById('log');
+function say(s, c) { L.innerHTML += '<span class="' + (c || '') + '">' + s + '</span>\n'; }
+function load(src) {
+  return new Promise(function (res, rej) {
+    var e = document.createElement('script');
+    e.src = src; e.onload = res; e.onerror = function () { rej(new Error('load ' + src)); };
+    document.head.appendChild(e);
+  });
+}
+async function post(name, body) { await fetch('/save?name=' + name, { method: 'POST', body: body }); }
+function pngBytes(cv) {
+  var b64 = cv.toDataURL('image/png').split(',')[1];
+  var bin = atob(b64), a = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+  return a;
+}
+function median(a) { var b = a.slice().sort(function (x, y) { return x - y; }); return b[b.length >> 1]; }
+
+var M, DENSITY = 500 / (Math.PI * 0.075 * 0.075);
+function rnd32(seed) { var s = (seed >>> 0) || 1;
+  return function () { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+function box(x0, x1, y0, y1, seed) {
+  var k = Math.max(1, Math.round(DENSITY * (x1 - x0) * (y1 - y0))), r = rnd32(seed);
+  var a = new Float32Array(2 * k);
+  for (var i = 0; i < k; i++) { a[2 * i] = x0 + r() * (x1 - x0); a[2 * i + 1] = y0 + r() * (y1 - y0); }
+  return a;
+}
+function disk(cx, cy, rr, seed) {
+  return M.seedDisk(cx, cy, rr, Math.max(1, Math.round(DENSITY * Math.PI * rr * rr)), seed);
+}
+
+async function build(scene) {
+  var P = M.PARAMS;
+  var sim = await M.createSim({ capacity: 16384, pVol: 1 / DENSITY,
+                                dt: M.sharedDt(['fluid', 'elastic', 'snow', 'sand']) });
+  if (scene === 'pool') {
+    // WATER ALONE, at the demo's own density and depth, plus one rubber ball dropped in so the
+    // clip has a splash in it. A still pool tests the surface; a splash tests the spray.
+    sim.add('fluid', box(0.05, 0.95, P.floor_y, P.floor_y + 0.20, 7), 0, 0);
+    sim.add('elastic', disk(0.50, 0.78, 0.10, 11), 0, 0);
+  } else {
+    sim.add('fluid', box(0.05, 0.95, P.floor_y, P.floor_y + 0.155, 7), 0, 0);
+    sim.add('elastic', disk(0.19, 0.60, 0.115, 11), 0, 0);
+    sim.add('snow', box(0.37, 0.58, 0.50, 0.92, 12), 0, 0);
+    sim.add('sand', disk(0.79, 0.64, 0.130, 13), 0, 0);
+  }
+  return sim;
+}
+
+// ONE VARIABLE. `before` is T-027 exactly as it originally shipped -- the same four treatments,
+// the same snow, sand and rubber, the same physics, the same particle positions -- with the water
+// still reading its thickness and normal off four local taps of the raw accumulation. `after` adds
+// the iso-surface reconstruction and nothing else. `mvp` is the pre-T-027 single treatment, kept
+// only as the wider context, and it is NOT the before for this rework.
+var DRAWS = {
+  after: { treatment: 'new', water: true },
+  before: { treatment: 'new', water: false },
+  mvp: { treatment: 'mvp', water: false }
+};
+var KINDS = ['after', 'before', 'mvp'];
+
+async function main() {
+  await load('/web/params.js');
+  await load('/web/mpm4-webgpu.js');
+  M = window.MPM4;
+  say('treatment ' + (M.RENDER_TREATMENT || 'mvp') + '   physics ' + M.PARAMS.physics_version, 'ok');
+  var cv = document.getElementById('cv');
+  cv.width = RES; cv.height = RES;
+  cv.style.width = Math.min(RES, 560) + 'px'; cv.style.height = Math.min(RES, 560) + 'px';
+
+  var sim = await build(SCENE);
+  var spf = SPF || 333;
+  var ren = await M.createRenderer(cv, sim);
+  say('n=' + sim.n + '  dt=' + sim.getDt() + '  spf=' + spf + '  res=' + RES);
+
+  sim.encodeFrame(0, { readback: true });
+  var p0 = await sim.readPositions();
+  var p0c = Float32Array.from(p0);
+
+  function shoot(kind) {
+    ren.draw({ view: 'blob', radius: 0.034, iso: 2.6, massRef: 5.0, odd: 0xffffffff,
+               treatment: DRAWS[kind].treatment, water: DRAWS[kind].water });
+    return sim.idle().then(function () { return pngBytes(cv); });
+  }
+
+  for (var f = 0; f < FRAMES; f++) {
+    sim.encodeFrame(spf, {});
+    if (CLIP) {
+      // one frame of each variant, at the identical particle state, straight into three sequences
+      for (var k = 0; k < 2; k++) {
+        var kind = KINDS[k];
+        await post('water/' + TAG + '_' + kind + '/f_' + String(f).padStart(4, '0') + '.png',
+                   await shoot(kind));
+      }
+    } else {
+      ren.draw({ view: 'blob', radius: 0.034, iso: 2.6, massRef: 5.0, odd: 0xffffffff });
+      await sim.idle();
+    }
+    if (f % 20 === 0) say('  frame ' + f);
+  }
+
+  // the three stills, all off the SAME final particle state
+  for (var kk = 0; kk < KINDS.length; kk++) {
+    var kn = KINDS[kk];
+    await post('water/still_' + TAG + '_' + kn + '.png', await shoot(kn));
+  }
+
+  sim.encodeFrame(0, { readback: true });
+  var p1 = await sim.readPositions();
+  var moved = 0;
+  for (var i = 0; i < p0c.length; i++) moved += Math.abs(p0c[i] - p1[i]);
+  moved /= p0c.length;
+
+  var cost = null;
+  if (COST) {
+    cost = {};
+    for (var ki = 0; ki < 3; ki++) {
+      var name = KINDS[ki];
+      var d = DRAWS[name], samples = [];
+      for (var r = 0; r < REPS; r++) {
+        ren.draw({ view: 'blob', radius: 0.034, iso: 2.6, massRef: 5.0, odd: 0xffffffff,
+                   treatment: d.treatment, water: d.water, timed: true });
+        var ns = await ren.lastGpuNanos();
+        if (ns && ns > 0) samples.push(ns / 1e6);
+      }
+      cost[name] = { ms: median(samples), n: samples.length,
+                     passes: ren.passCount(d.water) };
+      say('  ' + name + '  ' + cost[name].ms.toFixed(4) + ' ms  over ' +
+          cost[name].passes + ' render passes  (' + samples.length + ' samples)');
+    }
+    // The quantum-defeating measurement: run the reconstruction K times inside one timed region
+    // and fit the slope. The intercept is the rest of the frame (splat + resolve), the slope is
+    // one chain. Reported alongside the raw single-shot numbers, never instead of them.
+    cost.amp = [];
+    // Stay in a realistic regime. At k in the tens the submission is hundreds of render passes
+    // and the per-pass cost stops being the per-pass cost of a real frame, so the slope inflates;
+    // 1..8 is where the amplification is still measuring the thing the page actually does.
+    var ks = [1, 2, 4, 8];
+    for (var ai = 0; ai < ks.length; ai++) {
+      var sm = [];
+      for (var r2 = 0; r2 < Math.max(12, REPS >> 2); r2++) {
+        ren.draw({ view: 'blob', radius: 0.034, iso: 2.6, massRef: 5.0, odd: 0xffffffff,
+                   treatment: 'new', water: true, chainReps: ks[ai], timed: true });
+        var ns2 = await ren.lastGpuNanos();
+        if (ns2 && ns2 > 0) sm.push(ns2 / 1e6);
+      }
+      cost.amp.push({ k: ks[ai], ms: median(sm) });
+      say('  chain x' + ks[ai] + '  ' + median(sm).toFixed(4) + ' ms');
+    }
+    var lo = cost.amp[0], hi = cost.amp[cost.amp.length - 1];
+    cost.chain_ms = (hi.ms - lo.ms) / (hi.k - lo.k);
+    cost.chain_ms_direct = cost.after.ms - cost.before.ms;   // the same thing, measured directly
+    cost.frame_ms = lo.ms;
+    say('  => one reconstruction = ' + cost.chain_ms.toFixed(4) + ' ms (slope) / ' +
+        cost.chain_ms_direct.toFixed(4) + ' ms (direct);  whole blob draw = ' +
+        lo.ms.toFixed(4) + ' ms', 'ok');
+  }
+
+  var errs = M.errors();
+  await post('water_' + TAG + '_' + RES + '.json', JSON.stringify({
+    tag: TAG, scene: SCENE, res: RES, frames: FRAMES, spf: spf, n: sim.n, dt: sim.getDt(),
+    treatment: M.RENDER_TREATMENT || 'mvp', physics_version: M.PARAMS.physics_version,
+    mean_abs_motion: moved, cost_ms: cost, errors: errs
+  }, null, 2));
+  say('DONE  mean|dx| = ' + moved.toFixed(5) + '  errors=' + errs.length,
+      (moved > 1e-4 && errs.length === 0) ? 'ok' : 'bad');
+  document.title = (moved > 1e-4 && errs.length === 0) ? 'CAPDONE' : 'CAPFAIL';
+}
+main().catch(function (e) { say('ERROR ' + (e && e.stack || e), 'bad'); document.title = 'CAPFAIL'; });
+</script>

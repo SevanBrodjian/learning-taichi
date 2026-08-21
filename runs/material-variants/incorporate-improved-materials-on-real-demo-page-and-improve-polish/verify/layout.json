@@ -165,7 +165,7 @@
     "page": "after",
     "viewport": "phone_portrait",
     "physics_version": "phys-c518316a4a05",
-    "treatment": "t027-per-material"
+    "treatment": "t027r-per-material-water-isosurface"
   },
   "after_phone_landscape": {
     "vw": 844,
@@ -193,7 +193,7 @@
     "page": "after",
     "viewport": "phone_landscape",
     "physics_version": "phys-c518316a4a05",
-    "treatment": "t027-per-material"
+    "treatment": "t027r-per-material-water-isosurface"
   },
   "after_tablet_portrait": {
     "vw": 820,
@@ -221,7 +221,7 @@
     "page": "after",
     "viewport": "tablet_portrait",
     "physics_version": "phys-c518316a4a05",
-    "treatment": "t027-per-material"
+    "treatment": "t027r-per-material-water-isosurface"
   },
   "after_laptop": {
     "vw": 1280,
@@ -249,7 +249,7 @@
     "page": "after",
     "viewport": "laptop",
     "physics_version": "phys-c518316a4a05",
-    "treatment": "t027-per-material"
+    "treatment": "t027r-per-material-water-isosurface"
   },
   "after_desktop": {
     "vw": 1920,
@@ -277,6 +277,6 @@
     "page": "after",
     "viewport": "desktop",
     "physics_version": "phys-c518316a4a05",
-    "treatment": "t027-per-material"
+    "treatment": "t027r-per-material-water-isosurface"
   }
 }

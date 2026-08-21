@@ -1,13 +1,14 @@
 {
   "bundle": "new",
   "scene": "three",
-  "frames": 72,
+  "treatment_drawn": "new",
+  "frames": 90,
   "res": 600,
   "spf": 667,
   "n": 8328,
   "dt": 0.00005,
   "physics_version": "phys-c518316a4a05",
-  "treatment": "t027-per-material",
-  "mean_abs_motion": 0.08212844121688574,
+  "treatment": "t027r-per-material-water-isosurface",
+  "mean_abs_motion": 0.08446419614156499,
   "errors": []
 }

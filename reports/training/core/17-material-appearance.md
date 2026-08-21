@@ -164,6 +164,66 @@ sand boundary is a one-pixel-wide change of shading model rather than a blend. A
 materials are drawn it is not visible, but it is a real approximation and it would become visible with a
 much larger splat radius.
 
+## Porting a treatment: the shading is not the treatment
+
+The claim at the top of this page — that identity lives in the reconstruction — has a practical
+consequence that is easy to agree with in the abstract and easy to violate in practice. Here is the
+violation, because it is worth recognising by sight.
+
+A water treatment consists of a reconstruction and a shading model. The shading model is the part that
+*looks* like the material: Beer–Lambert absorption, a Fresnel-weighted sky, a grazing rim, a tight
+specular, foam. So that is the part a port copies. Port all of it, faithfully, and light the *old*
+reconstruction with it, and the result looks like the old water. Not similar to it — essentially
+identical, because:
+
+$$
+\text{colour}(u) = \text{shade}\big(\underbrace{t(u)}_{\text{thickness}},\; \underbrace{n(u)}_{\text{normal}},\; \underbrace{\alpha(u)}_{\text{opacity}}\big)
+$$
+
+and every argument is a **field**. If $t$ is the local splat sum $A(u)$ then $t$ is lumpy at the particle
+spacing, so $e^{-\sigma t}$ is lumpy; if $n$ is $\nabla A$ over four neighbour taps then $n$ wobbles per
+particle, so a $\cos^{70}$ specular becomes thousands of little highlights. The shading was correct. It
+was correctly lighting the wrong surface.
+
+What makes this failure worth a section is that **it is silent in every way a review can check.** The
+code compiles. The constants match the proposal. Every term of the lighting model is present and can be
+pointed at line by line. The commit message is true. Nothing is wrong except the picture, and the picture
+is the only place it shows.
+
+> **The diagnostic:** put your render next to the render you were copying, at the same time, and look.
+> Not the code next to the code. If you cannot produce that pair, you have not verified the port.
+
+The generalisable form: **when you port a look, port the fields first and the lighting last.** A shading
+model is a function; a reconstruction is what the function is a function *of*. Copying a function without
+its domain gets you the old picture with new arithmetic.
+
+### What the reconstruction costs when it has to run in a browser
+
+The reconstruction is the expensive half — [[fluid-rendering]] measures the distance transform alone at
+about 31% of the water pipeline — so the temptation to skip it is real. Three things make it affordable
+in a real-time frame, and they are all structural rather than clever:
+
+**Run it at half resolution.** Optical thickness is genuinely low-frequency: it is the distance from a
+pixel to the surface, and that quantity has no particle-scale detail in it by construction. Halving the
+resolution of the blur, the threshold, the jump flood and the distance pass costs a quarter of the
+pixels on every one of them, and the resolve upsamples the distance field bilinearly at no visible cost.
+The *silhouette* still comes out crisp, because opacity is a near-hard function of that distance rather
+than a blur of the density.
+
+**Count passes, not pixels, at small sizes.** Measured on one RTX 4090 in Chromium, the eleven extra
+render passes cost 0.028 ms at $480^2$ and 0.052 ms at $1080^2$ — a factor of 1.9 for a factor of 5.1 in
+pixels. Fitting the two gives roughly a **fixed 0.020 ms plus 0.025 ms per megapixel**: at demo
+resolutions the fixed term, which is attachment setup for a dozen render passes, dominates. That is the
+opposite of the intuition "screen-space passes cost pixels", and it means the first optimisation to
+reach for is *merging passes*, not shrinking them.
+
+**Let the alpha carry the transmission.** A body of water is see-through, and the naive way to draw that
+is to sample the background and mix. Under **premultiplied** alpha blending — $\text{out} = c_{\text{src}}
++ (1-\alpha)\,c_{\text{dst}}$ — you can instead emit $\alpha = 1 - e^{-\sigma t}$ and let the framebuffer
+do it, so Beer–Lambert's transmission *is* the alpha channel and the shader never reads what is behind
+it. Opaque materials drawn in the same pass are unaffected: emitting $c\alpha$ under `srcFactor = one` is
+the same arithmetic as emitting $c$ under `srcFactor = src-alpha`.
+
 ## What this costs, and which number to trust
 
 Measured on one RTX 4090 at the demo's own canvas size and particle count (16,384 particles,
@@ -210,6 +270,28 @@ a browser **if** the passes are recorded once into a command buffer, and ruinous
 separately. When you are deciding whether a pipeline fits a frame budget, count the passes and multiply
 by the dispatch floor of the API you are actually going to ship on, then add the device time — and never
 quote a Python-driven wall clock as the cost of an algorithm.
+
+### The number that is not a number
+
+The device clock has its own version of this trap, and it is nastier because the readings look precise.
+Browsers deliberately **quantise** GPU timestamps, because a fine-grained clock shared across origins is
+a side channel. In Chromium the quantum observed here was $2^{15}$ ns $\approx 32.8$ µs, and disabling
+the quantisation feature only reduced it. A screen-space pass that costs 30 µs is therefore *entirely
+inside one tick*: every measurement of it comes back as $0$, one quantum, or two, and the ratios between
+those are meaningless.
+
+Two habits fix it, and using both is the point — they are independent, so agreement is evidence.
+
+1. **Difference against a matched control.** Time the frame with the stage and without it, in the same
+   run, on the same particle state. Both readings are quantised, but the *difference* is a difference of
+   two nearby quantised values and is right to within one quantum.
+2. **Amplify and take the slope.** Run the stage $K$ times inside one timed region and fit
+   $T(K) = T_0 + K c$. At $K$ large enough the total leaves the quantum far behind. Keep $K$ modest —
+   at hundreds of passes per submission you stop measuring the frame you actually draw and the slope
+   inflates.
+
+> **The tell:** if every timing you have is an exact multiple of the same number, that number is the
+> quantum and you have measured nothing.
 
 ## Scope
 

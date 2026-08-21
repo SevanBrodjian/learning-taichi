@@ -838,6 +838,120 @@
     "render_gpu_ms_1024": 0.147456,
     "render_gpu_ms_1024_before": 0.09728,
     "total_gpu_ms": 7.061504,
-    "budget_60fps_ms": 16.666666666666668
+    "budget_60fps_ms": 16.666666666666668,
+    "render_gpu_ms_1024_water_rework": 0.19968,
+    "total_gpu_ms_water_rework": 7.113728,
+    "water_rework_note": "The reconstruction's marginal cost, measured with this run's instrument at 1080^2, added to the original run's 1024^2 figure. The two instruments disagree on the ABSOLUTE draw cost (0.147 ms sustained vs 0.100 ms isolated for the same build); only the delta is carried across, because only the delta was measured against a matched control."
+  },
+  "water_reconstruction": {
+    "treatment": "t027r-per-material-water-isosurface",
+    "instrument": "WebGPU timestamp-query across the whole blob draw (splat pass -> reconstruction -> resolve), median of individually timed draws, 80 draws each. Chromium quantises timestamp results; the browser was launched with --disable-dawn-features=timestamp_quantization and the residual granularity was still ~16-33 us, which is why every number is cross-checked against an amplified slope (the reconstruction run K times in one timed region).",
+    "recon_divisor": 2,
+    "by_res": {
+      "480": {
+        "pixels": 230400,
+        "mvp_gpu_ms": 0.019456,
+        "before_gpu_ms": 0.0512,
+        "after_gpu_ms": 0.078848,
+        "chain_gpu_ms_direct": 0.027648,
+        "chain_gpu_ms_slope": 0.02603885714285714,
+        "passes_after": 12,
+        "passes_before": 2,
+        "amplification": [
+          {
+            "k": 1,
+            "ms": 0.079872
+          },
+          {
+            "k": 2,
+            "ms": 0.105472
+          },
+          {
+            "k": 4,
+            "ms": 0.157696
+          },
+          {
+            "k": 8,
+            "ms": 0.262144
+          }
+        ],
+        "n": 9121,
+        "mean_abs_motion": 0.1806051705443876,
+        "errors": 0
+      },
+      "720": {
+        "pixels": 518400,
+        "mvp_gpu_ms": 0.033792,
+        "before_gpu_ms": 0.065536,
+        "after_gpu_ms": 0.098304,
+        "chain_gpu_ms_direct": 0.032768000000000005,
+        "chain_gpu_ms_slope": 0.03013485714285714,
+        "passes_after": 12,
+        "passes_before": 2,
+        "amplification": [
+          {
+            "k": 1,
+            "ms": 0.099328
+          },
+          {
+            "k": 2,
+            "ms": 0.129024
+          },
+          {
+            "k": 4,
+            "ms": 0.18944
+          },
+          {
+            "k": 8,
+            "ms": 0.310272
+          }
+        ],
+        "n": 9121,
+        "mean_abs_motion": 0.1806051705443876,
+        "errors": 0
+      },
+      "1080": {
+        "pixels": 1166400,
+        "mvp_gpu_ms": 0.068608,
+        "before_gpu_ms": 0.100352,
+        "after_gpu_ms": 0.152576,
+        "chain_gpu_ms_direct": 0.05222399999999999,
+        "chain_gpu_ms_slope": 0.08221257142857143,
+        "passes_after": 13,
+        "passes_before": 2,
+        "amplification": [
+          {
+            "k": 1,
+            "ms": 0.151552
+          },
+          {
+            "k": 2,
+            "ms": 0.200704
+          },
+          {
+            "k": 4,
+            "ms": 0.297984
+          },
+          {
+            "k": 8,
+            "ms": 0.72704
+          }
+        ],
+        "n": 9121,
+        "mean_abs_motion": 0.1806051705443876,
+        "errors": 0
+      }
+    },
+    "chain_fit": {
+      "fixed_ms": 0.02,
+      "per_megapixel_ms": 0.0246,
+      "note": "Least-squares through the 480 and 1080 direct measurements. The fixed term is twelve render passes' worth of attachment setup and is the DOMINANT term at demo resolutions; the per-pixel term is what a bigger canvas buys you. The cost does move with resolution -- x1.9 from 230k to 1.17M pixels -- so this is a GPU reading and not a clock reading, but it is sub-linear because of that fixed term."
+    },
+    "foam_gate": {
+      "peak_near_white_px_after": 237,
+      "peak_near_white_px_before": 109,
+      "scene": "pool + one rubber ball, 600x600, 90 frames",
+      "note": "Whitewater pixels (max channel > 190, saturation < 45) at the splash peak. This is the check that the motion-gated foam term is actually FIRING: a gate that never opens is indistinguishable from a gate that was never written, and 'the shading compiled' is precisely the mistake this rework exists to fix."
+    }
   }
 }

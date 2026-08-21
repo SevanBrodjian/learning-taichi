@@ -167,3 +167,51 @@ content$$` makes the dashboard's renderer
   rendered pages. Fixed; both new pages now render with 0 errors.
 - Honest negatives kept on the page: snow's treatment is a near-no-op and reads by elimination; the
   water reconstruction loses the airborne spray the splat keeps.
+
+## 2026-08-20 — T-027 REWORK: the water reconstruction
+
+Sent back with one note: the water still looked like the old water. It did. The first run ported
+T-020's water **shading** (all of it, faithfully) and not the **reconstruction** the shading reads,
+so `th` was still the local splat sum and `nrm` still its four-tap gradient. A splat accumulation is
+lumpy at the particle spacing, so Beer-Lambert on it is lumpy and a cos^70 specular on its gradient
+is thousands of highlights. The shading was correct and was lighting the wrong surface. That failure
+is invisible to every check short of putting the two images side by side.
+
+Ported `sim/material_render.py:build_masks` to WGSL as eleven half-resolution render passes between
+the existing splat and the existing resolve: separable Gaussian (the horizontal pass also does the
+2x downsample; its sigma derived so splat-width + blur = T-020's smoothing of a point histogram),
+threshold at 0.24 of full packing (computed by the host from particle density and splat radius, not
+a per-frame percentile), jump flood, seeds -> distance with a 3x3 box. Opacity, normal and optical
+thickness all come off that distance field now.
+
+Three platform constraints shaped it. Per-pass arguments go through one uniform at a **dynamic
+offset**, because `queue.writeBuffer` between two `beginRenderPass` calls is queue-ordered and would
+apply to every pass in the submission. Seeds live in **rg16float** — f16 is exact on integers to
+2048, and the 16-bit float formats are filterable where 32-bit float is not, which the resolve needs
+for the bilinear upsample. The resolve went **premultiplied**, so `1 - alpha` carries
+`exp(-absorb*t)` and the water transmits without ever sampling the background; the other three
+materials are bit-identical under that change.
+
+Two things that were not in the plan. T-020's **tone curve** had to come along, applied to water
+only: T-020 tonemaps its whole frame and the demo does not, and a Beer-Lambert radiance written
+straight to an 8-bit non-sRGB swapchain gave a near-black pool on the first build. And the foam's
+motion gate reads the **grid velocity** buffer (already bound to the fragment stage for the grid
+view) instead of T-020's mass-weighted speed splat, which would have needed a second render target
+on the heaviest pass. Verified firing: 237 whitewater pixels at the splash peak against 109 before.
+
+**Measurement trap worth remembering.** The first cost numbers came back as exact multiples of
+32,768 ns. That is Chromium quantising `timestamp-query`, not a cost.
+`--disable-dawn-features=timestamp_quantization` shrank the quantum but did not remove it (16-33 us
+residual), which is still the size of the thing being measured. Priced it twice instead: as a
+difference against a matched control in the same run, and as the slope of running the chain K times
+in one timed region. They agree. Chain costs 0.028 ms at 480^2 and 0.052 ms at 1080^2 — sub-linear,
+because a fixed ~0.020 ms of twelve-render-pass setup dominates at these sizes. Frame goes 7.06 ->
+7.11 ms of a 16.67 ms budget. Written into the `render_gpu_ms` registry entry so it is not
+rediscovered.
+
+Landed within 3/255 of T-020's own render on interior colour, untuned. Layout re-measured
+byte-for-byte identical at all five viewports; snow, sand, rubber and `sim/physics/` untouched.
+
+Honest consequence, found by driving the real page rather than by reasoning: option B makes shallow
+water nearly invisible. That is what the treatment is, not a defect in the port, and it is the
+user's call whether to accept it. In section 4 of the task page and in limitations.

@@ -294,8 +294,11 @@
       // the minimum converges onto it from above.
       var timed = useTS && !probing && (++probeTick % 24 === 0);
       sim.encodeFrame(spf, { erase: ptr.down && state.tool === 'erase', timed: timed });
+      // `water` skips the eleven-pass iso-surface reconstruction outright when the scene holds no
+      // fluid. It is the only per-frame decision the UI makes about the renderer, and it exists
+      // because that chain is WATER's cost, not the frame's.
       ren.draw({ view: state.view, radius: state.view === 'pts' ? 0.0072 : 0.034,
-        iso: 2.6, massRef: 5.0, odd: oddOne });
+        iso: 2.6, massRef: 5.0, odd: oddOne, water: counts.fluid > 0 });
       frames++;
 
       if (timed) {
@@ -401,7 +404,7 @@
         sim.encodeFrame(substeps === undefined ? spfFull : substeps,
           { erase: ptr.down && state.tool === 'erase' });
         ren.draw({ view: view || state.view, radius: (view || state.view) === 'pts' ? 0.0072 : 0.034,
-          iso: 2.6, massRef: 5.0, odd: oddOne });
+          iso: 2.6, massRef: 5.0, odd: oddOne, water: counts.fluid > 0 });
         return sim.idle();
       },
       ready: null,

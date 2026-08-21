@@ -1,0 +1,51 @@
+{
+  "tag": "shipped",
+  "scene": "shipped",
+  "res": 600,
+  "frames": 90,
+  "spf": 333,
+  "n": 9121,
+  "dt": 0.00005,
+  "treatment": "t027r-per-material-water-isosurface",
+  "physics_version": "phys-c518316a4a05",
+  "mean_abs_motion": 0.1819263197197365,
+  "cost_ms": {
+    "after": {
+      "ms": 0.090112,
+      "n": 60,
+      "passes": 12
+    },
+    "before": {
+      "ms": 0.059392,
+      "n": 60,
+      "passes": 2
+    },
+    "mvp": {
+      "ms": 0.028672,
+      "n": 60,
+      "passes": 2
+    },
+    "amp": [
+      {
+        "k": 1,
+        "ms": 0.090112
+      },
+      {
+        "k": 2,
+        "ms": 0.11776
+      },
+      {
+        "k": 4,
+        "ms": 0.17408
+      },
+      {
+        "k": 8,
+        "ms": 0.285696
+      }
+    ],
+    "chain_ms": 0.02794057142857143,
+    "chain_ms_direct": 0.030719999999999997,
+    "frame_ms": 0.090112
+  },
+  "errors": []
+}

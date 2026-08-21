@@ -2,13 +2,14 @@
   "cap_new_shipped": {
     "bundle": "new",
     "scene": "shipped",
+    "treatment_drawn": "new",
     "frames": 90,
     "res": 600,
     "spf": 333,
     "n": 9121,
     "dt": 5e-05,
     "physics_version": "phys-c518316a4a05",
-    "treatment": "t027-per-material",
+    "treatment": "t027r-per-material-water-isosurface",
     "mean_abs_motion": 0.1819263197197365,
     "errors": []
   },
@@ -29,14 +30,15 @@
   "cap_new_three": {
     "bundle": "new",
     "scene": "three",
-    "frames": 72,
+    "treatment_drawn": "new",
+    "frames": 90,
     "res": 600,
     "spf": 667,
     "n": 8328,
     "dt": 5e-05,
     "physics_version": "phys-c518316a4a05",
-    "treatment": "t027-per-material",
-    "mean_abs_motion": 0.08212844121688574,
+    "treatment": "t027r-per-material-water-isosurface",
+    "mean_abs_motion": 0.08446419614156499,
     "errors": []
   },
   "cap_new_three_mvp": {

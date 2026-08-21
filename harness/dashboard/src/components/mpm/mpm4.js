@@ -91,7 +91,7 @@ import './params.js';
   var DEAD = 4;                                  // erased particle: no mass, no motion, not drawn
   // Which set of screen-space material treatments the renderer is compiled with. Stamped into every
   // benchmark row so a timing can never be attributed to the wrong renderer after the fact.
-  var RENDER_TREATMENT = 't027-per-material';
+  var RENDER_TREATMENT = 't027r-per-material-water-isosurface';
 
   function f(x) {                                // emit a float literal WGSL will accept
     var s = String(x);
@@ -583,8 +583,17 @@ import './params.js';
       return 'vec3<f32>(' + f(r.toFixed(4)) + ', ' + f(g.toFixed(4)) + ', ' + f(b.toFixed(4)) + ')';
     });
     return [
+      // packRef / thickChar / normAmp / featherW are the WATER RECONSTRUCTION's calibration, and
+      // every one of them is a PHYSICAL quantity turned into pixels by the host (see calibrate()):
+      //   packRef   the accumulated splat weight a fully-packed region of one material reaches.
+      //             T-020's masks are thresholded at a FIXED FRACTION of full packing, not at a
+      //             per-frame percentile, which is what keeps a thin sheet of spray reading as thin.
+      //   thickChar px of distance-to-surface per unit optical depth.
+      //   normAmp   how hard the surface gradient tilts the normal (T-020: 3.0 * res/1080).
+      //   featherW  the width, in HALF-res px, of the band over which the normal field turns on.
       'struct RParams { radius : f32, aspect : f32, n : u32, view : u32,',
-      '                 massRef : f32, iso : f32, dimAlpha : f32, odd : u32, };',
+      '                 massRef : f32, iso : f32, dimAlpha : f32, odd : u32,',
+      '                 packRef : f32, thickChar : f32, normAmp : f32, featherW : f32, };',
       '@group(0) @binding(0) var<uniform> R : RParams;',
       '@group(0) @binding(1) var<storage, read> pos : array<vec2<f32>>;',
       '@group(0) @binding(2) var<storage, read> vel : array<vec4<f32>>;',
@@ -618,6 +627,19 @@ import './params.js';
       '  return vec4<f32>(f32(m == M_FLUID), f32(m == M_ELASTIC),',
       '                   f32(m == M_SNOW), f32(m == M_SAND));',
       '}',
+      // WATER's palette, straight from sim/material_render.py's PAL slots 4/5/6/10/11. Note that
+      // C_FLUID is NOT in this list: the previously shipped water tinted the material's flat albedo,
+      // which is why it came out as bright poster-paint blue. A body of water has no albedo -- what
+      // you see is a shallow tint fading into a deep tint with optical depth, plus the sky.
+      'const W_DEEP : vec3<f32> = vec3<f32>(0.02, 0.16, 0.30);',
+      'const W_SHALLOW : vec3<f32> = vec3<f32>(0.20, 0.50, 0.60);',
+      'const W_FOAM : vec3<f32> = vec3<f32>(0.93, 0.97, 1.0);',
+      'const ENV_SKY : vec3<f32> = vec3<f32>(0.60, 0.74, 0.90);',
+      'const ENV_GND : vec3<f32> = vec3<f32>(0.10, 0.13, 0.17);',
+      'const ISO_FILL : f32 = 0.24;',
+      'const THICK_MAX : f32 = 3.2;',
+      'const JFA_NONE : f32 = -1.0;',
+      '',
       'fn hash21(p : vec2<f32>) -> f32 {',
       '  var q = fract(p * vec2<f32>(0.1031, 0.1030));',
       '  q = q + vec2<f32>(dot(q, q.yx + vec2<f32>(33.33, 33.33)));',
@@ -787,7 +809,187 @@ import './params.js';
       // The solver hands over one cloud of points; the reconstruction turns it into a surface with
       // a thickness and a normal; only then does the material decide what light does to it. The
       // same solver output is what reads as water, as powder or as grains.
+      // group 1 is the screen-space chain's I/O. Binding 0 is "whatever this pass reads" -- the
+      // accumulation for the first blur, then each intermediate in turn -- and binding 2 is the
+      // finished distance field, which only the resolve reads.
       '@group(1) @binding(0) var acc : texture_2d<f32>;',
+      '@group(1) @binding(1) var samp : sampler;',
+      '@group(1) @binding(2) var distT : texture_2d<f32>;',
+      // group 2 is the per-pass argument (blur direction + sigma, or the jump-flood step), bound at
+      // a DYNAMIC OFFSET into one buffer. That is the only way to vary an argument between passes
+      // inside a single command encoder: a queue.writeBuffer between two beginRenderPass calls is
+      // ordered on the QUEUE, so it would apply to every pass in the submission, not just the next.
+      'struct SParams { arg : vec4<f32>, dim : vec4<f32>, };',
+      '@group(2) @binding(0) var<uniform> S : SParams;',
+      '',
+      // ======================= THE WATER RECONSTRUCTION (T-020's, ported) =======================
+      // The shipped treatment already had T-020's water SHADING. What it did not have is the thing
+      // the shading reads: a screen-space iso-surface. It reconstructed optical thickness from four
+      // neighbour taps of the raw splat accumulation, so thickness inherited the density's
+      // particle-scale lumpiness and the water stayed speckled -- the exact "smoothie" the proposal
+      // existed to fix. The chain below is sim/material_render.py:build_masks in WGSL:
+      //
+      //   blur -> threshold to a BINARY body -> jump-flood distance transform -> optical thickness
+      //
+      // The load-bearing idea is the SEPARATION. One threshold cannot both decide "is there water
+      // here" (wants a generous cut and pinholes sealed) and "which way does the surface face"
+      // (wants fine slope). So the filled body owns opacity and thickness, and a wide band around
+      // its iso-surface owns the normal. Density noise then reaches NEITHER, which is the whole
+      // difference between a smoothie and a body of water.
+      //
+      // Everything after the first blur runs at HALF resolution. Optical thickness is a smooth,
+      // low-frequency quantity -- it is the one part of the frame that does not need full res --
+      // and halving costs a quarter of the pixels on eleven passes.
+      '',
+      // Separable Gaussian, 13 taps at sigma/2.2 spacing (+-2.95 sigma) through a LINEAR sampler,
+      // so the horizontal pass also does the 2x downsample for free.
+      '@fragment fn fs_blur(o : VOut) -> @location(0) f32 {',
+      '  let uv = o.p.xy / S.dim.xy;',
+      '  let sg = max(S.arg.z, 0.35);',
+      '  let sp = sg / 2.2;',
+      '  let stp = S.arg.xy * (sp / S.dim.xy);',
+      '  var s = 0.0;',
+      '  var wsum = 0.0;',
+      '  for (var k = -6; k <= 6; k = k + 1) {',
+      '    let x = f32(k) * sp;',
+      '    let w = exp(-0.5 * x * x / (sg * sg));',
+      '    s = s + w * textureSampleLevel(acc, samp, uv + stp * f32(k), 0.0).x;',
+      '    wsum = wsum + w;',
+      '  }',
+      '  return s / wsum;',
+      '}',
+      '',
+      // Threshold at a FIXED FRACTION of full packing (R.packRef, a physical quantity the host
+      // computes from the particle density and the splat radius) rather than at a per-frame
+      // percentile -- that is what keeps a thin sheet of spray reading as thin. Then seed every
+      // pixel OUTSIDE the body with its own coordinate, so the distance that comes out is "px to
+      // the nearest pixel that is not water".
+      '@fragment fn fs_seed(o : VOut) -> @location(0) vec2<f32> {',
+      '  let v = textureLoad(acc, vec2<i32>(o.p.xy), 0).x;',
+      '  if (v > R.packRef * ISO_FILL) { return vec2<f32>(JFA_NONE, JFA_NONE); }',
+      '  return o.p.xy;',
+      '}',
+      '',
+      // One jump-flooding pass: look at the eight neighbours `step` away plus self and keep the
+      // nearest seed any of them knows about. log2(range) passes give the whole field, which is why
+      // a distance transform is affordable at all in a real-time frame.
+      '@fragment fn fs_jfa(o : VOut) -> @location(0) vec2<f32> {',
+      '  let ip = vec2<i32>(o.p.xy);',
+      '  let hi = vec2<i32>(textureDimensions(acc)) - vec2<i32>(1, 1);',
+      '  let st = i32(S.arg.x);',
+      '  var best = textureLoad(acc, ip, 0).xy;',
+      '  var bd = 1.0e18;',
+      '  if (best.x >= 0.0) { let e = best - o.p.xy; bd = dot(e, e); }',
+      '  for (var dy = -1; dy <= 1; dy = dy + 1) {',
+      '    for (var dx = -1; dx <= 1; dx = dx + 1) {',
+      '      let q = ip + vec2<i32>(dx * st, dy * st);',
+      '      if (q.x >= 0 && q.y >= 0 && q.x <= hi.x && q.y <= hi.y) {',
+      '        let c = textureLoad(acc, q, 0).xy;',
+      '        if (c.x >= 0.0) {',
+      '          let e = c - o.p.xy;',
+      '          let d2 = dot(e, e);',
+      '          if (d2 < bd) { bd = d2; best = c; }',
+      '        }',
+      '      }',
+      '    }',
+      '  }',
+      '  return best;',
+      '}',
+      '',
+      // Seeds -> distance, with a 3x3 box on the way out. That box plus the bilinear upsample the
+      // resolve does is this pipeline's blur(distr, 2.0): a distance field straight off a
+      // thresholded mask is quantised in whole pixels, and Beer-Lambert turns quantisation into
+      // visible banding. A pixel no pass ever reached (deeper than the flood's range) gets the cap,
+      // which is already past where the absorption saturates.
+      '@fragment fn fs_dist(o : VOut) -> @location(0) f32 {',
+      '  let ip = vec2<i32>(o.p.xy);',
+      '  let hi = vec2<i32>(textureDimensions(acc)) - vec2<i32>(1, 1);',
+      '  let cap = S.arg.y;',
+      '  var s = 0.0;',
+      '  for (var dy = -1; dy <= 1; dy = dy + 1) {',
+      '    for (var dx = -1; dx <= 1; dx = dx + 1) {',
+      '      let q = clamp(ip + vec2<i32>(dx, dy), vec2<i32>(0, 0), hi);',
+      '      let c = textureLoad(acc, q, 0).xy;',
+      '      var d = cap;',
+      '      if (c.x >= 0.0) { d = min(length(c - (vec2<f32>(q) + vec2<f32>(0.5, 0.5))), cap); }',
+      '      s = s + d;',
+      '    }',
+      '  }',
+      '  return s / 9.0;',
+      '}',
+      '',
+      // The normal field: ~0 outside the body, ~1 inside, turning on over featherW half-res px --
+      // MUCH wider than the opacity feather. That asymmetry is deliberate and is T-020's: a hard
+      // silhouette (the clean surface line) with a soft normal (a rounded rim and a genuinely FLAT
+      // interior). The second term is the whisper of interior slope thickness contributes; at the
+      // demo scale it tilts the normal by a fraction of a degree, and its job is only to stop a
+      // dead-flat slab from having literally nothing to catch the light.
+      // sim/material_render.py:tonemap, at gain 1. The other three treatments do not need it and do
+      // not get it: their colours are palette tints already in display space. Water's are not --
+      // Beer-Lambert and Fresnel produce a RADIANCE, and a radiance written straight to an 8-bit
+      // non-sRGB swapchain comes out as the near-black pool the first attempt at this produced. The
+      // curve is part of T-020's water, not decoration on top of it.
+      'fn tonemapW(c : vec3<f32>) -> vec3<f32> {',
+      '  let x = clamp((c / (c + vec3<f32>(0.9))) * 1.55, vec3<f32>(0.0), vec3<f32>(1.0));',
+      '  return pow(x, vec3<f32>(1.0 / 1.15));',
+      '}',
+      'fn waterD(uv : vec2<f32>) -> f32 { return textureSampleLevel(distT, samp, uv, 0.0).x; }',
+      'fn normField(d : f32) -> f32 {',
+      '  return smoothstep(0.0, R.featherW, d)',
+      '       + 0.6 * clamp(2.0 * d / R.thickChar, 0.0, THICK_MAX) / THICK_MAX;',
+      '}',
+      '',
+      // ---------------- WATER, T-020 option B "film" ----------------
+      // Beer-Lambert depth colour, a Fresnel-weighted sky, a grazing rim, a tight glint, and foam
+      // gated to the fast/thin surface band. Option B over option A ("glass") because the demo's
+      // background is a flat dark gradient: option A would pay for a background sample and a
+      // three-tap chromatic dispersion to bend an almost-constant colour.
+      //
+      // Returns PREMULTIPLIED colour + alpha. The background does not get sampled and refracted --
+      // it gets TRANSMITTED, and transmission is exactly what an alpha under premultiplied blending
+      // means. So `1 - alpha` carries Beer-Lambert's exp(-absorb*t), and the water is see-through
+      // where it is thin without the resolve ever reading what is behind it.
+      'fn shadeWater(uv : vec2<f32>, hpx : vec2<f32>, px : vec2<f32>, motion : f32) -> vec4<f32> {',
+      '  let d0 = waterD(uv);',
+      '  let m = smoothstep(0.0, 1.2, d0);',
+      '  if (m <= 0.002) { return vec4<f32>(0.0, 0.0, 0.0, 0.0); }',
+      '  let dR = waterD(uv + vec2<f32>(hpx.x, 0.0));',
+      '  let dL = waterD(uv - vec2<f32>(hpx.x, 0.0));',
+      '  let dD = waterD(uv + vec2<f32>(0.0, hpx.y));',
+      '  let dU = waterD(uv - vec2<f32>(0.0, hpx.y));',
+      // per-FULL-res-px central difference: the taps are one half-res texel (= 2 px) either side
+      '  let gx = (normField(dR) - normField(dL)) * 0.25;',
+      '  let gy = (normField(dD) - normField(dU)) * 0.25;',
+      // +y is DOWN in screen space and UP in the field, hence the asymmetric sign on the two
+      '  let nv = normalize(vec3<f32>(-gx * R.normAmp, gy * R.normAmp, 2.1));',
+      '  let tt = clamp(2.0 * d0 / R.thickChar, 0.0, THICK_MAX);',
+      '  let trans = exp(-0.52 * tt);',
+      '  var col = (W_SHALLOW * trans + W_DEEP * (1.0 - trans)) * (1.0 - trans);',
+      '  let dim = 1.0 - 0.16 * smoothstep(0.6, THICK_MAX, tt);',
+      '  col = col * dim;',
+      // Fresnel: cos(theta) IS nv.z, so the flat interior stays clear and the rim turns mirror
+      '  let cosT = clamp(nv.z, 0.0, 1.0);',
+      '  let F = 0.02 + 0.98 * pow(1.0 - cosT, 5.0);',
+      '  let sky = clamp(0.55 + 0.45 * (2.0 * nv.z * nv.y), 0.0, 1.0);',
+      '  let env = ENV_SKY * sky + ENV_GND * (1.0 - sky);',
+      '  var emit = col * (1.0 - F) + env * F;',
+      '  emit = emit + ENV_SKY * (0.34 * pow(1.0 - cosT, 3.0));',
+      '  let ld = normalize(vec3<f32>(-0.55, 0.72, 0.55));',
+      '  let hv = normalize(ld + vec3<f32>(0.0, 0.0, 1.0));',
+      '  let ndh = clamp(dot(nv, hv), 0.0, 1.0);',
+      '  emit = emit + vec3<f32>(1.0, 1.0, 0.97) * (3.4 * pow(ndh, 70.0) + 0.10 * pow(ndh, 8.0));',
+      // foam: fast AND at the surface, or genuinely thin. Ungated foam speckles the interior, which
+      // is how the old water got its permanent white froth. `motion` is the GRID velocity under the
+      // pixel -- already bound to this shader for the grid view, so the cue is free.
+      '  let band = smoothstep(0.02, 0.14, length(vec2<f32>(gx, gy)) * R.featherW);',
+      '  let thin = m * smoothstep(0.16, 0.02, tt);',
+      '  var fo = clamp(0.95 * (0.9 * motion * band + 0.22 * thin), 0.0, 1.0);',
+      '  fo = fo * (0.55 + 0.45 * hash21(px * 0.35));',
+      '  emit = mix(emit, W_FOAM, fo);',
+      '  let through = trans * dim * (1.0 - F) * (1.0 - fo);',
+      '  return vec4<f32>(tonemapW(emit) * m, m * (1.0 - through));',
+      '}',
+      '',
       '@fragment fn fs_resolve(o : VOut) -> @location(0) vec4<f32> {',
       '  let ip = vec2<i32>(o.p.xy);',
       '  let c = textureLoad(acc, ip, 0);',
@@ -822,10 +1024,25 @@ import './params.js';
       '  var col = vec3<f32>(0.0);',
       '  var alp = 1.0;',
       '',
-      '  if (mid == M_FLUID) {',
-      // ---------------- WATER, option B "film" ----------------
-      // Beer-Lambert through the reconstructed thickness, a tight specular, a Fresnel rim, and foam
-      // where the sheet is thin and steep. No background sample, no dispersion.
+      '  if (mid == M_FLUID && R.dimAlpha > 1.5) {',
+      // ---------------- WATER, option B "film", on the RECONSTRUCTED iso-surface ----------------
+      // Nothing above this line reaches the water any more. `a`, `grad`, `nrm`, `th` and `edge` are
+      // all local functions of the raw splat accumulation, and a Poisson sample of particles makes
+      // every one of them lumpy at the particle scale. Water reads its surface out of the distance
+      // field instead, and returns premultiplied straight away.
+      '    let dims = vec2<f32>(textureDimensions(acc));',
+      '    let uvf = o.p.xy / dims;',
+      '    let hpx = 1.0 / vec2<f32>(textureDimensions(distT));',
+      '    let gi = vec2<i32>(clamp(o.uv * f32(' + N_GRID + '), vec2<f32>(0.0), vec2<f32>(' + (N_GRID - 1) + '.0)));',
+      '    let motion = smoothstep(1.7, 3.7, length(gv[gi.x * ' + N_GRID + ' + gi.y].xy));',
+      '    return shadeWater(uvf, hpx, o.p.xy, motion);',
+      '  } else if (mid == M_FLUID) {',
+      // ---- the water T-027 ORIGINALLY SHIPPED, kept live so this rework has an honest before ----
+      // It is T-020's film SHADING (Beer-Lambert, a tight specular, a Fresnel rim, gated foam) over
+      // a thickness and a normal read from four local taps of the raw accumulation -- which is
+      // precisely the half that was missing. Keeping it costs one branch and buys a before/after
+      // that changes ONE thing: snow, sand, rubber, the physics and the particle positions are
+      // identical on both sides, so anything that differs is the water reconstruction.
       '    let absorb = exp(-vec3<f32>(0.46, 0.19, 0.10) * min(th, 7.0) * 0.62);',
       '    let dif = 0.62 + 0.38 * max(0.0, dot(nrm, ld));',
       '    let spec = pow(max(0.0, dot(nrm, hv)), 46.0);',
@@ -872,7 +1089,12 @@ import './params.js';
       '    col = mix(col, base * 0.20, band * 0.62);',
       '    alp = min(1.0, 0.30 + 1.7 * edge);',
       '  }',
-      '  return vec4<f32>(col, alp);',
+      // PREMULTIPLIED. Snow, sand and rubber are bit-for-bit what they were -- col*alp under
+      // srcFactor 'one' is the same arithmetic as col under srcFactor 'src-alpha'. The switch
+      // exists for water: a transmitting body needs its background coefficient (Beer-Lambert's
+      // exp(-absorb*t)) to be independent of how much colour it adds, and only premultiplied alpha
+      // can express that without the shader sampling what is behind it.
+      '  return vec4<f32>(col * alp, alp);',
       '}',
       '',
       // ---- the PREVIOUS single treatment, kept as a live alternative -------------------------
@@ -1295,7 +1517,7 @@ import './params.js';
     var re = ci.messages.filter(function (m) { return m.type === 'error'; });
     if (re.length) throw new Error('render WGSL: ' + re.map(function (m) { return m.lineNum + ': ' + m.message; }).join(' | '));
 
-    var rBuf = device.createBuffer({ size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    var rBuf = device.createBuffer({ size: 48, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
     var layout = device.createBindGroupLayout({
       entries: [
         { binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } },
@@ -1304,8 +1526,26 @@ import './params.js';
         { binding: 3, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'read-only-storage' } }
       ]
     });
+    // Two group-1 shapes. The reconstruction passes read ONE texture through a linear sampler;
+    // the final resolve additionally reads the finished distance field. A pipeline layout may be a
+    // superset of what its entry point uses, which is why one WGSL module covers both.
     var texLayout = device.createBindGroupLayout({
-      entries: [{ binding: 0, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } }]
+      entries: [
+        { binding: 0, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
+        { binding: 1, visibility: GPUShaderStage.FRAGMENT, sampler: { type: 'filtering' } }
+      ]
+    });
+    var texLayoutR = device.createBindGroupLayout({
+      entries: [
+        { binding: 0, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
+        { binding: 1, visibility: GPUShaderStage.FRAGMENT, sampler: { type: 'filtering' } },
+        { binding: 2, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } }
+      ]
+    });
+    // The per-pass argument, bound at a dynamic offset. See the SParams comment in the shader.
+    var stepLayout = device.createBindGroupLayout({
+      entries: [{ binding: 0, visibility: GPUShaderStage.FRAGMENT,
+        buffer: { type: 'uniform', hasDynamicOffset: true, minBindingSize: 32 } }]
     });
     var bind = device.createBindGroup({
       layout: layout,
@@ -1316,12 +1556,25 @@ import './params.js';
         { binding: 3, resource: { buffer: sim.buffers.gv } }
       ]
     });
+    var linSamp = device.createSampler({ magFilter: 'linear', minFilter: 'linear' });
     var pl = device.createPipelineLayout({ bindGroupLayouts: [layout] });
     var pl2 = device.createPipelineLayout({ bindGroupLayouts: [layout, texLayout] });
+    var plR = device.createPipelineLayout({ bindGroupLayouts: [layout, texLayoutR] });
+    var plS = device.createPipelineLayout({ bindGroupLayouts: [layout, texLayout, stepLayout] });
     var blendAlpha = { color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha' },
+      alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' } };
+    // The resolve is premultiplied so water can transmit; see the return in fs_resolve.
+    var blendPre = { color: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' },
       alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' } };
     var blendAdd = { color: { srcFactor: 'one', dstFactor: 'one' },
       alpha: { srcFactor: 'one', dstFactor: 'one' } };
+    function recon(entry, format) {
+      return device.createRenderPipeline({
+        layout: plS, vertex: { module: mod, entryPoint: 'vs_full' },
+        fragment: { module: mod, entryPoint: entry, targets: [{ format: format }] },
+        primitive: { topology: 'triangle-list' }
+      });
+    }
 
     var pParticles = device.createRenderPipeline({
       layout: pl, vertex: { module: mod, entryPoint: 'vs_particles' },
@@ -1334,10 +1587,15 @@ import './params.js';
       primitive: { topology: 'triangle-list' }
     });
     var pResolve = device.createRenderPipeline({
-      layout: pl2, vertex: { module: mod, entryPoint: 'vs_full' },
-      fragment: { module: mod, entryPoint: 'fs_resolve', targets: [{ format: fmt, blend: blendAlpha }] },
+      layout: plR, vertex: { module: mod, entryPoint: 'vs_full' },
+      fragment: { module: mod, entryPoint: 'fs_resolve', targets: [{ format: fmt, blend: blendPre }] },
       primitive: { topology: 'triangle-list' }
     });
+    // the water reconstruction, in the order it runs: blur -> threshold+seed -> flood -> distance
+    var pBlur = recon('fs_blur', 'r16float');
+    var pSeed = recon('fs_seed', 'rg16float');
+    var pJfa = recon('fs_jfa', 'rg16float');
+    var pDist = recon('fs_dist', 'r16float');
     var pResolveMvp = device.createRenderPipeline({
       layout: pl2, vertex: { module: mod, entryPoint: 'vs_full' },
       fragment: { module: mod, entryPoint: 'fs_resolve_mvp', targets: [{ format: fmt, blend: blendAlpha }] },
@@ -1362,22 +1620,109 @@ import './params.js';
     var err = await device.popErrorScope();
     if (err) throw new Error('renderer setup: ' + err.message);
 
+    // ---- the screen-space targets -----------------------------------------------------------
+    // accTex is full resolution; everything the water reconstruction touches is HALF, so the
+    // eleven extra passes cost a quarter of the pixels each. RECON_DIV is the one knob: raise it
+    // and the whole chain gets cheaper and softer at exactly the same rate.
+    var RECON_DIV = 2;
+    var STEP_STRIDE = 256;                          // minUniformBufferOffsetAlignment
+    var MAX_JFA = 8;
     var accTex = null, accView = null, accBind = null, accW = 0, accH = 0;
+    var reconTex = [], reconBind = [], resolveBind = null, hw = 0, hh = 0, jfaSteps = [];
+    var sBuf = device.createBuffer({
+      size: STEP_STRIDE * (2 + MAX_JFA), usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    var sBind = device.createBindGroup({
+      layout: stepLayout, entries: [{ binding: 0, resource: { buffer: sBuf, size: 32 } }] });
+
+    function halfTex(format) {
+      return device.createTexture({ size: [hw, hh], format: format,
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING });
+    }
     function ensureAcc() {
       if (accTex && accW === canvas.width && accH === canvas.height) return;
       if (accTex) accTex.destroy();
+      reconTex.forEach(function (t) { t.destroy(); });
       accW = canvas.width; accH = canvas.height;
+      hw = Math.max(1, Math.ceil(accW / RECON_DIV));
+      hh = Math.max(1, Math.ceil(accH / RECON_DIV));
       accTex = device.createTexture({
         size: [accW, accH], format: 'rgba16float',
         usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
       });
       accView = accTex.createView();
-      accBind = device.createBindGroup({ layout: texLayout, entries: [{ binding: 0, resource: accView }] });
+      // 0 blurH result | 1 blurV result (the smoothed density) | 2,3 jump-flood ping-pong |
+      // 4 the finished distance field. rg16float holds a seed coordinate exactly (f16 is exact on
+      // integers to 2048, and half of any sane canvas is well under that) and -1 as "no seed"; the
+      // 16-bit float formats are also FILTERABLE, which 32-bit float is not, and the resolve needs
+      // to bilinearly upsample the distance field.
+      reconTex = ['r16float', 'r16float', 'rg16float', 'rg16float', 'r16float'].map(halfTex);
+      var views = reconTex.map(function (t) { return t.createView(); });
+      accBind = device.createBindGroup({ layout: texLayout,
+        entries: [{ binding: 0, resource: accView }, { binding: 1, resource: linSamp }] });
+      reconBind = views.map(function (v) {
+        return device.createBindGroup({ layout: texLayout,
+          entries: [{ binding: 0, resource: v }, { binding: 1, resource: linSamp }] });
+      });
+      resolveBind = device.createBindGroup({ layout: texLayoutR, entries: [
+        { binding: 0, resource: accView }, { binding: 1, resource: linSamp },
+        { binding: 2, resource: views[4] }
+      ] });
+      reconView = views;
+      calW = 0;                                     // force a recalibration at the new size
     }
+    var reconView = [];
 
-    var ru = new Float32Array(8);
+    var ru = new Float32Array(12);
     var ruU = new Uint32Array(ru.buffer);
     var CLEAR = { r: 0.0235, g: 0.0353, b: 0.051, a: 1 };
+
+    // ---- calibrating the reconstruction to the scene, in physical units ----------------------
+    // T-020's masks are thresholded at a fraction of FULL PACKING and its lengths are quoted
+    // relative to a 1080 px frame, so both have to be re-derived for whatever canvas this is.
+    //
+    //   packRef  a particle deposits (pi/3)*rpx^2 of weight (the integral of the (1-r^2)^2 kernel
+    //            over its disc), and a packed region holds 1/pVol particles per unit domain area,
+    //            so a packed pixel accumulates (1/pVol)/(W*H) * (pi/3) * rpx^2.
+    //   sigma    T-020 blurs a POINT histogram to sigma 6.5 px at 720, i.e. 0.00903 of the frame.
+    //            The demo's splat is already a disc of radius rpx, worth sigma 0.354*rpx, so only
+    //            the REMAINDER in quadrature has to be added -- and it is added at half resolution.
+    var sArg = new Float32Array(8 * (2 + MAX_JFA));
+    var calW = 0, calH = 0, calR = 0;
+    function calibrate(radius) {
+      var thickChar = 55.0 * (accW / 1080.0);       // px of distance per unit optical depth
+      ru[8] = (1.0 / sim.params.pVol) / (accW * accH) * (Math.PI / 3.0)
+        * Math.pow(radius * 0.5 * accW, 2);         // packRef
+      ru[9] = thickChar;
+      ru[10] = 3.0 * (accW / 1080.0);               // normAmp, T-020's 3.0 * res/1080
+      // featherW: the normal band, in HALF-res px, matched to T-020's sigma 2.97 at 720. A
+      // smoothstep of width e has slope 1.5/e where a gaussian step has 0.399/sigma; equating the
+      // two (and converting per-full-px to per-half-px) is where the 0.00776 comes from.
+      ru[11] = Math.max(1.5, 0.00776 * accW);
+      if (calW === accW && calH === accH && calR === radius) return;
+      calW = accW; calH = accH; calR = radius;
+      var sigSplat = 0.354 * (radius * 0.5 * accW);
+      var sigWant = 0.009028 * accW;
+      var sigExtra = Math.sqrt(Math.max(0, sigWant * sigWant - sigSplat * sigSplat)) / RECON_DIV;
+      sigExtra = Math.max(0.4, sigExtra);
+      sArg.fill(0);
+      sArg[0] = 1; sArg[2] = sigExtra; sArg[4] = hw; sArg[5] = hh;   // slot 0: horizontal
+      sArg[9] = 1; sArg[10] = sigExtra; sArg[12] = hw; sArg[13] = hh; // slot 1: vertical
+      // How far the flood has to reach: past the cap the absorption has saturated, so a pixel the
+      // flood never touched can safely be told "you are at the cap". A start step s reaches 2s-1.
+      var capHalf = thickChar * 3.2 / RECON_DIV;
+      var s = 1;
+      while (2 * s - 1 < capHalf && s < 128) s *= 2;
+      jfaSteps = [];
+      for (var k = s; k >= 1 && jfaSteps.length < MAX_JFA; k = k >> 1) jfaSteps.push(k);
+      jfaSteps.forEach(function (st, i) {
+        var o = 8 * (2 + i);
+        sArg[o] = st; sArg[o + 1] = capHalf * 1.05; sArg[o + 4] = hw; sArg[o + 5] = hh;
+      });
+      // fs_dist reads its cap out of the LAST jump-flood slot's argument, so no extra slot.
+      for (var i = 0; i < 2 + MAX_JFA; i++) {
+        device.queue.writeBuffer(sBuf, i * STEP_STRIDE, sArg, i * 8, 8);
+      }
+    }
 
     // Render cost is measured with the GPU's OWN clock, for the same reason the solver's is:
     // performance.now() is clamped to ~100 us in Chromium, and a screen-space treatment that costs
@@ -1404,13 +1749,18 @@ import './params.js';
         ru[4] = o.massRef !== undefined ? o.massRef : 24.0;
         ru[5] = o.iso !== undefined ? o.iso : 1.0;
         var mvp = o.treatment === 'mvp';
-        ru[6] = mvp ? 0.0 : 1.0;             // the treatment switch, read by vs_particles
+        // The treatment switch, read by vs_particles (rubber's smaller kernel) and by fs_resolve
+        // (which water):  0 = the pre-T-027 single treatment,  1 = T-027 as originally shipped
+        // (four treatments, water off four local taps),  2 = + this rework's iso-surface water.
+        var wchain = !mvp && o.water !== false;
+        ru[6] = mvp ? 0.0 : (wchain ? 2.0 : 1.0);
         ruU[7] = (o.odd === undefined ? 0xffffffff : o.odd) >>> 0;
+
+        if (view === 'blob') { ensureAcc(); calibrate(ru[0]); }  // fills ru[8..11] from the canvas
         device.queue.writeBuffer(rBuf, 0, ru);
 
         var timed = !!o.timed && !!rq && !rqBusy;
         if (view === 'blob') {
-          ensureAcc();
           var pa = enc.beginRenderPass({
             colorAttachments: [{ view: accView, clearValue: { r: 0, g: 0, b: 0, a: 0 },
               loadOp: 'clear', storeOp: 'store' }],
@@ -1418,13 +1768,48 @@ import './params.js';
           });
           if (sim.n > 0) { pa.setBindGroup(0, bind); pa.setPipeline(pSplat); pa.draw(6, sim.n); }
           pa.end();
+          // ---- the water reconstruction, between the splat and the shade -----------------------
+          // Eleven half-resolution passes: two separable blurs (the first of which also does the
+          // 2x downsample), a threshold-and-seed, the jump flood, and seeds -> distance. Skipped
+          // outright when the scene holds no water, which is the honest cost model: this is
+          // WATER's structure, not the frame's, and a scene with no fluid pays none of it.
+          // `chainReps` is a MEASUREMENT hook and nothing else: the page always draws it once.
+          // Chromium quantises timestamp-query results (65.536 us here), and the whole chain is
+          // smaller than one quantum, so the only honest way to price it is to run it K times in
+          // one timed region and take the slope. It writes the same textures every time, so the
+          // pixels are identical and the GPU cannot skip the work.
+          var creps = Math.max(1, o.chainReps || 1);
+          if (wchain && sim.n > 0) {
+            var chain = [
+              { pipe: pBlur, src: accBind, dst: 0, slot: 0 },     // horizontal + downsample
+              { pipe: pBlur, src: reconBind[0], dst: 1, slot: 1 },// vertical
+              { pipe: pSeed, src: reconBind[1], dst: 2, slot: 1 } // threshold -> seeds
+            ];
+            var cur = 2;
+            for (var j = 0; j < jfaSteps.length; j++) {
+              chain.push({ pipe: pJfa, src: reconBind[cur], dst: 5 - cur, slot: 2 + j });
+              cur = 5 - cur;                                      // ping-pong between 2 and 3
+            }
+            chain.push({ pipe: pDist, src: reconBind[cur], dst: 4,
+              slot: 1 + jfaSteps.length });                       // reuses the last flood's cap
+            for (var c = 0; c < chain.length * creps; c++) {
+              var st = chain[c % chain.length];
+              var rp = enc.beginRenderPass({ colorAttachments: [{ view: reconView[st.dst],
+                clearValue: { r: 0, g: 0, b: 0, a: 0 }, loadOp: 'clear', storeOp: 'store' }] });
+              rp.setBindGroup(0, bind);
+              rp.setBindGroup(1, st.src);
+              rp.setBindGroup(2, sBind, [st.slot * STEP_STRIDE]);
+              rp.setPipeline(st.pipe); rp.draw(6, 1);
+              rp.end();
+            }
+          }
           var pb = enc.beginRenderPass({
             colorAttachments: [{ view: ctx.getCurrentTexture().createView(),
               clearValue: CLEAR, loadOp: 'clear', storeOp: 'store' }],
             timestampWrites: timed ? { querySet: rq, endOfPassWriteIndex: 1 } : undefined
           });
           pb.setBindGroup(0, bind);
-          pb.setBindGroup(1, accBind);
+          pb.setBindGroup(1, mvp ? accBind : resolveBind);
           pb.setPipeline(mvp ? pResolveMvp : pResolve); pb.draw(6, 1);
           // Pass C, in the SAME render pass as the resolve so there is no extra attachment
           // load/store: six grains per particle over the packed sand body. Every instance whose
@@ -1464,8 +1849,14 @@ import './params.js';
         rqBusy = false;
         return Number(t[1] - t[0]);
       },
+      // How many render passes the last blob draw actually issued, so a timing can be attributed.
+      passCount: function (water) {
+        return 2 + (water === false ? 0 : 3 + jfaSteps.length + 1);
+      },
       destroy: function () {
         if (accTex) accTex.destroy();
+        reconTex.forEach(function (t) { t.destroy(); });
+        sBuf.destroy();
         if (rq) { rq.destroy(); rqResolve.destroy(); rqRead.destroy(); }
       }
     };

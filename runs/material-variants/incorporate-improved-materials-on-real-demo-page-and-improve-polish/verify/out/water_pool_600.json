@@ -1,0 +1,14 @@
+{
+  "tag": "pool",
+  "scene": "pool",
+  "res": 600,
+  "frames": 90,
+  "spf": 333,
+  "n": 5982,
+  "dt": 0.00005,
+  "treatment": "t027r-per-material-water-isosurface",
+  "physics_version": "phys-c518316a4a05",
+  "mean_abs_motion": 0.1131698211914396,
+  "cost_ms": null,
+  "errors": []
+}

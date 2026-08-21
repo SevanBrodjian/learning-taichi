@@ -16,8 +16,43 @@ O = M["ordering_pass"]["mean_y_end_webgpu"]
 T3 = M["buoyancy"]["pool_three"]
 LP = M["layout"]["before_phone_portrait"], M["layout"]["after_phone_portrait"]
 LL = M["layout"]["before_phone_landscape"], M["layout"]["after_phone_landscape"]
+W = M["water_reconstruction"]
+W48, W72, W108 = (W["by_res"][k] for k in ("480", "720", "1080"))
+WTAB = ("| resolution | pixels | before | after | chain (direct) | chain (amplified) |\n"
+        "|---|---|---|---|---|---|\n" + "".join(
+    "| %s | %s | %.4f | %.4f | %.4f | %.4f |\n" % (
+        lab, format(v["pixels"], ","), v["before_gpu_ms"], v["after_gpu_ms"],
+        v["chain_gpu_ms_direct"], v["chain_gpu_ms_slope"])
+    for lab, v in (("480^2", W48), ("720^2", W72), ("1080^2", W108))) + "\n")
+WFRAME = ("%.2f ms of GPU work against a 16.67 ms budget, up from %.2f."
+          % (B["total_gpu_ms_water_rework"], B["total_gpu_ms"]))
 
 results = [
+    {"type": "video", "src": REL + "cmp_water.mp4",
+     "caption": "THE WATER REWORK, one variable, on the demo's own opening scene. Both halves are the "
+                "same build, the same physics, the same particle positions and the same snow, sand and "
+                "rubber; the only difference is whether the water reads its optical thickness and its "
+                "normal from a screen-space iso-surface or from four local taps of the raw splat "
+                "accumulation. Left is what this task originally shipped."},
+    {"type": "video", "src": REL + "cmp_water_pool.mp4",
+     "caption": "The same one-variable comparison on water alone plus one rubber ball, so the surface "
+                "and the spray are both in frame. Watch the surface line and the interior when the ball "
+                "lands."},
+    {"type": "image", "src": REL + "cmp_water_target.png",
+     "caption": "Did it land where the proposal was. Left: T-020's own Taichi render of option B "
+                "('film'), its own dam-break scene at 720px. Middle: the demo page now, WebGPU, its own "
+                "pool at 600px. Right: the water this task originally shipped. DIFFERENT SCENES and "
+                "different APIs, so this compares the treatment and not the pixels. Interior colour at "
+                "mid-depth: T-020 (50,90,112), the page now (51,90,109); nothing was tuned against that "
+                "number. Read that as a check on the colour pipeline, not as proof the two images are "
+                "equivalent -- T-020's pool is deeper (optical depth ~3.2 against ~1.7 here) and the "
+                "absorption curve is flat across that range."},
+    {"type": "image", "src": REL + "still_water_after.png",
+     "caption": "One frame of the demo's opening scene with the reconstruction on: a smooth interior, a "
+                "clean surface line, and faint spray that still reads as spray."},
+    {"type": "image", "src": REL + "still_water_before.png",
+     "caption": "The identical particle state as it originally shipped: T-020's water shading applied to "
+                "a thickness reconstructed from four local taps, which is lumpy at the particle scale."},
     {"type": "video", "src": REL + "cmp_buoyancy.mp4",
      "caption": "THE PHYSICS CHANGE, one variable. Snow, rubber and sand released at rest side by side "
                 "at the same depth in one pool, identical initial conditions and identical substep "
@@ -51,8 +86,10 @@ results = [
      "caption": "Final frame with the previously shipped single treatment. Sand and snow are the same "
                 "glossy material in two colours."},
     {"type": "image", "src": REL + "still_render_after.png",
-     "caption": "The identical particle state with the four treatments: granular sand, matte powder snow, "
-                "a darker film-like water, and rubber with a visible border."},
+     "caption": "The identical particle state with the four treatments as they now ship: granular sand, "
+                "matte powder snow, water on the screen-space iso-surface, and rubber with a visible "
+                "border. Re-shot after the water rework -- the earlier version of this still showed the "
+                "half-ported water."},
     {"type": "image", "src": REL + "shots/before_phone_landscape.png",
      "caption": "iPhone landscape, before: the control bar takes 251 px of a 390 px viewport and leaves "
                 "the field a 141 px square, with the HUD chips covering most of what is left."},
@@ -84,8 +121,10 @@ manifest = {
     "tldr": ("The Demo page now runs the current canonical physics, so snow floats and sand sinks on "
              "the page's own solver instead of every material weighing the same; snow, sand and water "
              "got their new looks and rubber got two tweaks to its old one; and the simulation is finally "
-             "square and usable on a phone, where it used to be stretched 42% tall. Nothing was done "
-             "about the timestep, so a phone still runs it in labelled slow motion."),
+             "square and usable on a phone, where it used to be stretched 42% tall. Water took two "
+             "attempts: the first shipped T-020's water SHADING on the old lumpy reconstruction and "
+             "still looked like the old water, and the reconstruction is what has now been ported. "
+             "Nothing was done about the timestep, so a phone still runs it in labelled slow motion."),
     "status": "active",
     "created": time.strftime("%Y-%m-%d"),
     "physics_version": M["physics_version"],
@@ -105,6 +144,18 @@ manifest = {
         "the user chose, and rubber keeps its old treatment with a smaller splat kernel and a real "
         "border. The whole drawing stage costs %.2f ms of a 16.7 ms frame at 16,384 particles against a "
         "solver that costs %.1f ms, so rendering is not what limits this page.\n\n"
+        "Water needed a second attempt and the reason is worth stating plainly: the first version of "
+        "this task ported T-020's water SHADING (Beer-Lambert absorption, a tight specular, a Fresnel "
+        "rim, gated foam) without the screen-space RECONSTRUCTION that shading reads, so every quantity "
+        "it lit came from four neighbour taps of the raw splat accumulation and the water stayed as "
+        "speckled as before. The reconstruction is now in WGSL as eleven half-resolution render passes "
+        "-- blur, threshold to a binary body, a jump-flood distance transform for optical thickness -- "
+        "and the pool's interior colour lands within 3/255 of T-020's own render of the same treatment "
+        "without anything being tuned to it (a check on the colour pipeline, not a proof of "
+        "equivalence -- the two pools sit at different optical depths on a locally flat part of the "
+        "absorption curve). It costs %.3f ms at 480 squared and %.3f ms at 1080 "
+        "squared, measured both as a difference against a matched control and as an amplified slope, "
+        "against a solver that costs %.1f ms.\n\n"
         "The layout had a bug worth naming: the field was sized so that on any viewport taller than it "
         "is wide the height won and the width clamped, which does not crop a square simulation domain, "
         "it stretches it. An iPhone in portrait was showing the physics 42%% too tall. It is now square "
@@ -112,7 +163,8 @@ manifest = {
         "from a 141 px field to a 390 px one. The large-monitor layout is untouched. Not addressed: the "
         "shared timestep still forces 333 substeps per frame whenever snow is present, so a phone runs "
         "this in honest slow motion rather than at 60 fps."
-    ) % (O["snow"], O["elastic"], O["sand"], B["render_gpu_ms_1024"], B["solver_gpu_ms"]),
+    ) % (O["snow"], O["elastic"], O["sand"], B["render_gpu_ms_1024_water_rework"], B["solver_gpu_ms"],
+         W48["chain_gpu_ms_direct"], W108["chain_gpu_ms_direct"], B["solver_gpu_ms"]),
 
     "findings": (
         "1. PHYSICS. The demo's WGSL step now computes each particle's mass as p_vol*rho[mid] from a "
@@ -127,13 +179,26 @@ manifest = {
         "%.3f ms to %.3f ms; almost all of the increase is a fixed +0.05 ms from the sand grain pass "
         "(6n instances, geometry-bound) and the per-pixel part of the resolve barely moved even though "
         "it now carries four shading models.\n"
-        "3. LAYOUT. Measured from the live layout at five viewports, not from CSS. The field was "
+        "3. WATER, and this is a CORRECTION to the first version of this finding. The shading was "
+        "ported and the reconstruction was not, and for water the reconstruction is the look. It now "
+        "runs T-020's build_masks in WGSL: a separable blur (whose sigma is chosen so the splat "
+        "kernel's own width plus the blur equals the smoothing T-020 applied to a point histogram), a "
+        "threshold at a fixed 0.24 of full packing, a jump-flood distance transform, and optical "
+        "thickness read off that distance rather than off a local density count. Eleven extra render "
+        "passes at half resolution. Measured cost of the chain alone, before-vs-after in the same run "
+        "with the same instrument: %.4f ms at 480^2, %.4f at 720^2, %.4f at 1080^2, cross-checked "
+        "against an amplified slope that agrees to within the timestamp quantum. Sub-linear in pixels "
+        "(x1.9 for x5.1 the pixels) because a fixed ~0.020 ms of twelve-render-pass setup dominates at "
+        "these sizes. Snow, sand, rubber, the physics and the layout are unchanged and were re-measured "
+        "to confirm it: the layout re-shoots byte-for-byte identical at all five viewports.\n"
+        "4. LAYOUT. Measured from the live layout at five viewports, not from CSS. The field was "
         "42%% non-square on an iPhone in portrait and 141 px across in landscape; it is now square at "
         "all five and 390 px in landscape. Smallest control 29 px -> 40 px. Laptop and desktop "
         "unchanged."
     ) % (T3["snow"]["webgpu"]["rest_depth_change"], T3["snow"]["webgpu"]["submerged_fraction"],
          T3["elastic"]["webgpu"]["rest_depth_change"], T3["sand"]["webgpu"]["rest_depth_change"],
-         B["render_gpu_ms_1024_before"], B["render_gpu_ms_1024"]),
+         B["render_gpu_ms_1024_before"], B["render_gpu_ms_1024"],
+         W48["chain_gpu_ms_direct"], W72["chain_gpu_ms_direct"], W108["chain_gpu_ms_direct"]),
 
     "hypothesis": (
         "HYPOTHESIS, not observation. The reason regenerating params.js was necessary but nowhere near "
@@ -150,6 +215,16 @@ manifest = {
         "registers, while the one treatment that added geometry (sand's grains) is the one that showed "
         "up in the timing, and showed up as a resolution-independent constant. That is consistent with "
         "the two measured resolutions here but is a claim about one renderer on one GPU.\n\n"
+        "The water rework adds a sharper version of the same hypothesis, and this one has a piece of "
+        "evidence behind it: a material's identity lives in the RECONSTRUCTION, not in the shading, so "
+        "porting a lighting model without the fields it reads reproduces the old look with new "
+        "arithmetic. What makes it more than a slogan here is that the failure was silent in every way "
+        "a code review can check -- the WGSL compiled, the constants matched the proposal, the shading "
+        "terms were all present, and the result was reported as done. The only thing that would have "
+        "caught it is putting the rendered frame next to the proposal's frame and looking. Scope: one "
+        "material, one renderer; the three treatments whose look IS mostly shading (snow, sand, rubber) "
+        "transferred correctly the first time, which is consistent with the hypothesis and is also why "
+        "the failure was easy to miss.\n\n"
         "WOULD TEST: run the same four treatments at 2160^2 and at 65,536 particles, where the "
         "fill-bound and geometry-bound terms should cross over; and check the buoyancy ordering at a "
         "second particle density and blob radius, since the current result is one scene."
@@ -166,12 +241,37 @@ manifest = {
         "mass-weighted blend, which is a mixture rule, not contact. The pool_fluid control's agreement "
         "ratio of 5.25x is the widest and is an artefact of a tiny denominator, not a disagreement worth "
         "5.25 of anything (absolute traj_rmse 0.000045 domain lengths).\n\n"
+        "WATER. The reconstruction is a port of T-020's structure, not of its code: the blur is 13 "
+        "bilinear taps rather than a full separable kernel, the morphological grey-close is dropped "
+        "(the wider blur seals the pinholes it existed for), the distance field runs at HALF resolution "
+        "and is upsampled bilinearly, and the foam's motion gate reads the GRID velocity under the "
+        "pixel instead of a mass-weighted splat of particle speed (the grid buffer was already bound "
+        "to the fragment stage, so that cue is free; a separate speed splat would have cost an extra "
+        "render target on the heaviest pass). Each of those is a place the image could differ from "
+        "T-020's, and 'looks like the proposal' is judged from the three-way still and from the "
+        "sampled interior colour, not proven. The tone curve is applied to WATER ONLY, because water "
+        "is the only one of the four whose colour is a computed radiance rather than a palette tint -- "
+        "that is a deliberate inconsistency and it is the reason the water sits in a different value "
+        "range from the other three. Every timing is at ONE particle count and ONE scene; the chain's "
+        "cost is pixel-bound and should be independent of particle count, but that was not tested.\n\n"
+        "A CONSEQUENCE WORTH KNOWING BEFORE ACCEPTING THIS. Option B makes SHALLOW water nearly "
+        "invisible, and that is not a bug in the port, it is what the treatment is: transmission goes "
+        "as exp(-absorb*t), so a thin sheet transmits almost everything and the demo's background is "
+        "nearly black. Found by driving the real page: pouring water into an empty scene gives a "
+        "sheet that reads about (16,36,44) against a (6,9,13) background until enough depth "
+        "accumulates. The default pool (0.155 of the domain deep) is well clear of this and reads "
+        "strongly; a user's own small pour does not, until it pools. The previously shipped water had "
+        "the opposite failing -- it was equally bright at every depth, which is why it had no depth "
+        "cue at all. If the shallow case matters more than the deep one, the knob is `absorb` (0.52) "
+        "or a small ambient floor, and neither was touched here because neither is T-020's.\n\n"
         "RENDERING. Interfaces take the DOMINANT material's treatment, so a water/sand boundary is a "
         "one-pixel switch of shading model rather than a blend. Not visible at this splat radius; it "
         "would be at a larger one. 'Looks better' is a judgement and is not measured anywhere here; what "
-        "was measured is frame cost. The treatments are WGSL reinterpretations of T-020's Taichi "
+        "was measured is frame cost. Snow, sand and rubber are WGSL reinterpretations of T-020's Taichi "
         "proposals, matched to their published descriptions rather than ported line for line, so they "
-        "are the chosen treatments in character and not pixel-identical to T-020's images.\n\n"
+        "are the chosen treatments in character and not pixel-identical to T-020's images. Water is now "
+        "the exception: its palette, absorption, Fresnel, rim, specular and tone curve are T-020's "
+        "constants, and its reconstruction is T-020's structure, with the deviations listed above.\n\n"
         "LAYOUT. NO PHYSICAL DEVICE WAS TESTED. The five viewports are device-metric overrides in a "
         "desktop Chromium (390x844, 844x390, 820x1180, 1280x800, 1920x1080), which establishes what "
         "fits and what the layout does, and says nothing about a real phone's touch handling, its "
@@ -227,7 +327,8 @@ manifest = {
         "- **Water: T-020 option B, 'film'.** Chosen over option A ('glass') because the demo's "
         "background is a flat dark gradient, so option A's background sampling and three-tap chromatic "
         "dispersion would be paying to refract an almost constant colour. B was also the cheaper of the "
-        "two in T-020's measurement.\n"
+        "two in T-020's measurement. This is the treatment that took two attempts -- see 'The water "
+        "rework' below.\n"
         "- **Snow: option A, 'powder'.** The specular is gone entirely (the glint is what read as wet "
         "plastic), replaced with wrap lighting, thin snow brightened, crevices darkened by the Laplacian "
         "of the weight field, a fine hashed crystal grain, and a translucent bright fringe.\n"
@@ -256,6 +357,86 @@ manifest = {
         "instrument works.\n\n"
         "Solver: 6.91 ms at 16,384 particles and 333 substeps (999 dispatches). Total GPU work 7.06 ms "
         "of a 16.67 ms frame. Drawing is 0.9% of the budget and the solver is 41%.\n\n"
+        "## The water rework\n\n"
+        "This part of the task shipped wrong and was sent back. The correction is worth recording "
+        "precisely, because the failure mode is invisible to code review.\n\n"
+        "**What was ported the first time.** T-020's `shade_water` for option B, essentially line for "
+        "line: Beer-Lambert absorption on the optical thickness, the shallow-to-deep palette blend, a "
+        "Fresnel-weighted sky, a grazing rim, a tight Blinn-Phong glint, foam gated to the fast and "
+        "thin surface band. All of it compiled, all of it ran, and the water looked exactly like the "
+        "water it was supposed to replace.\n\n"
+        "**Why that was not enough.** Every input to that shading is a FIELD, and the fields came from "
+        "the wrong place. `th` was `a / iso` -- the local accumulated splat weight -- and `nrm` was the "
+        "gradient of the same `a` over four neighbour taps. A splat accumulation is a sum of a few "
+        "thousand overlapping compact kernels dropped at a Poisson sample of positions, so it is lumpy "
+        "at the particle spacing by construction. Beer-Lambert on a lumpy thickness gives a lumpy "
+        "colour; a specular on a lumpy normal gives thousands of little highlights. That is the "
+        "'smoothie'. **The shading was never the treatment.**\n\n"
+        "**What actually makes T-020's water look like water** is the separation in `build_masks`: one "
+        "threshold cannot both decide *is there water here* (which wants a generous cut and pinholes "
+        "sealed) and *which way does the surface face* (which wants fine slope), so the filled body "
+        "owns opacity and thickness while a wide band around its iso-surface owns the normal. Density "
+        "noise then reaches neither. Optical thickness comes from a **distance transform** of the "
+        "binary body: distance to the nearest non-water pixel. A distance field cannot carry "
+        "particle-scale noise because it does not know where the particles are, only where the surface "
+        "is.\n\n"
+        "**The WGSL chain**, eleven passes between the existing splat and the existing resolve, all at "
+        "half resolution:\n\n"
+        "1. **Separable Gaussian, 2 passes.** The horizontal pass reads the full-resolution "
+        "accumulation and writes half resolution, so the downsample is free. Its sigma is derived, not "
+        "guessed: T-020 blurs a POINT histogram to sigma 6.5 px at 720 (0.00903 of the frame), the "
+        "demo's disc splat is already worth sigma 0.354*rpx, so only the remainder in quadrature is "
+        "added.\n"
+        "2. **Threshold and seed, 1 pass.** The cut is 0.24 of FULL PACKING, and full packing is "
+        "computed by the host from the particle density and the splat radius -- a particle deposits "
+        "(pi/3)*rpx^2 of weight, a packed region holds 1/pVol particles per unit area. A fixed physical "
+        "reference rather than a per-frame percentile is what keeps a thin sheet of spray reading as "
+        "thin. Every pixel outside the body seeds itself with its own coordinate.\n"
+        "3. **Jump flood, 6-7 passes.** Doubling steps from a start chosen so the flood's reach covers "
+        "the depth at which the absorption saturates; anything past that is clamped anyway.\n"
+        "4. **Seeds to distance, 1 pass**, with a 3x3 box, because a distance field off a thresholded "
+        "mask is quantised in whole pixels and Beer-Lambert turns quantisation into banding.\n\n"
+        "Three implementation details were forced by the platform rather than chosen. **Per-pass "
+        "arguments** (blur direction, flood step) go through one uniform buffer bound at a DYNAMIC "
+        "OFFSET, because a `queue.writeBuffer` between two `beginRenderPass` calls is ordered on the "
+        "queue and would apply to every pass in the submission. **The distance field is rg16float**: "
+        "f16 is exact on integers to 2048 so a seed coordinate survives it, and the 16-bit float "
+        "formats are filterable where 32-bit float is not, which the resolve needs to bilinearly "
+        "upsample. **The resolve became premultiplied.** Water transmits, and transmission has to be "
+        "independent of how much colour the water adds; under premultiplied alpha `1 - alpha` carries "
+        "exp(-absorb*t) exactly, so the water is see-through without the resolve ever sampling what is "
+        "behind it. Snow, sand and rubber are bit-identical under the change -- `col*alp` with "
+        "srcFactor `one` is the same arithmetic as `col` with srcFactor `src-alpha`.\n\n"
+        "One thing was added that is not in T-020's structure and one was left out. Added: T-020's "
+        "**tone curve** is applied to the water and only to the water. T-020's pipeline tonemaps the "
+        "whole frame; the demo does not, and writing a Beer-Lambert radiance straight to an 8-bit "
+        "non-sRGB swapchain is what produced a near-black pool on the first build of this chain. Water "
+        "is the only one of the four whose colour is a computed radiance rather than a palette tint, so "
+        "it is the only one that needs a transfer. Left out: the **speed splat**. T-020 gates foam on a "
+        "mass-weighted splat of particle speed; that would need a second render target on the heaviest "
+        "pass in the frame, and the grid velocity buffer is already bound to the fragment stage for the "
+        "grid view, so the gate reads `gv` under the pixel instead. It was checked rather than assumed "
+        "-- 237 whitewater pixels at the splash peak against 109 before.\n\n"
+        "**Where it landed.** The pool's interior at mid-depth reads (51, 90, 109) against T-020's "
+        "(50, 90, 112) on the equivalent depth of its own render. Nothing was fitted to that; it falls "
+        "out of using T-020's palette, absorption coefficient and tone curve.\n\n"
+        "**Cost**, from `timestamp-query` across the whole blob draw at 16,384 particles, `before` "
+        "being this task exactly as it originally shipped and `after` the same build with the chain on "
+        "-- same run, same instrument, same frame:\n\n"
+        + WTAB +
+        "It is priced twice because once was not trustworthy. **Chromium quantises "
+        "`timestamp-query`**, and with `--disable-dawn-features=timestamp_quantization` the residual "
+        "granularity was still 16-33 us, which is the same size as the thing being measured. So the "
+        "chain is measured as a difference against a matched control AND as the slope of running it K "
+        "times inside one timed region; the two agree to within the quantum. A first pass at this, "
+        "before the flag went on, returned exact multiples of 32,768 ns for everything -- that number "
+        "is the quantum, not a cost, and it is now written into the `render_gpu_ms` registry entry so "
+        "the next task does not rediscover it.\n\n"
+        "The cost is **sub-linear in pixels** (x1.9 for x5.1 the pixels). That is the honest shape of "
+        "twelve render passes: a fixed ~0.020 ms of attachment setup dominates at demo resolutions and "
+        "~0.025 ms per megapixel is the marginal cost. It does move with resolution, which is what says "
+        "the instrument is reading the GPU rather than the clock. Whole frame: "
+        + WFRAME + "\n\n"
         "## Layout\n\n"
         "The failure was a distortion, not crowding. `.frame` was `aspect-ratio:1/1; height:100%; "
         "max-width:100%`, and when max-width binds, the explicit height wins and the aspect ratio does "
@@ -293,8 +474,10 @@ manifest = {
          "title": "Four materials, one shader (extended)",
          "file": "reports/training/core/17-material-appearance.md",
          "why": "Extended, not duplicated. Adds the WGSL re-measurement of the same treatments (shading "
-                "is nearly free, structure is not) and the four-channel accumulation trick that lets one "
-                "resolve pass shade four materials."},
+                "is nearly free, structure is not), the four-channel accumulation trick that lets one "
+                "resolve pass shade four materials, and -- from this rework -- the section on why "
+                "porting a shading model without its reconstruction reproduces the old look, and what "
+                "the reconstruction costs when it is done as render passes in a browser."},
     ],
     "metrics_used": ["rest_depth", "submerged_fraction", "traj_rmse", "self_noise", "render_gpu_ms",
                      "frame_ms", "us_per_substep", "node_mass_headroom", "substeps_per_frame",
@@ -311,6 +494,10 @@ manifest = {
         REL + "verify/score.py",
         REL + "verify/cap.html",
         REL + "verify/shots.py",
+        REL + "verify/water.html",
+        REL + "verify/water.py",
+        REL + "verify/assemble_water.py",
+        REL + "verify/merge_water_metrics.py",
         "harness/dashboard/src/components/DemoView.jsx",
     ],
 }

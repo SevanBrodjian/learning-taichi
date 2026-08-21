@@ -51,7 +51,7 @@
 <body>
 <div id="app"></div>
 <script>
-var D = {"media": "/api/data/learning-taichi/runs/material-variants/incorporate-improved-materials-on-real-demo-page-and-improve-polish/", "physics_version": "phys-c518316a4a05", "device": "nvidia lovelace", "ordering": {"mean_y_end_webgpu": {"snow": 0.29307684302330017, "elastic": 0.10966195911169052, "sand": 0.08271303027868271}, "snow_above_rubber_above_sand": true, "snow_rises_webgpu": true, "rubber_sinks_webgpu": true, "sand_sinks_webgpu": true}, "buoy": {"snow": {"canonical": {"rest_depth_change": -0.15349462628364563, "submerged_fraction": 0.254, "mean_y_end": 0.29317018389701843, "mean_y_start": 0.19773471355438232}, "webgpu": {"rest_depth_change": -0.15342557430267334, "submerged_fraction": 0.254, "mean_y_end": 0.29307684302330017, "mean_y_start": 0.1977347731590271}, "rho": 0.3, "rises_webgpu": true, "rises_canonical": true, "sign_agrees": true}, "elastic": {"canonical": {"rest_depth_change": 0.029313325881958008, "submerged_fraction": 1.0, "mean_y_end": 0.10952257364988327, "mean_y_start": 0.1968950629234314}, "webgpu": {"rest_depth_change": 0.02914944291114807, "submerged_fraction": 1.0, "mean_y_end": 0.10966195911169052, "mean_y_start": 0.19689491391181946}, "rho": 1.2, "rises_webgpu": false, "rises_canonical": false, "sign_agrees": true}, "sand": {"canonical": {"rest_depth_change": 0.054778873920440674, "submerged_fraction": 1.0, "mean_y_end": 0.08276240527629852, "mean_y_start": 0.19560043513774872}, "webgpu": {"rest_depth_change": 0.05480358004570007, "submerged_fraction": 1.0, "mean_y_end": 0.08271303027868271, "mean_y_start": 0.19560012221336365}, "rho": 1.6, "rises_webgpu": false, "rises_canonical": false, "sign_agrees": true}}, "agree": {"pool_snow": {"traj_rmse": 0.00012154922296758741, "self_noise": 0.0001121863751905039, "ratio_to_self_noise": 1.083457975722849, "n": 8429, "frames": 60, "dt": 5e-05, "spf": 667, "n_nonfinite": 0}, "pool_elastic": {"traj_rmse": 3.3323391107842326e-05, "self_noise": 1.1749359146051574e-05, "ratio_to_self_noise": 2.836187973625847, "n": 8429, "frames": 60, "dt": 5e-05, "spf": 667, "n_nonfinite": 0}, "pool_sand": {"traj_rmse": 0.0007906744722276926, "self_noise": 0.0007315979455597699, "ratio_to_self_noise": 1.080749989835908, "n": 8429, "frames": 60, "dt": 5e-05, "spf": 667, "n_nonfinite": 0}, "pool_fluid": {"traj_rmse": 4.471993088372983e-05, "self_noise": 8.514847650076263e-06, "ratio_to_self_noise": 5.251994248344455, "n": 8429, "frames": 60, "dt": 5e-05, "spf": 667, "n_nonfinite": 0}, "pool_three": {"traj_rmse": 0.000914498174097389, "self_noise": 0.0006362920394167304, "ratio_to_self_noise": 1.437230261336731, "n": 8328, "frames": 60, "dt": 5e-05, "spf": 667, "n_nonfinite": 0}, "mixed4": {"traj_rmse": 0.00032525378628633916, "self_noise": 0.00040224852273240685, "ratio_to_self_noise": 0.8085891380705258, "n": 3245, "frames": 60, "dt": 5e-05, "spf": 533, "n_nonfinite": 0}}, "canon": {"pool_snow": {"rest_depth_0": 0.13087967038154602, "rest_depth": -0.011792302131652832, "submerged_fraction": 0.396, "rho": 0.3, "rest_depth_change": -0.14267197251319885}, "pool_elastic": {"rest_depth_0": 0.13157343864440918, "rest_depth": 0.19284376502037048, "submerged_fraction": 1.0, "rho": 1.2, "rest_depth_change": 0.061270326375961304}, "pool_sand": {"rest_depth_0": 0.1317235678434372, "rest_depth": 0.2102002203464508, "submerged_fraction": 1.0, "rho": 1.6, "rest_depth_change": 0.07847665250301361}, "pool_fluid": {"rest_depth_0": 0.1313774585723877, "rest_depth": 0.20431625843048096, "submerged_fraction": 1.0, "rho": 1.0, "rest_depth_change": 0.07293879985809326}, "pool_three": {"snow": {"rho": 0.3, "rest_depth_0": 0.12756085395812988, "rest_depth": -0.025933772325515747, "submerged_fraction": 0.254, "mean_y_end": 0.29317018389701843, "rest_depth_change": -0.15349462628364563}, "elastic": {"rho": 1.2, "rest_depth_0": 0.1284005045890808, "rest_depth": 0.15771383047103882, "submerged_fraction": 1.0, "mean_y_end": 0.10952257364988327, "rest_depth_change": 0.029313325881958008}, "sand": {"rho": 1.6, "rest_depth_0": 0.1296951323747635, "rest_depth": 0.18447400629520416, "submerged_fraction": 1.0, "mean_y_end": 0.08276240527629852, "rest_depth_change": 0.054778873920440674}}}, "render": {"after": {"512_blob": 0.08704, "512_pts": 0.011264, "512_grid": 0.002048, "1024_blob": 0.147456, "1024_pts": 0.011264, "1024_grid": 0.004096}, "before": {"512_blob": 0.033792, "512_pts": 0.011264, "512_grid": 0.002048, "1024_blob": 0.09728, "1024_pts": 0.011264, "1024_grid": 0.004096}}, "solver": [{"n": 4096, "dt": 5e-05, "substeps": 333, "frames": 24, "sustained_ms": 3.241666667163372, "gpu_ms": 3.017728, "fps": 308.48329044116446, "us_per_substep_gpu": 9.062246246246247, "mean_displacement_over_bench": 0.26752238630715136, "motion_ok": true}, {"n": 8192, "dt": 5e-05, "substeps": 333, "frames": 24, "sustained_ms": 4.333333333333333, "gpu_ms": 4.345856, "fps": 230.76923076923077, "us_per_substep_gpu": 13.050618618618618, "mean_displacement_over_bench": 0.26761727936947055, "motion_ok": true}, {"n": 12288, "dt": 5e-05, "substeps": 333, "frames": 24, "sustained_ms": 5.462500000993411, "gpu_ms": 5.556224, "fps": 183.0663615227716, "us_per_substep_gpu": 16.685357357357358, "mean_displacement_over_bench": 0.26649440044503653, "motion_ok": true}, {"n": 16384, "dt": 5e-05, "substeps": 333, "frames": 24, "sustained_ms": 6.920833331843217, "gpu_ms": 6.914048, "fps": 144.49127035019512, "us_per_substep_gpu": 20.762906906906906, "mean_displacement_over_bench": 0.2656673513443593, "motion_ok": true}], "budget": {"n": 16384, "solver_gpu_ms": 6.914048, "render_gpu_ms_1024": 0.147456, "render_gpu_ms_1024_before": 0.09728, "total_gpu_ms": 7.061504, "budget_60fps_ms": 16.666666666666668}, "layout": {"before_phone_portrait": {"vw": 390, "vh": 844, "dpr": 3.0000001192092896, "field_w": 392, "field_h": 676, "field_square": false, "aspect_error_pct": 42.02898655376216, "field_frac_of_viewport": 0.8052934888356916, "canvas_backing": [780, 780], "canvas_css": [390, 675], "controls_h": 169, "controls_w": 390, "min_button_h": 29, "n_buttons": 11, "doc_overflow_x": 0, "n": 9121, "page": "before", "viewport": "phone_portrait", "physics_version": "phys-bebeaafbe73e", "treatment": "mvp"}, "before_phone_landscape": {"vw": 844, "vh": 390, "dpr": 3.0000001192092896, "field_w": 141, "field_h": 141, "field_square": true, "aspect_error_pct": 0, "field_frac_of_viewport": 0.060014288971470195, "canvas_backing": [277, 277], "canvas_css": [139, 139], "controls_h": 251, "controls_w": 844, "min_button_h": 28, "n_buttons": 11, "doc_overflow_x": 0, "n": 9121, "page": "before", "viewport": "phone_landscape", "physics_version": "phys-bebeaafbe73e", "treatment": "mvp"}, "before_tablet_portrait": {"vw": 820, "vh": 1180, "dpr": 2.0000000298023224, "field_w": 822, "field_h": 930, "field_square": false, "aspect_error_pct": 11.67015910808029, "field_frac_of_viewport": 0.789800841382498, "canvas_backing": [1640, 1640], "canvas_css": [820, 929], "controls_h": 251, "controls_w": 820, "min_button_h": 28, "n_buttons": 11, "doc_overflow_x": 0, "n": 9121, "page": "before", "viewport": "tablet_portrait", "physics_version": "phys-bebeaafbe73e", "treatment": "mvp"}, "before_laptop": {"vw": 1280, "vh": 800, "dpr": 2.0000000298023224, "field_w": 660, "field_h": 660, "field_square": true, "aspect_error_pct": 0, "field_frac_of_viewport": 0.424810728904009, "canvas_backing": [1315, 1315], "canvas_css": [658, 658], "controls_h": 142, "controls_w": 1280, "min_button_h": 28, "n_buttons": 11, "doc_overflow_x": 0, "n": 9121, "page": "before", "viewport": "laptop", "physics_version": "phys-bebeaafbe73e", "treatment": "mvp"}, "before_desktop": {"vw": 1920, "vh": 1080, "dpr": 1.0000000149011612, "field_w": 940, "field_h": 940, "field_square": true, "aspect_error_pct": 0, "field_frac_of_viewport": 0.4257109276435994, "canvas_backing": [937, 937], "canvas_css": [938, 938], "controls_h": 142, "controls_w": 1920, "min_button_h": 28, "n_buttons": 11, "doc_overflow_x": 0, "n": 9121, "page": "before", "viewport": "desktop", "physics_version": "phys-bebeaafbe73e", "treatment": "mvp"}, "after_phone_portrait": {"vw": 390, "vh": 844, "dpr": 3.0000001192092896, "field_w": 390, "field_h": 390, "field_square": true, "aspect_error_pct": 0, "field_frac_of_viewport": 0.4630336469631032, "canvas_backing": [777, 777], "canvas_css": [389, 389], "controls_h": 147, "controls_w": 390, "min_button_h": 40, "n_buttons": 11, "doc_overflow_x": 0, "n": 9121, "page": "after", "viewport": "phone_portrait", "physics_version": "phys-c518316a4a05", "treatment": "t027-per-material"}, "after_phone_landscape": {"vw": 844, "vh": 390, "dpr": 3.0000001192092896, "field_w": 390, "field_h": 390, "field_square": true, "aspect_error_pct": 0, "field_frac_of_viewport": 0.4630040396378508, "canvas_backing": [777, 777], "canvas_css": [389, 389], "controls_h": 390, "controls_w": 279, "min_button_h": 34, "n_buttons": 11, "doc_overflow_x": 0, "n": 9121, "page": "after", "viewport": "phone_landscape", "physics_version": "phys-c518316a4a05", "treatment": "t027-per-material"}, "after_tablet_portrait": {"vw": 820, "vh": 1180, "dpr": 2.0000000298023224, "field_w": 820, "field_h": 820, "field_square": true, "aspect_error_pct": 0, "field_frac_of_viewport": 0.6949152542372882, "canvas_backing": [1636, 1636], "canvas_css": [818, 818], "controls_h": 251, "controls_w": 820, "min_button_h": 28, "n_buttons": 11, "doc_overflow_x": 0, "n": 9121, "page": "after", "viewport": "tablet_portrait", "physics_version": "phys-c518316a4a05", "treatment": "t027-per-material"}, "after_laptop": {"vw": 1280, "vh": 800, "dpr": 2.0000000298023224, "field_w": 658, "field_h": 658, "field_square": true, "aspect_error_pct": 0, "field_frac_of_viewport": 0.4227360877990723, "canvas_backing": [1312, 1312], "canvas_css": [656, 656], "controls_h": 142, "controls_w": 1280, "min_button_h": 28, "n_buttons": 11, "doc_overflow_x": 0, "n": 9121, "page": "after", "viewport": "laptop", "physics_version": "phys-c518316a4a05", "treatment": "t027-per-material"}, "after_desktop": {"vw": 1920, "vh": 1080, "dpr": 1.0000000149011612, "field_w": 938, "field_h": 938, "field_square": true, "aspect_error_pct": 0, "field_frac_of_viewport": 0.42425094227731963, "canvas_backing": [936, 936], "canvas_css": [936, 936], "controls_h": 142, "controls_w": 1920, "min_button_h": 28, "n_buttons": 11, "doc_overflow_x": 0, "n": 9121, "page": "after", "viewport": "desktop", "physics_version": "phys-c518316a4a05", "treatment": "t027-per-material"}}, "viewports": [["phone_portrait", "iPhone portrait", "390 x 844"], ["phone_landscape", "iPhone landscape", "844 x 390"], ["tablet_portrait", "iPad portrait", "820 x 1180"], ["laptop", "small laptop", "1280 x 800"], ["desktop", "large monitor", "1920 x 1080"]], "pile": [{"n": 8192, "kM": 24, "kV": 22, "max_node_mass_pm": 55.63482666015625, "max_node_mom_pm": 51.2863883972168, "mass_saturates_at_pm": 256, "mom_saturates_at_pm": 512, "mass_headroom": 4.601434305956747, "mom_headroom": 9.983155687129358}, {"n": 16384, "kM": 24, "kV": 22, "max_node_mass_pm": 91.18514251708984, "max_node_mom_pm": 86.14196014404297, "mass_saturates_at_pm": 256, "mom_saturates_at_pm": 512, "mass_headroom": 2.80747491239618, "mom_headroom": 5.943677148091999}]};
+var D = {"media": "/api/data/learning-taichi/runs/material-variants/incorporate-improved-materials-on-real-demo-page-and-improve-polish/", "physics_version": "phys-c518316a4a05", "device": "nvidia lovelace", "ordering": {"mean_y_end_webgpu": {"snow": 0.29307684302330017, "elastic": 0.10966195911169052, "sand": 0.08271303027868271}, "snow_above_rubber_above_sand": true, "snow_rises_webgpu": true, "rubber_sinks_webgpu": true, "sand_sinks_webgpu": true}, "buoy": {"snow": {"canonical": {"rest_depth_change": -0.15349462628364563, "submerged_fraction": 0.254, "mean_y_end": 0.29317018389701843, "mean_y_start": 0.19773471355438232}, "webgpu": {"rest_depth_change": -0.15342557430267334, "submerged_fraction": 0.254, "mean_y_end": 0.29307684302330017, "mean_y_start": 0.1977347731590271}, "rho": 0.3, "rises_webgpu": true, "rises_canonical": true, "sign_agrees": true}, "elastic": {"canonical": {"rest_depth_change": 0.029313325881958008, "submerged_fraction": 1.0, "mean_y_end": 0.10952257364988327, "mean_y_start": 0.1968950629234314}, "webgpu": {"rest_depth_change": 0.02914944291114807, "submerged_fraction": 1.0, "mean_y_end": 0.10966195911169052, "mean_y_start": 0.19689491391181946}, "rho": 1.2, "rises_webgpu": false, "rises_canonical": false, "sign_agrees": true}, "sand": {"canonical": {"rest_depth_change": 0.054778873920440674, "submerged_fraction": 1.0, "mean_y_end": 0.08276240527629852, "mean_y_start": 0.19560043513774872}, "webgpu": {"rest_depth_change": 0.05480358004570007, "submerged_fraction": 1.0, "mean_y_end": 0.08271303027868271, "mean_y_start": 0.19560012221336365}, "rho": 1.6, "rises_webgpu": false, "rises_canonical": false, "sign_agrees": true}}, "agree": {"pool_snow": {"traj_rmse": 0.00012154922296758741, "self_noise": 0.0001121863751905039, "ratio_to_self_noise": 1.083457975722849, "n": 8429, "frames": 60, "dt": 5e-05, "spf": 667, "n_nonfinite": 0}, "pool_elastic": {"traj_rmse": 3.3323391107842326e-05, "self_noise": 1.1749359146051574e-05, "ratio_to_self_noise": 2.836187973625847, "n": 8429, "frames": 60, "dt": 5e-05, "spf": 667, "n_nonfinite": 0}, "pool_sand": {"traj_rmse": 0.0007906744722276926, "self_noise": 0.0007315979455597699, "ratio_to_self_noise": 1.080749989835908, "n": 8429, "frames": 60, "dt": 5e-05, "spf": 667, "n_nonfinite": 0}, "pool_fluid": {"traj_rmse": 4.471993088372983e-05, "self_noise": 8.514847650076263e-06, "ratio_to_self_noise": 5.251994248344455, "n": 8429, "frames": 60, "dt": 5e-05, "spf": 667, "n_nonfinite": 0}, "pool_three": {"traj_rmse": 0.000914498174097389, "self_noise": 0.0006362920394167304, "ratio_to_self_noise": 1.437230261336731, "n": 8328, "frames": 60, "dt": 5e-05, "spf": 667, "n_nonfinite": 0}, "mixed4": {"traj_rmse": 0.00032525378628633916, "self_noise": 0.00040224852273240685, "ratio_to_self_noise": 0.8085891380705258, "n": 3245, "frames": 60, "dt": 5e-05, "spf": 533, "n_nonfinite": 0}}, "canon": {"pool_snow": {"rest_depth_0": 0.13087967038154602, "rest_depth": -0.011792302131652832, "submerged_fraction": 0.396, "rho": 0.3, "rest_depth_change": -0.14267197251319885}, "pool_elastic": {"rest_depth_0": 0.13157343864440918, "rest_depth": 0.19284376502037048, "submerged_fraction": 1.0, "rho": 1.2, "rest_depth_change": 0.061270326375961304}, "pool_sand": {"rest_depth_0": 0.1317235678434372, "rest_depth": 0.2102002203464508, "submerged_fraction": 1.0, "rho": 1.6, "rest_depth_change": 0.07847665250301361}, "pool_fluid": {"rest_depth_0": 0.1313774585723877, "rest_depth": 0.20431625843048096, "submerged_fraction": 1.0, "rho": 1.0, "rest_depth_change": 0.07293879985809326}, "pool_three": {"snow": {"rho": 0.3, "rest_depth_0": 0.12756085395812988, "rest_depth": -0.025933772325515747, "submerged_fraction": 0.254, "mean_y_end": 0.29317018389701843, "rest_depth_change": -0.15349462628364563}, "elastic": {"rho": 1.2, "rest_depth_0": 0.1284005045890808, "rest_depth": 0.15771383047103882, "submerged_fraction": 1.0, "mean_y_end": 0.10952257364988327, "rest_depth_change": 0.029313325881958008}, "sand": {"rho": 1.6, "rest_depth_0": 0.1296951323747635, "rest_depth": 0.18447400629520416, "submerged_fraction": 1.0, "mean_y_end": 0.08276240527629852, "rest_depth_change": 0.054778873920440674}}}, "render": {"after": {"512_blob": 0.08704, "512_pts": 0.011264, "512_grid": 0.002048, "1024_blob": 0.147456, "1024_pts": 0.011264, "1024_grid": 0.004096}, "before": {"512_blob": 0.033792, "512_pts": 0.011264, "512_grid": 0.002048, "1024_blob": 0.09728, "1024_pts": 0.011264, "1024_grid": 0.004096}}, "solver": [{"n": 4096, "dt": 5e-05, "substeps": 333, "frames": 24, "sustained_ms": 3.241666667163372, "gpu_ms": 3.017728, "fps": 308.48329044116446, "us_per_substep_gpu": 9.062246246246247, "mean_displacement_over_bench": 0.26752238630715136, "motion_ok": true}, {"n": 8192, "dt": 5e-05, "substeps": 333, "frames": 24, "sustained_ms": 4.333333333333333, "gpu_ms": 4.345856, "fps": 230.76923076923077, "us_per_substep_gpu": 13.050618618618618, "mean_displacement_over_bench": 0.26761727936947055, "motion_ok": true}, {"n": 12288, "dt": 5e-05, "substeps": 333, "frames": 24, "sustained_ms": 5.462500000993411, "gpu_ms": 5.556224, "fps": 183.0663615227716, "us_per_substep_gpu": 16.685357357357358, "mean_displacement_over_bench": 0.26649440044503653, "motion_ok": true}, {"n": 16384, "dt": 5e-05, "substeps": 333, "frames": 24, "sustained_ms": 6.920833331843217, "gpu_ms": 6.914048, "fps": 144.49127035019512, "us_per_substep_gpu": 20.762906906906906, "mean_displacement_over_bench": 0.2656673513443593, "motion_ok": true}], "budget": {"n": 16384, "solver_gpu_ms": 6.914048, "render_gpu_ms_1024": 0.147456, "render_gpu_ms_1024_before": 0.09728, "total_gpu_ms": 7.061504, "budget_60fps_ms": 16.666666666666668, "render_gpu_ms_1024_water_rework": 0.19968, "total_gpu_ms_water_rework": 7.113728, "water_rework_note": "The reconstruction's marginal cost, measured with this run's instrument at 1080^2, added to the original run's 1024^2 figure. The two instruments disagree on the ABSOLUTE draw cost (0.147 ms sustained vs 0.100 ms isolated for the same build); only the delta is carried across, because only the delta was measured against a matched control."}, "layout": {"before_phone_portrait": {"vw": 390, "vh": 844, "dpr": 3.0000001192092896, "field_w": 392, "field_h": 676, "field_square": false, "aspect_error_pct": 42.02898655376216, "field_frac_of_viewport": 0.8052934888356916, "canvas_backing": [780, 780], "canvas_css": [390, 675], "controls_h": 169, "controls_w": 390, "min_button_h": 29, "n_buttons": 11, "doc_overflow_x": 0, "n": 9121, "page": "before", "viewport": "phone_portrait", "physics_version": "phys-bebeaafbe73e", "treatment": "mvp"}, "before_phone_landscape": {"vw": 844, "vh": 390, "dpr": 3.0000001192092896, "field_w": 141, "field_h": 141, "field_square": true, "aspect_error_pct": 0, "field_frac_of_viewport": 0.060014288971470195, "canvas_backing": [277, 277], "canvas_css": [139, 139], "controls_h": 251, "controls_w": 844, "min_button_h": 28, "n_buttons": 11, "doc_overflow_x": 0, "n": 9121, "page": "before", "viewport": "phone_landscape", "physics_version": "phys-bebeaafbe73e", "treatment": "mvp"}, "before_tablet_portrait": {"vw": 820, "vh": 1180, "dpr": 2.0000000298023224, "field_w": 822, "field_h": 930, "field_square": false, "aspect_error_pct": 11.67015910808029, "field_frac_of_viewport": 0.789800841382498, "canvas_backing": [1640, 1640], "canvas_css": [820, 929], "controls_h": 251, "controls_w": 820, "min_button_h": 28, "n_buttons": 11, "doc_overflow_x": 0, "n": 9121, "page": "before", "viewport": "tablet_portrait", "physics_version": "phys-bebeaafbe73e", "treatment": "mvp"}, "before_laptop": {"vw": 1280, "vh": 800, "dpr": 2.0000000298023224, "field_w": 660, "field_h": 660, "field_square": true, "aspect_error_pct": 0, "field_frac_of_viewport": 0.424810728904009, "canvas_backing": [1315, 1315], "canvas_css": [658, 658], "controls_h": 142, "controls_w": 1280, "min_button_h": 28, "n_buttons": 11, "doc_overflow_x": 0, "n": 9121, "page": "before", "viewport": "laptop", "physics_version": "phys-bebeaafbe73e", "treatment": "mvp"}, "before_desktop": {"vw": 1920, "vh": 1080, "dpr": 1.0000000149011612, "field_w": 940, "field_h": 940, "field_square": true, "aspect_error_pct": 0, "field_frac_of_viewport": 0.4257109276435994, "canvas_backing": [937, 937], "canvas_css": [938, 938], "controls_h": 142, "controls_w": 1920, "min_button_h": 28, "n_buttons": 11, "doc_overflow_x": 0, "n": 9121, "page": "before", "viewport": "desktop", "physics_version": "phys-bebeaafbe73e", "treatment": "mvp"}, "after_phone_portrait": {"vw": 390, "vh": 844, "dpr": 3.0000001192092896, "field_w": 390, "field_h": 390, "field_square": true, "aspect_error_pct": 0, "field_frac_of_viewport": 0.4630336469631032, "canvas_backing": [777, 777], "canvas_css": [389, 389], "controls_h": 147, "controls_w": 390, "min_button_h": 40, "n_buttons": 11, "doc_overflow_x": 0, "n": 9121, "page": "after", "viewport": "phone_portrait", "physics_version": "phys-c518316a4a05", "treatment": "t027-per-material"}, "after_phone_landscape": {"vw": 844, "vh": 390, "dpr": 3.0000001192092896, "field_w": 390, "field_h": 390, "field_square": true, "aspect_error_pct": 0, "field_frac_of_viewport": 0.4630040396378508, "canvas_backing": [777, 777], "canvas_css": [389, 389], "controls_h": 390, "controls_w": 279, "min_button_h": 34, "n_buttons": 11, "doc_overflow_x": 0, "n": 9121, "page": "after", "viewport": "phone_landscape", "physics_version": "phys-c518316a4a05", "treatment": "t027-per-material"}, "after_tablet_portrait": {"vw": 820, "vh": 1180, "dpr": 2.0000000298023224, "field_w": 820, "field_h": 820, "field_square": true, "aspect_error_pct": 0, "field_frac_of_viewport": 0.6949152542372882, "canvas_backing": [1636, 1636], "canvas_css": [818, 818], "controls_h": 251, "controls_w": 820, "min_button_h": 28, "n_buttons": 11, "doc_overflow_x": 0, "n": 9121, "page": "after", "viewport": "tablet_portrait", "physics_version": "phys-c518316a4a05", "treatment": "t027-per-material"}, "after_laptop": {"vw": 1280, "vh": 800, "dpr": 2.0000000298023224, "field_w": 658, "field_h": 658, "field_square": true, "aspect_error_pct": 0, "field_frac_of_viewport": 0.4227360877990723, "canvas_backing": [1312, 1312], "canvas_css": [656, 656], "controls_h": 142, "controls_w": 1280, "min_button_h": 28, "n_buttons": 11, "doc_overflow_x": 0, "n": 9121, "page": "after", "viewport": "laptop", "physics_version": "phys-c518316a4a05", "treatment": "t027-per-material"}, "after_desktop": {"vw": 1920, "vh": 1080, "dpr": 1.0000000149011612, "field_w": 938, "field_h": 938, "field_square": true, "aspect_error_pct": 0, "field_frac_of_viewport": 0.42425094227731963, "canvas_backing": [936, 936], "canvas_css": [936, 936], "controls_h": 142, "controls_w": 1920, "min_button_h": 28, "n_buttons": 11, "doc_overflow_x": 0, "n": 9121, "page": "after", "viewport": "desktop", "physics_version": "phys-c518316a4a05", "treatment": "t027-per-material"}}, "viewports": [["phone_portrait", "iPhone portrait", "390 x 844"], ["phone_landscape", "iPhone landscape", "844 x 390"], ["tablet_portrait", "iPad portrait", "820 x 1180"], ["laptop", "small laptop", "1280 x 800"], ["desktop", "large monitor", "1920 x 1080"]], "pile": [{"n": 8192, "kM": 24, "kV": 22, "max_node_mass_pm": 55.63482666015625, "max_node_mom_pm": 51.2863883972168, "mass_saturates_at_pm": 256, "mom_saturates_at_pm": 512, "mass_headroom": 4.601434305956747, "mom_headroom": 9.983155687129358}, {"n": 16384, "kM": 24, "kV": 22, "max_node_mass_pm": 91.18514251708984, "max_node_mom_pm": 86.14196014404297, "mass_saturates_at_pm": 256, "mom_saturates_at_pm": 512, "mass_headroom": 2.80747491239618, "mom_headroom": 5.943677148091999}], "water": {"treatment": "t027r-per-material-water-isosurface", "instrument": "WebGPU timestamp-query across the whole blob draw (splat pass -> reconstruction -> resolve), median of individually timed draws, 80 draws each. Chromium quantises timestamp results; the browser was launched with --disable-dawn-features=timestamp_quantization and the residual granularity was still ~16-33 us, which is why every number is cross-checked against an amplified slope (the reconstruction run K times in one timed region).", "recon_divisor": 2, "by_res": {"480": {"pixels": 230400, "mvp_gpu_ms": 0.019456, "before_gpu_ms": 0.0512, "after_gpu_ms": 0.078848, "chain_gpu_ms_direct": 0.027648, "chain_gpu_ms_slope": 0.02603885714285714, "passes_after": 12, "passes_before": 2, "amplification": [{"k": 1, "ms": 0.079872}, {"k": 2, "ms": 0.105472}, {"k": 4, "ms": 0.157696}, {"k": 8, "ms": 0.262144}], "n": 9121, "mean_abs_motion": 0.1806051705443876, "errors": 0}, "720": {"pixels": 518400, "mvp_gpu_ms": 0.033792, "before_gpu_ms": 0.065536, "after_gpu_ms": 0.098304, "chain_gpu_ms_direct": 0.032768000000000005, "chain_gpu_ms_slope": 0.03013485714285714, "passes_after": 12, "passes_before": 2, "amplification": [{"k": 1, "ms": 0.099328}, {"k": 2, "ms": 0.129024}, {"k": 4, "ms": 0.18944}, {"k": 8, "ms": 0.310272}], "n": 9121, "mean_abs_motion": 0.1806051705443876, "errors": 0}, "1080": {"pixels": 1166400, "mvp_gpu_ms": 0.068608, "before_gpu_ms": 0.100352, "after_gpu_ms": 0.152576, "chain_gpu_ms_direct": 0.05222399999999999, "chain_gpu_ms_slope": 0.08221257142857143, "passes_after": 13, "passes_before": 2, "amplification": [{"k": 1, "ms": 0.151552}, {"k": 2, "ms": 0.200704}, {"k": 4, "ms": 0.297984}, {"k": 8, "ms": 0.72704}], "n": 9121, "mean_abs_motion": 0.1806051705443876, "errors": 0}}, "chain_fit": {"fixed_ms": 0.02, "per_megapixel_ms": 0.0246, "note": "Least-squares through the 480 and 1080 direct measurements. The fixed term is twelve render passes' worth of attachment setup and is the DOMINANT term at demo resolutions; the per-pixel term is what a bigger canvas buys you. The cost does move with resolution -- x1.9 from 230k to 1.17M pixels -- so this is a GPU reading and not a clock reading, but it is sub-linear because of that fixed term."}, "foam_gate": {"peak_near_white_px_after": 237, "peak_near_white_px_before": 109, "scene": "pool + one rubber ball, 600x600, 90 frames", "note": "Whitewater pixels (max channel > 190, saturation < 45) at the splash peak. This is the check that the motion-gated foam term is actually FIRING: a gate that never opens is indistinguishable from a gate that was never written, and 'the shading compiled' is precisely the mistake this rework exists to fix."}}};
 var $ = function (h) { var d = document.createElement('div'); d.innerHTML = h; return d.firstElementChild; };
 // add() must append EVERY top-level element in the fragment, not just the first. The first draft
 // returned firstElementChild and silently dropped the two tables that carry the agreement bars and
@@ -80,6 +80,10 @@ add('<div class="verdict"><p><b>The Demo page was running materials with no conc
     'canonical\'s own run-to-run noise. Snow, sand and water are on their chosen new treatments and ' +
     'rubber is on the old one with two tweaks. The field is now genuinely square on a phone, where ' +
     'it previously stretched the simulation by 42%.</p>' +
+    '<p class="miss">Corrected after review: the first version of this task claimed water was on ' +
+    'its new treatment, and it was only half on it. The SHADING was ported and the RECONSTRUCTION ' +
+    'that shading reads was not, so the water still came out as the speckled "smoothie" the ' +
+    'proposal existed to replace. Section 4 is the fix and its evidence.</p>' +
     '<p class="miss">What did not make it in: nothing was done about the shared timestep, so a ' +
     'phone still runs this in labelled slow motion; and every number below is one GPU, one browser, ' +
     'one scene.</p></div>');
@@ -218,8 +222,165 @@ add('<div class="card"><video src="' + D.media + 'cmp_render.mp4" controls loop 
       'time &mdash; which is why the rendering half of this task was allowed to be the ambitious one.</p>');
 })();
 
+// ---------------------------------------------------------------- 4. THE WATER REWORK
+add('<h2>4 &nbsp;The water: the shading was never the treatment</h2>');
+add('<p>This section is a <b>correction</b>. The version of this task that first shipped ported ' +
+    'T-020\'s water <em>shading</em> faithfully &mdash; Beer&ndash;Lambert absorption, a tight ' +
+    'specular, a Fresnel rim, motion-gated foam, every line of it present in the resolve pass ' +
+    '&mdash; and shipped water that still looked like the old water. Every quantity that shading ' +
+    'reads (how thick the water is here, which way the surface faces here, how opaque it is here) ' +
+    'came from four neighbour taps of the raw splat accumulation, and a splat accumulation is a ' +
+    'sum of a few thousand overlapping bumps. It is lumpy at the particle scale, so the shading ' +
+    'faithfully lit a lumpy thing.</p>');
+add('<p>What was missing is the <b>reconstruction</b>: blur the density, threshold it to a binary ' +
+    'body, and take optical thickness from a <b>distance transform</b> of that body instead of ' +
+    'from a local density count. A distance field cannot carry particle-scale noise, because it ' +
+    'does not know where the particles are &mdash; only where the surface is.</p>');
+
+(function () {
+  var wrap = add('<div></div>');
+  var tabs = document.createElement('div'); tabs.className = 'tabs';
+  var card = document.createElement('div'); card.className = 'card';
+  var CLIPS = [
+    ['the demo\'s own scene', 'cmp_water.mp4',
+     'The page\'s opening scene. Same build, same physics, same particle positions, same snow, ' +
+     'sand and rubber in both halves &mdash; the ONLY difference is where the water reads its ' +
+     'thickness and its normal from.'],
+    ['water alone, with a splash', 'cmp_water_pool.mp4',
+     'Water plus one rubber ball, so the surface and the spray are both in frame and nothing else ' +
+     'competes for attention. Watch the surface line, and watch the interior when the ball lands.']
+  ];
+  var vid = document.createElement('video');
+  vid.controls = vid.loop = vid.muted = vid.playsInline = true; vid.style.width = '100%';
+  var cap = document.createElement('p'); cap.className = 'note'; cap.style.marginTop = '10px';
+  function pick(i) {
+    vid.src = D.media + CLIPS[i][1]; cap.innerHTML = CLIPS[i][2];
+    [].forEach.call(tabs.children, function (b, k) { b.classList.toggle('on', k === i); });
+  }
+  CLIPS.forEach(function (c, i) {
+    var b = document.createElement('button'); b.textContent = c[0];
+    b.onclick = function () { pick(i); }; tabs.appendChild(b);
+  });
+  card.appendChild(vid); card.appendChild(cap);
+  wrap.appendChild(tabs); wrap.appendChild(card);
+  pick(0);
+})();
+
+add('<p style="margin-top:18px">And the question that actually decides it &mdash; did it land where ' +
+    'the proposal was? The left panel is T-020\'s own Taichi render of option B. Different scene, ' +
+    'different resolution, different graphics API, so this compares the <em>treatment</em>, never ' +
+    'the pixels.</p>');
+add('<div class="card"><img src="' + D.media + 'cmp_water_target.png" style="width:100%">' +
+    '<p class="note" style="margin-top:10px">Interior colour at mid-depth, sampled: T-020\'s film ' +
+    'render reads (50, 90, 112); the page now reads (51, 90, 109). Nothing was tuned against that ' +
+    'number &mdash; it falls out of using T-020\'s palette, its absorption coefficient and its tone ' +
+    'curve. Read it as a check that the colour pipeline was ported correctly, <em>not</em> as proof ' +
+    'the two images are equivalent: T-020\'s pool is deeper (optical depth ~3.2 against ~1.7 here) ' +
+    'and the absorption curve happens to be flat across that range.</p></div>');
+
+(function () {
+  var STAGES = [
+    ['splat', '1, full res', 'Four-channel per-material weight. Untouched &mdash; this is still ' +
+      'what the other three treatments shade off.'],
+    ['blur', '2, half res', 'Separable Gaussian. The horizontal pass also does the 2x downsample, ' +
+      'and its sigma is picked so that the splat kernel\'s own width PLUS this blur equals the ' +
+      'smoothing T-020 applied to a point histogram.'],
+    ['threshold + seed', '1', 'Binary body at a fixed fraction (0.24) of full packing &mdash; a ' +
+      'physical reference rather than a per-frame percentile, which is what keeps a thin sheet of ' +
+      'spray reading as thin. Every pixel OUTSIDE the body seeds itself.'],
+    ['jump flood', '6-7', 'log2(range) doublings turn those seeds into the distance to the nearest ' +
+      'outside pixel, for every interior pixel. This is the step that makes a distance transform ' +
+      'affordable in a real-time frame at all.'],
+    ['seeds &rarr; distance', '1', 'Plus a 3x3 box: a distance field off a thresholded mask is ' +
+      'quantised in whole pixels, and Beer&ndash;Lambert turns quantisation into visible banding.'],
+    ['resolve', '1, full res', 'Opacity, normal and optical thickness all read out of the distance ' +
+      'field. Premultiplied, so the alpha carries the transmission.']
+  ];
+  var h = '<p style="margin-top:18px">The chain, in the order it runs. Everything between the splat ' +
+    'and the resolve is at <b>half resolution</b>: optical thickness is the one quantity in the ' +
+    'frame that is genuinely low-frequency, so halving it costs a quarter of the pixels on eleven ' +
+    'passes and shows up nowhere in the image.</p><table>' +
+    '<tr><th>stage</th><th>passes</th><th>what it is for</th></tr>';
+  STAGES.forEach(function (r) {
+    h += '<tr><td><b>' + r[0] + '</b></td><td class="n">' + r[1] + '</td><td>' + r[2] + '</td></tr>';
+  });
+  h += '</table>';
+  add(h);
+})();
+
+(function () {
+  var W = D.water, b = D.budget;
+  var h = '<p style="margin-top:18px">What it costs, from <code>timestamp-query</code> across the ' +
+    'whole blob draw at 16,384 particles. <b>before</b> is this task exactly as it originally ' +
+    'shipped and <b>after</b> is the same build with the reconstruction switched on &mdash; same ' +
+    'run, same instrument, same frame, so the difference is the chain and nothing else.</p>' +
+    '<table><tr><th>resolution</th><th>pixels</th><th>before</th><th>after</th>' +
+    '<th>chain, direct</th><th>chain, amplified</th><th>passes</th></tr>';
+  ['480', '720', '1080'].forEach(function (r) {
+    var v = W.by_res[r];
+    h += '<tr><td>' + r + '&sup2;</td><td class="n">' + v.pixels.toLocaleString() + '</td>' +
+      '<td class="n">' + f(v.before_gpu_ms) + '</td><td class="n">' + f(v.after_gpu_ms) + '</td>' +
+      '<td class="n">' + f(v.chain_gpu_ms_direct) + '</td>' +
+      '<td class="n">' + f(v.chain_gpu_ms_slope) + '</td>' +
+      '<td class="n">' + v.passes_after + '</td></tr>';
+  });
+  h += '</table>';
+  add(h);
+  add('<p class="note"><b>Two independent measurements of the same thing, because one of them was ' +
+      'not trustworthy on its own.</b> Chromium quantises <code>timestamp-query</code>; with ' +
+      'quantisation disabled the residual granularity was still 16&ndash;33 &micro;s, which is the ' +
+      'same size as the thing being measured. So the chain is priced twice: once as the difference ' +
+      'against a matched control, and once as the slope of running it K times inside one timed ' +
+      'region. The two columns agree to within one quantum, and the 1080&sup2; row is the loosest ' +
+      'of the three &mdash; exactly one quantum apart, because its K=8 point was contaminated by ' +
+      'running hundreds of render passes in a single submission. A first pass at all of this, ' +
+      'before the flag went on, reported exact multiples of 32,768 ns for everything &mdash; that ' +
+      'number is the quantum, not a cost.</p>');
+  add('<p class="note">The cost is <b>sub-linear in pixels</b> (&times;1.9 for &times;5.1 the ' +
+      'pixels), which is the honest shape of twelve render passes: a fixed ~0.020 ms of attachment ' +
+      'setup dominates at demo resolutions, and ~0.025 ms per megapixel is what a bigger canvas ' +
+      'actually buys. It does move with resolution, which is what says the instrument is reading ' +
+      'the GPU and not the clock.</p>');
+  add('<div class="kv">' +
+    '<div><span>solver, 16,384 particles</span><b>' + f(b.solver_gpu_ms, 2) + ' ms</b></div>' +
+    '<div><span>drawing, before</span><b>' + f(b.render_gpu_ms_1024, 2) + ' ms</b></div>' +
+    '<div><span>drawing, with the reconstruction</span><b>' +
+      f(b.render_gpu_ms_1024_water_rework, 2) + ' ms</b></div>' +
+    '<div><span>60 fps budget</span><b>' + f(b.budget_60fps_ms, 2) + ' ms</b></div>' +
+    '</div>');
+  add('<p class="note">The frame goes from ' + f(b.total_gpu_ms, 2) + ' ms to ' +
+      f(b.total_gpu_ms_water_rework, 2) + ' ms of GPU work against a ' + f(b.budget_60fps_ms, 2) +
+      ' ms budget. The solver is still ' + f(100 * b.solver_gpu_ms / b.budget_60fps_ms, 0) +
+      '% of it and drawing is ' +
+      f(100 * b.render_gpu_ms_1024_water_rework / b.budget_60fps_ms, 1) + '%. Note that the two ' +
+      'drawing figures come from different instruments &mdash; only the DELTA was measured against ' +
+      'a matched control, and only the delta is carried across.</p>');
+  add('<p class="note">One thing that was checked rather than assumed: the foam term is gated on ' +
+      'motion, and a gate that never opens looks exactly like a gate that was never written. At the ' +
+      'splash peak the reworked water has <b>' + W.foam_gate.peak_near_white_px_after + '</b> ' +
+      'whitewater pixels against <b>' + W.foam_gate.peak_near_white_px_before + '</b> before, so it ' +
+      'fires. It is restrained, which is what T-020\'s film option is.</p>');
+})();
+
+add('<div class="scope" style="margin-top:18px"><b>The trade this treatment makes, found by driving ' +
+    'the real page rather than by reasoning about it.</b> Option B makes <em>shallow</em> water ' +
+    'nearly invisible, and that is not a bug in the port &mdash; it is what the treatment is. ' +
+    'Transmission goes as <code>exp(-absorb&middot;t)</code>, so a thin sheet transmits almost ' +
+    'everything, and the demo\'s background is nearly black. Pouring water into an empty scene ' +
+    'gives a sheet reading about (16,&nbsp;36,&nbsp;44) against a (6,&nbsp;9,&nbsp;13) background ' +
+    'until it pools. The default scene\'s pool is 0.155 of the domain deep and is well clear of ' +
+    'this; a small hand-poured puddle is not. The water that shipped before had the opposite ' +
+    'failing &mdash; equally bright at every depth, which is why it had no depth cue at all. If the ' +
+    'shallow case matters more than the deep one, the knob is <code>absorb</code> (0.52) or a small ' +
+    'ambient floor; neither was touched, because neither is T-020\'s.</div>');
+add('<p class="note" style="margin-top:14px"><b>What did not change, and was checked rather than ' +
+    'assumed:</b> snow, sand and rubber take the same branch they took before and are visible in ' +
+    'both halves of every clip above; <code>sim/physics/</code> was not opened; and the layout ' +
+    're-measures byte-for-byte identical at all five viewports &mdash; field 390x390 on a phone, ' +
+    '658x658 on a laptop, smallest control 40 px, no horizontal overflow.</p>');
+
 // ---------------------------------------------------------------- 4. LAYOUT
-add('<h2>4 &nbsp;The page, at five viewport sizes</h2>');
+add('<h2>5 &nbsp;The page, at five viewport sizes</h2>');
 add('<p>A claim about what fits on a screen cannot be made from a stylesheet, so these are real ' +
     'screenshots of the real page in a real GPU-backed window, with the device metrics overridden ' +
     'per size. The measurements under each pair are read off the live layout, not the CSS.</p>');
@@ -282,7 +443,7 @@ add('<p class="note">The failure the old layout had is not crowding, it is ' +
     'bar took 251 px of a 390 px viewport and left the field a 141 px square.</p>');
 
 // ---------------------------------------------------------------- 5. scope
-add('<h2>5 &nbsp;What this does and does not show</h2>');
+add('<h2>6 &nbsp;What this does and does not show</h2>');
 add('<div class="scope"><b>Scope.</b> Every timing here is <b>one GPU (' + esc(D.device) + '), one ' +
     'browser (Chromium/WebGPU), one scene</b>, and the solver numbers move by ~15% between repeat ' +
     'runs of the identical build, so treat differences under that as noise. "Looks better" is a ' +
@@ -294,7 +455,7 @@ add('<div class="scope"><b>Scope.</b> Every timing here is <b>one GPU (' + esc(D
     'sizes are device-metric overrides in a desktop browser, so they establish what fits and what ' +
     'the layout does, not how a real phone\'s touch handling or thermal budget behaves.</div>');
 
-add('<h2>6 &nbsp;The whole page, before and after</h2>');
+add('<h2>7 &nbsp;The whole page, before and after</h2>');
 add('<p class="note">Both changes at once, which is what a visitor actually sees. Kept separate ' +
     'from the two single-variable comparisons above on purpose.</p>');
 add('<div class="card"><video src="' + D.media + 'cmp_page.mp4" controls loop muted playsinline ' +

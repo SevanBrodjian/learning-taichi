@@ -29,54 +29,65 @@ Corollary: **do not enumerate everything missing.** A list of twelve gaps is a t
 fill in mechanically. Name the **two or three that matter most**, and let him find the rest — finding them
 is the skill being tested.
 
-## The grader must not be the collaborator
-The agent that grades has spent days building this with him, knows every answer, and is structurally
-inclined to be agreeable. That is a bad examiner. So:
+## The grader is a separate agent type, with no project context
+Grading runs as the **`grader`** subagent (`.claude/agents/grader.md`). It is defined as an independent
+third-party auditor: it did not build the project, has not seen the working conversation, and is
+instructed not to go looking for it. It reads the course scope, the repo and the submission.
 
-**Grading runs in a fresh subagent that has NOT seen the working conversation.** It receives only:
-- this rubric,
-- the repo (training textbook, `runs/`, `spec/registry/`),
-- the submission.
+This is structural, not decorative. The collaborating agent knows every answer and is inclined to be
+agreeable — a bad examiner. The orchestrator **relays the grader's verdict without softening it** and
+does not overturn a `RESUBMIT` out of kindness. If it disagrees it says so openly, with reasons, and
+Sevan decides.
 
-It has no chat history to leak and no accumulated rapport to protect. The orchestrator relays the verdict
-without softening it, and **does not overturn a FAIL to be kind**. If the orchestrator disagrees with the
-grader it says so openly, with reasons, and Sevan decides.
+## Courses — one per epoch, scoped to that epoch ONLY
+The curriculum is a sequence of **courses**, one per epoch. **A course covers only the work since the
+previous epoch closed.**
 
-## The rubric
-Five criteria. **A report passes only if every one is `met`.** Anything else is `revise`.
+This scoping is the point, not an implementation detail: without it the grader drifts into re-testing
+material from three reports ago, which is both discouraging and a waste of a real assessment. Earlier
+courses remain legitimate *background* — Sevan may rely on them freely and is never penalised for not
+re-explaining them. Each epoch directory carries a `course.md` stating scope explicitly: which tasks,
+which training pages, which findings are in play.
 
-1. **Evidence discipline.** Every claim is scoped to what was actually tested. Single-task results are
-   labelled as such. Observed / hypothesised / untested are visibly separated. *This is the project's
-   central skill and the most common failure.*
-2. **Mechanism, not narrative.** Explains *why* a result holds, not just what happened. A correct
-   description with no mechanism is `revise`.
-3. **Command of the evidence.** Cites the actual runs and numbers, and gets them right. Uses registered
-   metric names with their real meanings — quoting a metric whose definition he has not read is an
-   automatic `revise`.
-4. **Honest negatives.** Includes what failed, what was refuted, and what remains unknown. A report where
-   everything worked is not a report about this project.
-5. **Own voice, own understanding.** Reads as a person who did the work. Passages that restate a training
-   page without engaging with it are `revise` — and the grader says which passage, not what is missing
-   from it.
+## Grading — a percentage, with unlimited retakes
+Five criteria, each scored **0–100**, plus an overall.
 
-## Verdict format
-The grader returns exactly:
-- **`PASS`** or **`REVISE`**
-- The five criteria, each `met` / `not met`, one sentence each — naming the gap, never the content.
-- **At most three** things to address, ordered by importance.
-- For each, **what to study** (a training page, a run, a registry entry) — a pointer, not a précis.
+1. **Evidence discipline** — claims scoped to what was tested; single-task results labelled; observed /
+   hypothesised / untested separated. *The central skill, and the most common failure.*
+2. **Mechanism** — explains *why*, not just *what*.
+3. **Command of the evidence** — real runs and numbers, correct, with registered metric names used in
+   their registered meanings.
+4. **Honest negatives** — what failed, what was refuted, what is still unknown.
+5. **Own understanding** — reads as someone who did the work and thought about it.
 
-No praise padding. No consolation. A `REVISE` says so in the first line.
+**70 overall passes, provided no criterion is below 50.**
 
-## What Sevan can ask for, and what he cannot
-- **Can**: "which section is weakest?", "is this scoped correctly?", "does this metric mean what I think?"
-  (the answer is the registry entry to read), "point me at what to study."
-- **Cannot, and the agent should decline plainly**: "what am I missing?", "write this bit", "is this
-  right?" about a claim he has not attempted to support, or any request whose answer is the report.
+**Retakes are unlimited and unpenalised.** Sevan resubmits as often as he likes; each attempt is graded
+fresh. The aim is a *pass* on material he does not care about and *high scores* on the material he does —
+which is his call, not the grader's.
 
-Declining is not obstruction — it is the whole point. Say so in one sentence and offer the study pointer
-instead.
+When he is satisfied he asks for **`approve`**, a deliberately separate mode. It is not a rubber stamp:
+the grader re-examines and is instructed to be *more* skeptical, because a report polished over several
+retakes can acquire fluency without acquiring understanding.
+
+## Honest waivers
+He may explicitly decide he does not need to master something. **An explicit, reasoned waiver is
+honoured** — the topic is excluded from scoring rather than marked failed. Two limits:
+- **Silence is not a waiver.** An unmentioned gap is a gap; a waiver is a stated "I am not pursuing X,
+  because Y."
+- **Waivers cannot hollow out the course.** If they cover so much that nothing remains to demonstrate
+  understanding, the grader returns `INSUFFICIENT COVERAGE` instead of a score.
+
+A waiver costs nothing on the floor but caps the ceiling: no high score for material not attempted.
+
+## What Sevan can ask the collaborating agent for, and what he cannot
+- **Can**: "which section is weakest?", "is this scoped correctly?", "what does this metric actually
+  mean?" (answer: the registry entry to read), "point me at what to study."
+- **Cannot, and it should decline plainly**: "what am I missing?", "write this bit", "is this claim
+  right?" about something he has not attempted to support — anything whose answer is the report.
+
+Declining is the mechanism working, not obstruction. One sentence, then the study pointer.
 
 ## Cadence
-One report per **epoch**, cut at an inflection point (see `coordination/epochs/README.md`), not on a
-schedule. The epoch does not close until its report passes.
+One report per course, cut at an inflection point (`coordination/epochs/README.md`), never on a schedule.
+The epoch does not close until its report is approved.

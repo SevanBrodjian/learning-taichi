@@ -1,0 +1,31 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Verify — epoch 99</title>
+<!-- Frozen demo build. Epoch 99 (verify), cut 2026-08-20T20:04:54-07:00, physics phys-c518316a4a05.
+     Copied verbatim from harness/dashboard/src/components/mpm/ by harness/tools/cut_epoch.py.
+     Self-contained: no framework, no data server, no network. Serve it over http(s) — WebGPU needs a
+     secure context, so file:// will not start it. -->
+<style>
+  html, body { margin: 0; height: 100%; background: #05070b; overflow: hidden; }
+  #demo { position: fixed; inset: 0; }
+  #boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+          color: #6f8794; font: 12px/1.6 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .1em;
+          text-transform: uppercase; }
+</style>
+<div id="boot">loading</div>
+<div id="demo"></div>
+<script type="module">
+  import MPMDemo4 from './demo4.js';
+  import DEMO_CSS from './demo4.css.js';
+  const style = document.createElement('style');
+  style.textContent = DEMO_CSS;
+  document.head.appendChild(style);
+  const boot = document.getElementById('boot');
+  try {
+    MPMDemo4.mount(document.getElementById('demo'), {});
+    boot.remove();
+  } catch (e) {
+    boot.textContent = 'failed to start: ' + String((e && e.message) || e);
+  }
+</script>

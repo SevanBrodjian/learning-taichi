@@ -64,11 +64,35 @@ export function parseDataUrl(url) {
   const m = (url || "").match(/^\/api\/data\/([^/]+)\/(.+)$/);
   return m ? { rid: m[1], path: m[2] } : null;
 }
-export const saveFile = (url, content) => {
+// `commit: false` is for autosave — it lands on disk (which is what protects the writing) without
+// making a git commit per pause in typing. The deliberate save commits.
+export const saveFile = (url, content, commit = true) => {
   const p = parseDataUrl(url);
   if (!p) return Promise.resolve({ ok: false, error: "not an editable doc url" });
-  return post("/api/file", { rid: p.rid, path: p.path, content });
+  return post("/api/file", { rid: p.rid, path: p.path, content, commit });
 };
+
+// Last-ditch save when the tab is being closed/hidden: fetch() gets cancelled on unload, sendBeacon
+// does not. Fire-and-forget by design — there is no response to read at that point.
+export const beaconSave = (url, content) => {
+  const p = parseDataUrl(url);
+  if (!p || !navigator.sendBeacon) return false;
+  const body = new Blob([JSON.stringify({ rid: p.rid, path: p.path, content, commit: false })],
+                        { type: "application/json" });
+  try { return navigator.sendBeacon(`${API_BASE}/api/file`, body); } catch { return false; }
+};
+
+// The notebook: Sevan's hand-written thinking space. The server tells us where it lives and what its
+// relative image refs resolve against.
+export const fetchNotebook = () => get("/api/notebook", "json");
+
+// Binary-safe image upload (a pasted screenshot, a photo of paper). /api/file is markdown-only and
+// would corrupt a PNG, so bytes go base64 over their own endpoint.
+export const uploadImage = (rid, dir, filename, dataB64) =>
+  post("/api/upload", { rid, dir, filename, data_b64: dataB64 });
+
+// Epochs that have actually been cut (harness/tools/cut_epoch.py). Read-only.
+export const fetchEpochs = () => get("/api/epochs", "json");
 
 // Overview authoring: add/edit tasks and create directions, all committed server-side.
 // A task is created with TAGS, not a direction. The server picks the storage direction itself — that

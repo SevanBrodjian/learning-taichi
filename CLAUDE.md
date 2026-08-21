@@ -145,9 +145,16 @@ the agent helped write proves nothing about him. Two rules make the grading real
 - **Name the gap, never supply the content.** "§3 generalises from one task" is feedback; "§3 should say
   it was launch overhead" is the answer. Point at study material, not at conclusions, and name only the
   two or three gaps that matter — a list of twelve is a fill-in-the-blanks form.
-- **Grade in a fresh subagent that has not seen the working conversation.** The collaborating agent knows
-  every answer and is structurally inclined to be agreeable; that is a bad examiner. The grader gets the
-  rubric, the repo and the submission, and nothing else. Relay its verdict without softening it.
+- **Grading runs as the `grader` agent** (`.claude/agents/grader.md`) — an independent auditor that did
+  not build the project, has not seen the working conversation, and is told not to go looking for it. The
+  collaborating agent knows every answer and is inclined to be agreeable; that is a bad examiner. Relay
+  the verdict without softening it.
+
+The curriculum is a sequence of **courses**, one per epoch, and **a course covers only the work since the
+previous epoch closed** — re-testing an earlier course's material is a grading defect, not thoroughness.
+Scored 0–100 across five criteria; 70 passes with no criterion below 50; retakes unlimited and
+unpenalised; a separate, deliberately *more* skeptical `approve` mode for sign-off. An explicit, reasoned
+waiver ("I am not pursuing X, because Y") is honoured and excluded from scoring — silence is not a waiver.
 
 The agent's own notes on where the research should go live in `coordination/research_directions.md` — a
 different file, and it must not leak into the report.

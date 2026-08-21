@@ -23,11 +23,19 @@ from __future__ import annotations
 
 import datetime
 import json
+import mimetypes
 import os
 import re
 import subprocess
 import time
 from pathlib import Path
+
+# Windows resolves MIME types from the registry, which knows about neither the newer image formats nor
+# .mjs. An unregistered type is served as text/plain, which is harmless for an <img> (browsers sniff) but
+# FATAL for a module script — so pin the ones a frozen demo build or a pasted screenshot depends on.
+for _ext, _type in ((".webp", "image/webp"), (".avif", "image/avif"), (".heic", "image/heic"),
+                    (".mjs", "text/javascript"), (".js", "text/javascript"), (".wasm", "application/wasm")):
+    mimetypes.add_type(_type, _ext)
 
 # harness/server/app.py -> repo root is three parents up.
 MAIN_ROOT = Path(__file__).resolve().parents[2]
@@ -669,15 +677,129 @@ def resolve_write(rid: str, path: str) -> tuple[Path, Path]:
     return target, root
 
 
-def write_file(rid: str, path: str, content: str) -> dict:
-    """Write back an edited markdown doc (training page, report, decision). Markdown only."""
+def write_file(rid: str, path: str, content: str, commit: bool = True) -> dict:
+    """Write back an edited markdown doc (training page, report, decision, notebook). Markdown only.
+
+    `commit=False` exists for AUTOSAVE. The Notebook is a writing surface where the unacceptable failure
+    is losing text, so it saves every couple of seconds — and a git commit per keystroke-pause would bury
+    the history it is supposed to preserve. Autosaves land on disk (which is what protects the writing);
+    the deliberate save when the writer leaves edit mode makes the one commit for that session."""
     if not path.endswith(".md"):
         return {"ok": False, "error": "only .md files are editable from the dashboard"}
     target, root = resolve_write(rid, path)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(content, encoding="utf-8")
-    _git_commit(target, f"dashboard: edit {path}", cwd=root)
+    if commit:
+        _git_commit(target, f"dashboard: edit {path}", cwd=root)
     return {"ok": True}
+
+
+# ---- notebook: Sevan's hand-written thinking space (reports/notebook/README.md) ----
+# It is one living markdown file plus an image folder. The dashboard needs three things from the server:
+# where the file is, what to resolve its relative image refs against, and somewhere binary-safe to put a
+# pasted screenshot. `/api/file` is deliberately text-only, so images go through `upload_media` below.
+
+NOTEBOOK_REL = "reports/notebook/current.md"
+NOTEBOOK_MEDIA_REL = "reports/notebook/media"
+
+
+def notebook_doc() -> dict:
+    f = MAIN_ROOT / NOTEBOOK_REL
+    return {
+        "rid": main_root_id(),
+        "path": NOTEBOOK_REL,
+        "url": _shared_url(NOTEBOOK_REL),
+        # Relative refs inside the doc (`![](media/sketch.jpg)`) resolve against this.
+        "base_url": _shared_url("reports/notebook/"),
+        "media_dir": NOTEBOOK_MEDIA_REL,
+        "exists": f.is_file(),
+        "mtime": int(f.stat().st_mtime) if f.is_file() else 0,
+    }
+
+
+# Uploads are deliberately narrow: an allow-list of destinations and of extensions. The endpoint exists
+# to get a sketch or a photo of paper into the notebook, not to become a general write-anywhere channel.
+UPLOAD_DIRS = {NOTEBOOK_MEDIA_REL}
+UPLOAD_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".heic", ".heif", ".bmp"}
+UPLOAD_MAX_BYTES = 32 * 1024 * 1024
+
+
+def upload_media(rid: str, dest_dir: str, filename: str, data_b64: str) -> dict:
+    """Save a pasted/dropped image next to the doc that references it. Binary-safe: the payload is
+    base64 over JSON and is written as bytes, never decoded as text."""
+    import base64
+
+    dest_dir = (dest_dir or NOTEBOOK_MEDIA_REL).strip("/")
+    if dest_dir not in UPLOAD_DIRS:
+        return {"ok": False, "error": f"uploads are not allowed into {dest_dir}"}
+    ext = Path(filename or "").suffix.lower()
+    if ext not in UPLOAD_EXTS:
+        return {"ok": False, "error": f"unsupported image type '{ext or filename}'"}
+    try:
+        raw = base64.b64decode(data_b64 or "", validate=True)
+    except Exception:
+        return {"ok": False, "error": "payload is not valid base64"}
+    if not raw:
+        return {"ok": False, "error": "empty upload"}
+    if len(raw) > UPLOAD_MAX_BYTES:
+        return {"ok": False, "error": f"image is {len(raw) // 1048576} MB; the limit is 32 MB"}
+
+    stem = _slug(Path(filename or "image").stem)[:48] or "image"
+    name = f"{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}-{stem}{ext}"
+    target, root = resolve_write(rid, f"{dest_dir}/{name}")
+    n = 1
+    while target.exists():  # same-second paste of two images
+        n += 1
+        name = f"{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}-{stem}-{n}{ext}"
+        target, root = resolve_write(rid, f"{dest_dir}/{name}")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(raw)
+    # Committed on arrival: an image the writer can no longer see is the same failure as losing the text.
+    _git_commit(target, f"notebook: add image {name}", cwd=root)
+    rel = f"{dest_dir}/{name}"
+    return {"ok": True, "name": name, "path": rel, "url": f"/api/data/{rid}/{rel}",
+            "markdown": f"![]({Path(dest_dir).name}/{name})", "bytes": len(raw)}
+
+
+# ---- epochs: a cut across the whole project at an inflection point (coordination/epochs/README.md) ----
+
+def epochs_list() -> dict:
+    """Every epoch that has actually been cut (has an epoch.json), newest first. Read-only: epochs are
+    cut deliberately with harness/tools/cut_epoch.py, never by the dashboard."""
+    d = MAIN_ROOT / "coordination" / "epochs"
+    out = []
+    if d.is_dir():
+        for sub in sorted(p for p in d.iterdir() if p.is_dir()):
+            j = sub / "epoch.json"
+            if not j.is_file():
+                continue
+            try:
+                e = json.loads(j.read_text("utf-8"))
+            except Exception:
+                continue
+            demo_dir = (e.get("demo") or {}).get("path")
+            demo_index = MAIN_ROOT / (demo_dir or "") / "index.html" if demo_dir else None
+            out.append({
+                "id": sub.name,
+                "n": e.get("n"),
+                "slug": e.get("slug", sub.name),
+                "title": e.get("title", sub.name),
+                "cut": e.get("cut", ""),
+                "physics_version": e.get("physics_version", ""),
+                "task_count": len(e.get("tasks", [])),
+                "edge_count": len(e.get("edges", [])),
+                "report_verdict": e.get("report_verdict"),
+                "report_url": _shared_url(f"coordination/epochs/{sub.name}/report.md")
+                              if (sub / "report.md").is_file() else None,
+                "verdict_url": _shared_url(f"coordination/epochs/{sub.name}/verdict.md")
+                               if (sub / "verdict.md").is_file() else None,
+                "exam_url": _shared_url(f"coordination/epochs/{sub.name}/EXAM.md")
+                            if (sub / "EXAM.md").is_file() else None,
+                "demo_url": _shared_url(f"{demo_dir}/index.html")
+                            if demo_index is not None and demo_index.is_file() else None,
+            })
+    out.sort(key=lambda e: (e.get("n") if isinstance(e.get("n"), int) else -1), reverse=True)
+    return {"epochs": out}
 
 
 # Tags are the user-facing axis. A direction file is only where a task is STORED (and it fixes the run
@@ -1099,11 +1221,32 @@ def _build_app():
         if rid is None or path is None or content is None:
             raise HTTPException(400, "rid, path, content required")
         try:
-            return write_file(rid, path, content)
+            return write_file(rid, path, content, commit=payload.get("commit", True) is not False)
         except PermissionError:
             raise HTTPException(403, "forbidden")
         except FileNotFoundError:
             raise HTTPException(404, "not found")
+
+    @app.get("/api/notebook")
+    def api_notebook():
+        return notebook_doc()
+
+    @app.post("/api/upload")
+    def api_upload(payload: dict):
+        """Binary-safe image upload for the Notebook. /api/file is text-only and would corrupt a PNG,
+        so bytes come through here as base64 and are written with write_bytes."""
+        rid = payload.get("rid") or main_root_id()
+        try:
+            return upload_media(rid, payload.get("dir"), payload.get("filename"),
+                                payload.get("data_b64"))
+        except PermissionError:
+            raise HTTPException(403, "forbidden")
+        except FileNotFoundError:
+            raise HTTPException(404, "not found")
+
+    @app.get("/api/epochs")
+    def api_epochs():
+        return epochs_list()
 
     @app.post("/api/task-create")
     def api_task_create(payload: dict):

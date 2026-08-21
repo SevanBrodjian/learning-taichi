@@ -329,7 +329,11 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
 
 /* In-place markdown editing (Edit button + raw-source textarea) */
 .doc-editable { position: relative; }
-.doc-edit-btn { position: absolute; top: 0; right: 0; z-index: 5; background: var(--panel-2);
+/* The affordance is a row now, not a lone button: an autosaving doc parks its save-state next to the
+   button so "is my writing safe" is answered in the same place the writing is started. */
+.doc-edit-affordance { position: absolute; top: 0; right: 0; z-index: 5;
+  display: flex; align-items: center; gap: 10px; }
+.doc-edit-btn { background: var(--panel-2);
   border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 5px 12px;
   font-size: 12px; font-family: var(--mono); cursor: pointer; }
 .doc-edit-btn:hover { color: var(--bg); background: var(--accent); border-color: var(--accent); }
@@ -753,3 +757,85 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
 .notif-clear { background: transparent; border: 1px solid var(--border); color: var(--muted);
   border-radius: 6px; padding: 3px 9px; font-size: 11px; cursor: pointer; white-space: nowrap; }
 .notif-clear:hover { color: var(--text); border-color: var(--accent); }
+
+/* ── Notebook ──────────────────────────────────────────────────────────────────────────────────────
+   A writing surface, not a document viewer. Everything here is in service of two things: the text
+   being comfortable to sit with, and it being obvious that nothing has been lost.
+
+   The read and write states deliberately share one measure, one type size and one leading, and the
+   textarea sits where the prose sat, so toggling is closer to picking up a pen than to switching
+   tools. That is why the editor keeps the sans face here instead of the mono the other doc editors
+   use -- this is prose, and 68ch of monospace reads like a config file. */
+.notebook { max-width: 78ch; }
+.nb-head { margin: 0 0 26px; }
+.nb-head h1 { font-size: 21px; margin: 0 0 6px; letter-spacing: .2px; }
+.nb-sub { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+.nb-sub code { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+.nb-sub .sep, .doc-editor-hint .sep { opacity: .5; margin: 0 7px; }
+
+/* The sheet: a faintly lit panel the writing sits on, so the column reads as a surface rather than as
+   text floating on the app background. Mild, per spec/aesthetic.md -- this is dashboard chrome. */
+.nb-sheet { position: relative; background: linear-gradient(180deg, rgba(255,255,255,.022), rgba(255,255,255,0) 220px), var(--panel-2);
+  border: 1px solid var(--border); border-radius: 12px; padding: 54px 30px 34px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 12px 30px -24px rgba(0,0,0,.9); }
+/* The sheet reserves a header strip at the top; both states hang their chrome in it, in the same
+   place, so the toggle does not shift the page. */
+.nb-sheet::before { content: ""; position: absolute; left: 0; right: 0; top: 42px;
+  border-top: 1px solid var(--border); opacity: .55; }
+.nb-sheet .doc-edit-affordance { top: -40px; right: 0; }
+.nb-empty { color: var(--muted); font-style: italic; margin: 0; }
+
+/* One typographic setting shared by both states. */
+.doc-editable.nb .markdown, .doc-editor.nb .doc-editor-area {
+  font-family: var(--sans); font-size: 15.5px; line-height: 1.75; max-width: 68ch; }
+.doc-editable.nb .markdown h1 { font-size: 20px; }
+.doc-editable.nb .markdown h2 { font-size: 16.5px; color: var(--text); margin-top: 1.9em; }
+.doc-editable.nb .markdown h3 { font-size: 14.5px; color: var(--muted); text-transform: uppercase;
+  letter-spacing: .06em; }
+.doc-editable.nb .markdown > :first-child { margin-top: 0; }
+.doc-editable.nb .markdown hr { border: 0; border-top: 1px solid var(--border); margin: 2.2em 0; }
+.doc-editor.nb { position: relative; }
+.doc-editor.nb .doc-editor-area { background: transparent; border: 0; border-radius: 0; padding: 0;
+  min-height: 62vh; resize: none; outline: none; caret-color: var(--accent); }
+.doc-editor.nb .doc-editor-bar { position: absolute; top: -42px; right: 0; left: 0; }
+.doc-editor.nb .doc-editor-label { opacity: .8; }
+
+/* Save state. The one thing that must never be ambiguous. */
+.save-state { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; color: var(--muted);
+  white-space: nowrap; }
+.save-state.save-saving { color: var(--accent); }
+.save-state.save-dirty { color: #ffd24d; }
+.save-state.save-error { color: var(--danger); font-weight: 600; }
+.save-state.save-saved { color: var(--accent-2); }
+
+.doc-editor-hint { font-size: 11.5px; color: var(--muted); font-family: var(--mono); }
+.doc-editor-hint code { background: var(--panel); padding: 1px 5px; border-radius: 4px; }
+.doc-editor-area.dropping { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 8px; }
+.small { font-size: 11.5px; }
+
+/* Recovered draft: shown once, on load, when the browser is holding text the file does not have. */
+.doc-backup { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 18px;
+  background: #2a2410; border: 1px solid #4a3f1a; border-radius: 8px; padding: 10px 14px;
+  font-size: 12.5px; color: #ffe6a8; }
+.doc-backup-actions { margin-left: auto; display: flex; gap: 8px; }
+
+/* ── Epochs (read-only, listed beside the reports) ─────────────────────────────────────────────────
+   The four things an epoch cuts at once, shown together — separately they are each nearly worthless
+   (a frozen demo of unknown physics; a report whose evidence has since moved). */
+.epoch-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px 18px; margin: 0 0 22px; max-width: 80ch; }
+.epoch-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.epoch-n { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .5px;
+  color: var(--bg); background: var(--accent); border-radius: 4px; padding: 2px 7px; }
+.epoch-title { font-size: 15px; font-weight: 600; }
+.epoch-verdict { margin-left: auto; font-family: var(--mono); font-size: 11px; letter-spacing: .5px;
+  border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; color: var(--muted); }
+.epoch-verdict.v-pass { color: var(--accent-2); border-color: #21402b; background: #11261a; }
+.epoch-verdict.v-revise { color: #ffd24d; border-color: #4a3f1a; background: #2a2410; }
+.epoch-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px 18px;
+  margin: 0; }
+.epoch-facts dt { font-size: 10.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted);
+  margin-bottom: 3px; }
+.epoch-facts dd { margin: 0; font-size: 13px; }
+.epoch-facts code { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+.epoch-facts a { color: var(--accent); }

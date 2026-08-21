@@ -7,6 +7,7 @@ import TrainingView from "./components/TrainingView.jsx";
 import ReportsView from "./components/ReportsView.jsx";
 import InboxView from "./components/InboxView.jsx";
 import DemoView from "./components/DemoView.jsx";
+import NotebookView from "./components/NotebookView.jsx";
 
 const SECTIONS = [
   { id: "overview", label: "Overview" },
@@ -14,6 +15,7 @@ const SECTIONS = [
   { id: "tasks", label: "Tasks" },
   { id: "training", label: "Training" },
   { id: "reports", label: "Reports" },
+  { id: "notebook", label: "Notebook" },
   { id: "inbox", label: "Inbox" },
   { id: "demo", label: "Demo" },
 ];
@@ -260,6 +262,7 @@ export default function App() {
         />
       )}
       {section === "reports" && <ReportsView />}
+      {section === "notebook" && <NotebookView />}
       {section === "inbox" && <InboxView notifData={notifData} />}
       {section === "demo" && <DemoView />}
     </main>

@@ -24,7 +24,16 @@ function resolveWikiLinks(md, ids) {
 // Memoized: unrelated App state (the 4s board poll) re-renders ancestors, and without this the
 // react-markdown subtree — including any embedded <video> — would re-render and could reset playback.
 // Memo keeps a paused training video paused, since equal props skip the re-render entirely.
-function MarkdownReport({ markdown, sections, onNavigate }) {
+// A doc that lives on disk can reference a sibling file the way any markdown file does — the notebook
+// writes `![](media/sketch.jpg)`. The browser would resolve that against the dashboard's own URL, so a
+// doc served from /api/data/... passes `baseUrl` and relative sources resolve against the doc instead.
+function resolveSrc(src, baseUrl) {
+  if (!src || !baseUrl) return src;
+  if (/^([a-z]+:|\/\/|\/)/i.test(src)) return src;      // absolute, protocol-relative, or rooted
+  return baseUrl.replace(/\/?$/, "/") + src.replace(/^\.\//, "");
+}
+
+function MarkdownReport({ markdown, sections, onNavigate, baseUrl }) {
   if (!markdown) return null;
   const ids = sections ? new Set(sections.map((s) => s.id)) : null;
   const text = resolveWikiLinks(markdown, ids);
@@ -35,7 +44,8 @@ function MarkdownReport({ markdown, sections, onNavigate }) {
     // rather than static diagrams (#13). Alt text becomes a visible caption (spans, not <figure>, so it
     // stays valid inside the <p> react-markdown wraps a lone image in). Captions are plain text, so write
     // them without $math$.
-    img({ src, alt, ...props }) {
+    img({ src: rawSrc, alt, ...props }) {
+      const src = resolveSrc(rawSrc, baseUrl);
       const isVideo = src && /\.(mp4|webm|mov)(\?|$)/i.test(src);
       const media = isVideo
         ? <VideoPlayer src={src} className="md-video" />

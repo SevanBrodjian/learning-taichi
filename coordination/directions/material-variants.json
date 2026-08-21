@@ -510,7 +510,7 @@
       "id": "incorporate-improved-materials-on-real-demo-page-and-improve-polish",
       "ref": "T-027",
       "title": "Incorporate improved materials on real demo page and improve polish",
-      "status": "active",
+      "status": "queued",
       "note": "Combine the previous (referenced) two tasks which improved the material realism in simulation of our 4 materials, and the other task which improved the rendering / appearance, and update the real demo page with this new standard.\nFor the rendering: use either of the new proposed options for water, for snow use option A, for sand use option A. For rubber I didn't like either of the new ones. Stick with the current renderer, but decrease how aggressively particles get smoothed into one continuous material for it (and only for rubber), with clearer borders.\nAlso the demo page looks good currently on a big monitor, but on a small screen like iPad or small laptop it's completely crowded and the actual graph isn't the center of attention. On an iphone it's effectively unusable.",
       "follow_up_of": [
         {
@@ -540,6 +540,10 @@
         {
           "time": 1787281438,
           "note": "The water did not get its rendering updated, it's still the old version. Use either of the new proposed appearances for water, whichever one is more efficient."
+        },
+        {
+          "time": 1787286932,
+          "note": "forced test"
         }
       ],
       "review_state": "running",

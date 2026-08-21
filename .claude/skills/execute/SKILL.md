@@ -14,10 +14,28 @@ before spawning** (step 3) — the user catches scope mismatches cheaply. If the
 **`hard`** (e.g. `/execute hard`), **bypass approvals entirely** and run the whole queue autonomously (the
 old behavior). Check the invocation text for `hard`.
 
-## 1. Read the board
+## 1. Read the board — including WHY something is queued
 Enumerate `coordination/directions/*.json` and collect every task with `"status": "queued"`. If there are
 none, tell the user the queue is empty (mention what is `proposed`, in case they want to queue something)
 and stop. Do not invent work.
+
+**Read `rework_history` and `notes` on every queued task, not just `note`.** A task can be queued for two
+completely different reasons and they demand different responses:
+
+- **Never run before** → expand the seed `note` into a brief as normal.
+- **SENT BACK by the user** → `rework_history` has an entry, and its latest note is *the actual
+  instruction*. The seed note is stale context; the rework note is what must change. It goes at the TOP
+  of the regenerated brief, verbatim, as the objective — and the brief says explicitly what was wrong
+  with the previous attempt so the worker does not repeat it.
+
+**A task that has already run and been sent back must NEVER be re-run as if it were new.** Check
+`runs/<direction>/<task>/` before spawning: if a manifest is already there, this is a rework, and the
+brief must say what to keep as well as what to change. Re-running a completed task from its seed note
+throws away everything that was right about it.
+
+This is a scar, not a hypothetical: T-027 was sent back with a specific note about the water rendering,
+and the orchestrator read only `note`, saw a task it had already completed, and nearly re-ran the whole
+thing. The user's reason for sending it back was invisible because it was never read.
 
 ## 2. Plan the schedule like a CPU scheduler
 Decide what runs in parallel and what runs serially to **maximize throughput without thrashing the shared

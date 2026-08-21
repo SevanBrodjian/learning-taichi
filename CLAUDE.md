@@ -121,6 +121,19 @@ restarts the server if it dies or stops responding on `/api/health`, so a worker
 the dashboard showing an API error. (The server also sanitizes NaN/Inf out of JSON responses, so a
 degenerate metric in a manifest can't hang a task page.)
 
+## A sent-back task is an instruction, not a re-run
+The user can send a task back to the queue with a note. That note in `rework_history` is **the
+instruction** — it supersedes the original seed note, which is now stale context. The orchestrator
+**reads `rework_history` and `notes` on every queued task**, not just `note`, and puts the latest rework
+note at the top of the regenerated brief, verbatim.
+
+**A task with a manifest in `runs/` has already run.** If it is queued again, it is a REWORK: say what to
+keep as well as what to change, and never re-run it from the seed note as though it were new.
+
+Two failure modes this prevents, both observed on T-027: re-running ~80 minutes of completed work because
+the board said `queued`; and missing the user's actual complaint entirely because the reason for the
+send-back was never read.
+
 ## Never `git add -A` while a worker is running
 The orchestrator shares one working tree with every worker it spawns. A blanket `git add -A` therefore
 sweeps in whatever a live worker happens to have written **so far** — committing a half-finished run,

@@ -190,8 +190,13 @@ export default function GraphView({ overview, onOpenTask, onOpenRef, focusTask, 
     }
 
     const LINK_LEN = 232, LINK_K = 0.05;
+    // Drag feel. SOFT_GAIN converts force straight to velocity (no accumulation); SOFT_CAP is the top
+    // speed a neighbour may creep at, in px/frame -- against the solve's 26, this is a slow yield.
+    const SOFT_GAIN = 0.55, SOFT_CAP = 3.2;
     const REPEL = 44000, DAMP = 0.82;
-    const step = (iter) => {
+    // `soft` is the DRAG feel, and it is a different material, not just slower numbers. The default path
+    // (the 700-iteration solve) is untouched -- changing it would move the canonical layout.
+    const step = (iter, soft) => {
       const cool = Math.max(0.12, 1 - iter / 640);
       for (const n of nodes) { n.fx = 0; n.fy = 0; }
       // repulsion (21 nodes -> 210 pairs; no quadtree needed)
@@ -207,11 +212,13 @@ export default function GraphView({ overview, onOpenTask, onOpenRef, focusTask, 
           b.fx -= (dx / d) * f; b.fy -= (dy / d) * f;
         }
       }
-      // link springs
+      // link springs. Softened under drag so a pulled node stretches its links rather than towing its
+      // whole neighbourhood along with it.
+      const linkK = soft ? LINK_K * 0.4 : LINK_K;
       for (const e of edges) {
         const dx = e.to.x - e.from.x, dy = e.to.y - e.from.y;
         const d = Math.max(1, Math.hypot(dx, dy));
-        const f = (d - LINK_LEN) * LINK_K;
+        const f = (d - LINK_LEN) * linkK;
         e.from.fx += (dx / d) * f; e.from.fy += (dy / d) * f;
         e.to.fx -= (dx / d) * f; e.to.fy -= (dy / d) * f;
       }
@@ -290,9 +297,19 @@ export default function GraphView({ overview, onOpenTask, onOpenRef, focusTask, 
         }
       }
       for (const n of nodes) {
-        n.vx = (n.vx + n.fx) * DAMP; n.vy = (n.vy + n.fy) * DAMP;
-        const sp = Math.hypot(n.vx, n.vy), cap = 26 * cool;
-        if (sp > cap) { n.vx = (n.vx / sp) * cap; n.vy = (n.vy / sp) * cap; }
+        if (soft) {
+          // OVERDAMPED. Velocity is proportional to the force with NO history, so the graph creeps while
+          // a force is applied and stops the instant it is released -- viscous, not elastic. The momentum
+          // term below is what made dragging feel like pulling rubber: stored velocity keeps going after
+          // the spring is satisfied, overshoots, and recoils. Playdoh has no recoil.
+          n.vx = n.fx * SOFT_GAIN; n.vy = n.fy * SOFT_GAIN;
+          const sp = Math.hypot(n.vx, n.vy);
+          if (sp > SOFT_CAP) { n.vx = (n.vx / sp) * SOFT_CAP; n.vy = (n.vy / sp) * SOFT_CAP; }
+        } else {
+          n.vx = (n.vx + n.fx) * DAMP; n.vy = (n.vy + n.fy) * DAMP;
+          const sp = Math.hypot(n.vx, n.vy), cap = 26 * cool;
+          if (sp > cap) { n.vx = (n.vx / sp) * cap; n.vy = (n.vy / sp) * cap; }
+        }
         n.x += n.vx; n.y += n.vy;
       }
     };
@@ -366,14 +383,15 @@ export default function GraphView({ overview, onOpenTask, onOpenRef, focusTask, 
     if (relaxRaf.current) return;
     let n = 0;
     const tick = () => {
-      for (let i = 0; i < 2; i++) solved.step(300);
+      // ONE soft substep per frame. Two hard ones converged in a few frames, which is why it snapped.
+      solved.step(300, true);
       if (nodeDrag.current) {
         const nd = nodeDrag.current;
         nd.node.x = nd.x; nd.node.y = nd.y; nd.node.vx = 0; nd.node.vy = 0;
       }
       force((v) => v + 1);
       n++;
-      relaxRaf.current = n < 90 || nodeDrag.current ? requestAnimationFrame(tick) : 0;
+      relaxRaf.current = n < 150 || nodeDrag.current ? requestAnimationFrame(tick) : 0;
     };
     relaxRaf.current = requestAnimationFrame(tick);
   }, [solved]);

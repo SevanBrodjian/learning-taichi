@@ -789,6 +789,8 @@ def epochs_list() -> dict:
                 "task_count": len(e.get("tasks", [])),
                 "edge_count": len(e.get("edges", [])),
                 "report_verdict": e.get("report_verdict"),
+                "report_score": e.get("report_score"),
+                "forced": bool(e.get("forced")),
                 "report_url": _shared_url(f"coordination/epochs/{sub.name}/report.md")
                               if (sub / "report.md").is_file() else None,
                 "verdict_url": _shared_url(f"coordination/epochs/{sub.name}/verdict.md")

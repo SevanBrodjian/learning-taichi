@@ -159,17 +159,26 @@ def collect_graph() -> tuple[list[dict], list[dict]]:
     return tasks, edges
 
 
-def read_verdict(epoch_dir: Path, verdict_arg: str | None) -> tuple[str | None, Path | None]:
-    """PASS / REVISE, from the grader's verdict.md (spec/examination.md defines the format)."""
+def read_verdict(epoch_dir: Path, verdict_arg: str | None) -> tuple[str | None, int | None, Path | None]:
+    """The grader's verdict on the report, from verdict.md.
+
+    Format is fixed by `.claude/agents/grader.md`: a `VERDICT:` line carrying
+    PASS | RESUBMIT | INSUFFICIENT COVERAGE, and an `OVERALL: <n>%` score. Parsed rather than
+    re-derived — the epoch records what the grader said, and this tool never decides a grade."""
     src = Path(verdict_arg).resolve() if verdict_arg else (epoch_dir / "verdict.md")
     if not src.is_file():
-        return None, None
-    head = src.read_text("utf-8", errors="ignore")[:2000].upper()
-    if "REVISE" in head and head.find("REVISE") < (head.find("PASS") if "PASS" in head else 10**9):
-        return "REVISE", src
-    if "PASS" in head:
-        return "PASS", src
-    return None, src
+        return None, None, None
+    text = src.read_text("utf-8", errors="ignore")
+    m = re.search(r"^\s*VERDICT:\s*([A-Z][A-Z ]+)", text, re.MULTILINE)
+    verdict = m.group(1).strip() if m else None
+    if verdict is None:  # a hand-written or older verdict: fall back to the words themselves
+        head = text[:2000].upper()
+        for word in ("RESUBMIT", "INSUFFICIENT COVERAGE", "REVISE", "PASS"):
+            if word in head:
+                verdict = word
+                break
+    s = re.search(r"^\s*OVERALL:\s*(\d{1,3})\s*%", text, re.MULTILINE)
+    return verdict, (int(s.group(1)) if s else None), src
 
 
 def git_state() -> dict:
@@ -217,12 +226,13 @@ def cut(n: int, slug: str, title: str | None, verdict_arg: str | None,
         raise SystemExit(f"{eid} has already been cut; pass --replace to overwrite it")
 
     # 1. the report, and the verdict that lets the epoch close at all
-    verdict, verdict_src = read_verdict(epoch_dir, verdict_arg)
+    verdict, score, verdict_src = read_verdict(epoch_dir, verdict_arg)
     if verdict != "PASS" and not force:
         where = verdict_src or (epoch_dir / "verdict.md")
         raise SystemExit(
             f"the epoch does not close until its report passes (spec/examination.md).\n"
-            f"  verdict: {verdict or 'none found'}  ({where})\n"
+            f"  verdict: {verdict or 'none found'}"
+            f"{f' at {score}%' if score is not None else ''}  ({where})\n"
             f"  cut anyway with --force; the json will record forced: true")
     if not REPORT_SRC.is_file() and not force:
         raise SystemExit(f"{REPORT_SRC} does not exist; --force to cut without a report")
@@ -241,13 +251,14 @@ def cut(n: int, slug: str, title: str | None, verdict_arg: str | None,
         print("    Both are recorded; treat the demo's behaviour as reproducing ITS stamp, not the repo's.")
     print(f"  tasks        {len(tasks)} across {len(set(t['dir'] for t in tasks))} directions, {len(edges)} edges")
     print(f"  report       {'(missing)' if not REPORT_SRC.is_file() else REPORT_SRC.relative_to(ROOT)}"
-          f"   verdict: {verdict or 'none'}{' (FORCED)' if verdict != 'PASS' else ''}")
+          f"   verdict: {verdict or 'none'}{f' {score}%' if score is not None else ''}"
+          f"{' (FORCED)' if verdict != 'PASS' else ''}")
 
     demo_files = freeze_demo(demo_dir, n, slug, f"{title} — epoch {n}", cut_at, phys, dry)
     print(f"  demo         {len(demo_files)} files -> {demo_dir.relative_to(ROOT)}")
 
     report_info = {"source": "reports/research_report.md", "frozen": None,
-                   "bytes": None, "sha256": None, "verdict": verdict,
+                   "bytes": None, "sha256": None, "verdict": verdict, "score": score,
                    "verdict_file": str(verdict_src.relative_to(ROOT)).replace("\\", "/") if verdict_src else None}
     if not dry:
         epoch_dir.mkdir(parents=True, exist_ok=True)
@@ -269,6 +280,7 @@ def cut(n: int, slug: str, title: str | None, verdict_arg: str | None,
         "cut": cut_at,
         "physics_version": phys,
         "report_verdict": verdict,
+        "report_score": score,
         "forced": verdict != "PASS",
         "report": report_info,
         "demo": {

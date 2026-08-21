@@ -10,14 +10,20 @@ export default function EpochCard({ epoch }) {
   const when = cut && !isNaN(cut)
     ? cut.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })
     : epoch.cut;
+  // The examination's own words, never re-graded here: PASS / RESUBMIT / INSUFFICIENT COVERAGE and the
+  // overall percentage. `forced` means the epoch was cut without a pass — visible, not hidden.
   const verdict = epoch.report_verdict;
+  const passed = String(verdict || "").toUpperCase() === "PASS";
+  const score = typeof epoch.report_score === "number" ? ` ${epoch.report_score}%` : "";
 
   return (
     <div className="epoch-card">
       <div className="epoch-head">
         <span className="epoch-n">Epoch {epoch.n}</span>
         <span className="epoch-title">{epoch.title}</span>
-        {verdict && <span className={`epoch-verdict v-${String(verdict).toLowerCase()}`}>{verdict}</span>}
+        {verdict
+          ? <span className={`epoch-verdict ${passed ? "v-pass" : "v-revise"}`}>{verdict}{score}</span>
+          : epoch.forced && <span className="epoch-verdict v-revise">cut without a verdict</span>}
       </div>
       <dl className="epoch-facts">
         <div><dt>Cut</dt><dd>{when || "—"}</dd></div>

@@ -839,3 +839,12 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
 .epoch-facts dd { margin: 0; font-size: 13px; }
 .epoch-facts code { font-family: var(--mono); font-size: 12px; color: var(--accent); }
 .epoch-facts a { color: var(--accent); }
+
+/* Phone: reclaim the side padding, and go to 16px — below that, iOS zooms the page when the textarea
+   takes focus, which throws the writer out of position mid-sentence. */
+@media (max-width: 600px) {
+  .nb-sheet { padding: 50px 16px 28px; border-radius: 10px; }
+  .nb-sheet::before { top: 38px; }
+  .doc-editable.nb .markdown, .doc-editor.nb .doc-editor-area { font-size: 16px; }
+  .doc-backup-actions { margin-left: 0; }
+}

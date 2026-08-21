@@ -24,6 +24,46 @@ function resolveWikiLinks(md, ids) {
 // Memoized: unrelated App state (the 4s board poll) re-renders ancestors, and without this the
 // react-markdown subtree — including any embedded <video> — would re-render and could reset playback.
 // Memo keeps a paused training video paused, since equal props skip the re-render entirely.
+// react-markdown does not render raw HTML (no rehype-raw), so an HTML COMMENT does not disappear — it
+// leaks into the page as body text. That is wrong everywhere (the decisions carry an `auto_run_at`
+// comment the server parses; the notebook template opens with a note to its writer) and it is worst on a
+// document whose author expects `<!-- ... -->` to be invisible. Strip them, but only outside fenced code
+// blocks and inline code spans, or a page documenting HTML would have its examples eaten.
+const MARK = "\uE000";   // a private-use char, so a placeholder can never collide with real text
+function stripHtmlComments(md) {
+  if (!md.includes("<!--")) return md;
+  const out = [];
+  let fence = null;      // the ``` or ~~~ run that opened the current code block
+  let inComment = false; // a comment that spans lines
+  for (const line of md.split("\n")) {
+    const f = /^\s{0,3}(`{3,}|~{3,})/.exec(line);
+    if (!inComment && f) {
+      if (fence && line.trim().startsWith(fence)) fence = null;
+      else if (!fence) fence = f[1];
+      out.push(line);
+      continue;
+    }
+    if (fence) { out.push(line); continue; }
+    let s = line;
+    if (inComment) {
+      const end = s.indexOf("-->");
+      if (end < 0) continue;                 // still inside the comment: drop the whole line
+      s = s.slice(end + 3);
+      inComment = false;
+    }
+    // Protect inline code spans, then remove complete comments, then note an unterminated one.
+    const spans = [];
+    s = s.replace(/`[^`]*`/g, (m) => { spans.push(m); return MARK + (spans.length - 1) + MARK; });
+    s = s.replace(/<!--[\s\S]*?-->/g, "");
+    const open = s.indexOf("<!--");
+    if (open >= 0) { s = s.slice(0, open); inComment = true; }
+    s = s.replace(/\uE000(\d+)\uE000/g, (_, i) => spans[Number(i)]);
+    if (s.trim() === "" && line.trim() !== "") continue;  // the line was only a comment
+    out.push(s);
+  }
+  return out.join("\n");
+}
+
 // A doc that lives on disk can reference a sibling file the way any markdown file does — the notebook
 // writes `![](media/sketch.jpg)`. The browser would resolve that against the dashboard's own URL, so a
 // doc served from /api/data/... passes `baseUrl` and relative sources resolve against the doc instead.
@@ -36,7 +76,7 @@ function resolveSrc(src, baseUrl) {
 function MarkdownReport({ markdown, sections, onNavigate, baseUrl }) {
   if (!markdown) return null;
   const ids = sections ? new Set(sections.map((s) => s.id)) : null;
-  const text = resolveWikiLinks(markdown, ids);
+  const text = resolveWikiLinks(stripHtmlComments(markdown), ids);
 
   const components = {
     // Markdown image syntax pointing at a video renders the same clean autoplay player as the task

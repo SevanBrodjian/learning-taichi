@@ -530,7 +530,7 @@
         }
       ],
       "effort": "deep",
-      "budget_minutes": 120,
+      "budget_minutes": 70,
       "tags": [
         "demo",
         "rendering",

@@ -76,8 +76,10 @@ State the plan briefly before you start.
    The worker writes results to `runs/<direction-id>/<task-id>/`, calls `harness/tools/task_status.py` at a
    few milestones so the board shows its live step, adds a training page, fires its start/finish pings, and
    exits without committing.
-3. Flip the task to `active` on the board (POST `/api/task-status`, or edit the direction JSON) so the
-   dashboard shows it live.
+3. Flip the task to `active` on the board (POST `/api/task-status`) so the dashboard shows it live,
+   **and set its review state to `running`** (POST `/api/task-review`). That badge is how Sevan can
+   tell a live worker from a finished-but-unreviewed result, and it is what stops him sending a task
+   back mid-run — the server refuses that while the state is `running`.
 4. **Arm the adaptive check-in.** Note the spawn time and the task's `budget_minutes` (a soft expectation
    from the effort tier, tunable on the dashboard). Launch, in the **background**,
    `python harness/tools/watch_worker.py --direction <d> --task <t> --budget <min> --started <unix_ts>`.
@@ -110,6 +112,10 @@ When a worker finishes, **review before committing** (`CLAUDE.md`):
 
   Apply by editing the `GRAPH` table in `harness/tools/rebuild_graph.py` and re-running it (idempotent),
   then say in the commit which edges changed and why. Appending only is how the graph decayed last time.
+- **Set the review state.** `awaiting-review` the moment the worker finishes, and **`reviewed` only
+  after you have actually done the review above and committed.** Sevan judges results off that badge:
+  `unreviewed` means the figures have not been opened and the claims have not been scope-checked, so
+  he should not send it back yet for something you would have caught. Never stamp `reviewed` early.
 - Then commit the worker's files. **Leave status `active`** — *Done is the user's call*, never set
   automatically.
 

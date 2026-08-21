@@ -848,3 +848,10 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
   .doc-editable.nb .markdown, .doc-editor.nb .doc-editor-area { font-size: 16px; }
   .doc-backup-actions { margin-left: 0; }
 }
+
+/* Review state, distinct from status. "Active" used to mean three different things -- worker running,
+   worker finished but unreviewed, and reviewed-and-waiting-on-you -- and only the last is safe to judge. */
+.revbadge { font-size: 10px; letter-spacing: .04em; padding: 2px 7px; border-radius: 999px;
+  border: 1px solid var(--border); white-space: nowrap; }
+.rev-running { color: #7fd8f0; border-color: #17323f; background: #0f2230; }
+.rev-awaiting-review { color: #ffd24d; border-color: #4a3c12; background: #2a2410; }

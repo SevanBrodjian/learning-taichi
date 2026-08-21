@@ -310,6 +310,11 @@ export default function App() {
             </span>
             <span className="runmeta">
               <span className="rundate">{shortDate(t.created)}</span>
+              {t.review_state && t.review_state !== "reviewed" && (
+                <span className={`revbadge rev-${t.review_state}`}>
+                  {t.review_state === "running" ? "running" : "unreviewed"}
+                </span>
+              )}
               <span className={`status status-${t.status === "done" ? "done" : "active"}`}>
                 {t.status === "done" ? "Done" : "Active"}
               </span>

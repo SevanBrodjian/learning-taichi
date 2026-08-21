@@ -121,6 +121,22 @@ restarts the server if it dies or stops responding on `/api/health`, so a worker
 the dashboard showing an API error. (The server also sanitizes NaN/Inf out of JSON responses, so a
 degenerate metric in a manifest can't hang a task page.)
 
+## Review state — "Active" was three different things
+`status` is Sevan's workflow (proposed → queued → active → done). It said **`active`** for a worker still
+running, for a worker finished but **unreviewed**, and for a result reviewed and waiting on his Done —
+and only the last is safe for him to judge. A separate **`review_state`** now carries that:
+`running` → `awaiting-review` → `reviewed`, shown as its own badge.
+
+The orchestrator sets it explicitly: `running` at spawn, `awaiting-review` when the worker finishes,
+`reviewed` **only after the review is actually done and committed**. It is deliberately not inferred —
+mtime heuristics call a finished worker "live" for tens of minutes because workers never flip their own
+status, and deriving it from "is the run committed" would trust `git add -A` accidents that have twice
+committed unreviewed work.
+
+**The server refuses to send a task back to the queue while its review state is `running`**, because that
+strands the worker: it keeps going, finishes, and writes results onto a task the board says is waiting to
+start. `force: true` is the deliberate escape hatch for abandoning a run.
+
 ## A sent-back task is an instruction, not a re-run
 The user can send a task back to the queue with a note. That note in `rework_history` is **the
 instruction** — it supersedes the original seed note, which is now stale context. The orchestrator

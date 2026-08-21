@@ -18,7 +18,8 @@
       ],
       "tags": [
         "rendering"
-      ]
+      ],
+      "review_state": "reviewed"
     },
     {
       "id": "improve-basic-fluid-sim-realism",
@@ -55,7 +56,8 @@
       "tags": [
         "rendering",
         "materials"
-      ]
+      ],
+      "review_state": "reviewed"
     },
     {
       "id": "gpu-accelerate-fluid-renderer",
@@ -82,7 +84,8 @@
           "id": "more-realistic-basic-fluid-sims",
           "dir": "realistic-rendering"
         }
-      ]
+      ],
+      "review_state": "reviewed"
     },
     {
       "id": "more-realistic-basic-fluid-sims",
@@ -110,7 +113,8 @@
       ],
       "tags": [
         "rendering"
-      ]
+      ],
+      "review_state": "reviewed"
     }
   ]
 }

@@ -387,6 +387,14 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
           {task.ref && <span className="task-handle" title="Permanent reference for this task">{task.ref}</span>}
           <h1>{task.title}</h1>
           <span className={`status status-${isDone ? "done" : "active"}`}>{isDone ? "Done" : "Active"}</span>
+          {task.review_state && task.review_state !== "reviewed" && (
+            <span className={`revbadge rev-${task.review_state}`}
+                  title={task.review_state === "running"
+                    ? "A worker is still running on this task."
+                    : "The worker has finished but the orchestrator has NOT reviewed this yet — figures unopened, claims unchecked."}>
+              {task.review_state === "running" ? "worker running" : "not yet reviewed"}
+            </span>
+          )}
         </div>
         <div className="task-actions">
           {isDone ? (

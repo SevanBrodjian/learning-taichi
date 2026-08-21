@@ -372,7 +372,13 @@ def overview() -> dict:
                 "created": t.get("created") or (arts.get((did, tid)) or {}).get("created"),
                 "live": live.get((did, tid)),
                 "has_artifact": has, "detail": f"/api/task/{did}/{tid}" if has else None,
+                "review_state": t.get("review_state"),
+                "review_updated": t.get("review_updated"),
                 "rework_history": t.get("rework_history", []),
+                # The LATEST send-back note, hoisted so neither the dashboard nor the orchestrator
+                # has to dig for it. A queued task with this set is a REWORK, not a fresh run.
+                "rework_note": ((t.get("rework_history") or [{}])[-1].get("note")
+                                if t.get("rework_history") else None),
                 # Normalized + direction-resolved so the Map can draw cross-direction, typed edges.
                 "follow_up_of": _overview_parents(t, did, _tidx),
                 "follow_ups": t.get("follow_ups", []),
@@ -531,11 +537,56 @@ def _git_commit(path: Path, msg: str, cwd: Path = MAIN_ROOT) -> None:
         pass
 
 
-def set_task_status(direction: str, task: str, status: str, note: str | None = None) -> dict:
+# ---- review state -------------------------------------------------------------------------------
+# `status` (proposed/queued/active/done) is Sevan's workflow. It conflated three different situations
+# under "active": a worker still running, a worker finished but NOT yet reviewed, and a result reviewed
+# and waiting on his Done. Only the third is safe for him to judge -- in the second the figures have not
+# been opened and the claims have not been scope-checked.
+#
+# This is set EXPLICITLY by the orchestrator at the two moments it already acts (spawn, and after it
+# commits a review). It is deliberately not inferred: mtime heuristics call a finished worker "live" for
+# tens of minutes because workers do not flip their own status, and deriving it from "is the run
+# committed" would trust `git add -A` accidents that have twice committed unreviewed work.
+REVIEW_STATES = ("running", "awaiting-review", "reviewed")
+
+
+def set_task_review(direction: str, task: str, state: str) -> dict:
+    if state not in REVIEW_STATES:
+        return {"ok": False, "error": "state must be one of %s" % (REVIEW_STATES,)}
+    f = MAIN_ROOT / "coordination" / "directions" / f"{direction}.json"
+    if not f.is_file():
+        return {"ok": False, "error": "no such direction"}
+    data = json.loads(f.read_text("utf-8"))
+    for t in data.get("tasks", []):
+        if t.get("id") == task:
+            t["review_state"] = state
+            t["review_updated"] = int(time.time())
+            f.write_text(json.dumps(data, indent=2) + chr(10), encoding="utf-8")
+            _git_commit(f, f"dashboard: {direction}/{task} review -> {state}")
+            return {"ok": True, "review_state": state}
+    return {"ok": False, "error": "no such task"}
+
+
+def set_task_status(direction: str, task: str, status: str, note: str | None = None,
+                    force: bool = False) -> dict:
     """Atomically change a task's status in its direction file (the Overview write-back)."""
     f = MAIN_ROOT / "coordination" / "directions" / f"{direction}.json"
     if not f.is_file():
         return {"ok": False, "error": "no such direction"}
+    # Sending a RUNNING task back to the queue silently strands the worker: it keeps going, finishes,
+    # and writes results onto a task the board says is waiting to start. Refuse it, and say what to do
+    # instead. `force` is the deliberate escape hatch for actually abandoning a run.
+    if status == "queued" and not force:
+        cur = json.loads(f.read_text("utf-8"))
+        for t in cur.get("tasks", []):
+            if t.get("id") == task and t.get("review_state") == "running":
+                st = live_statuses().get((direction, task)) or {}
+                return {"ok": False, "error": "worker_running",
+                        "worker": {"step": st.get("step")},
+                        "message": ("A worker is still running on this task"
+                                    + (" (" + st["step"] + ")" if st.get("step") else "")
+                                    + ". Send it back once it finishes so your note reaches the rework, "
+                                      "or re-send with force to abandon the run.")}
     data = json.loads(f.read_text("utf-8"))
     found = False
     for t in data.get("tasks", []):
@@ -1215,7 +1266,7 @@ def _build_app():
         d, t, s = payload.get("direction"), payload.get("task"), payload.get("status")
         if not (d and t and s):
             raise HTTPException(400, "direction, task, status required")
-        return set_task_status(d, t, s, payload.get("note"))
+        return set_task_status(d, t, s, payload.get("note"), bool(payload.get("force")))
 
     @app.post("/api/file")
     def api_file(payload: dict):
@@ -1269,6 +1320,13 @@ def _build_app():
         if not name:
             raise HTTPException(400, "name required")
         return create_tag(name, payload.get("color"))
+
+    @app.post("/api/task-review")
+    def api_task_review(payload: dict):
+        d, t, st = payload.get("direction"), payload.get("task"), payload.get("state")
+        if not (d and t and st):
+            raise HTTPException(400, "direction, task, state required")
+        return set_task_review(d, t, st)
 
     @app.post("/api/task-effort")
     def api_task_effort(payload: dict):

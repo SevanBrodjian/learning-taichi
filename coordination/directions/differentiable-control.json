@@ -29,7 +29,8 @@
           "id": "resolution-memory",
           "dir": "long-rollout-pathologies"
         }
-      ]
+      ],
+      "review_state": "reviewed"
     },
     {
       "id": "optimizer-comparison",
@@ -52,7 +53,8 @@
           "dir": "differentiable-control",
           "kind": "extends"
         }
-      ]
+      ],
+      "review_state": "reviewed"
     }
   ]
 }

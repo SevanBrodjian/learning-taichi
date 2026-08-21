@@ -512,7 +512,8 @@
           "dir": "material-variants",
           "kind": "extends"
         }
-      ]
+      ],
+      "effort": "deep"
     }
   ]
 }

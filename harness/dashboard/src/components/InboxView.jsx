@@ -53,11 +53,21 @@ export default function InboxView({ notifData }) {
     } finally { setBusy(false); }
   };
 
+  const persistDismissed = (next) => {
+    setDismissed(next);
+    localStorage.setItem(DISMISS_KEY, JSON.stringify([...next]));
+  };
   const dismiss = (id) => {
     const next = new Set(dismissed);
     next.add(id);
-    setDismissed(next);
-    localStorage.setItem(DISMISS_KEY, JSON.stringify([...next]));
+    persistDismissed(next);
+  };
+  // Clear the whole feed at once. Only what is on screen NOW is dismissed, so anything that arrives
+  // afterwards still shows up rather than being swallowed by a stale clear.
+  const clearAll = () => {
+    const next = new Set(dismissed);
+    for (const n of notifs?.notifications || []) next.add(n.id);
+    persistDismissed(next);
   };
   const visible = (notifs?.notifications || []).filter((n) => !dismissed.has(n.id));
 
@@ -114,7 +124,15 @@ export default function InboxView({ notifData }) {
       </section>
 
       <section className="inbox-block inbox-notifs">
-        <h2>Notifications</h2>
+        <div className="inbox-head">
+          <h2>Notifications</h2>
+          {visible.length > 0 && (
+            <button className="notif-clear" onClick={clearAll}
+                    title="Dismiss every notification currently shown">
+              Clear {visible.length}
+            </button>
+          )}
+        </div>
         {notifs == null ? (
           <div className="muted">Loading…</div>
         ) : notifs.configured === false ? (

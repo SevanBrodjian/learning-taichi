@@ -745,3 +745,11 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
   .inbox-2col { grid-template-columns: 1fr; }
   .inbox-2col .inbox-notifs { order: -1; position: static; max-height: none; }
 }
+
+/* Notifications header: title left, clear-all right. Dismissing a feed one × at a time was the clunky
+   part; this clears everything currently shown (and only that, so later arrivals still appear). */
+.inbox-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.inbox-head h2 { margin-bottom: 0; }
+.notif-clear { background: transparent; border: 1px solid var(--border); color: var(--muted);
+  border-radius: 6px; padding: 3px 9px; font-size: 11px; cursor: pointer; white-space: nowrap; }
+.notif-clear:hover { color: var(--text); border-color: var(--accent); }

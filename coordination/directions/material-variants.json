@@ -541,7 +541,9 @@
           "time": 1787281438,
           "note": "The water did not get its rendering updated, it's still the old version. Use either of the new proposed appearances for water, whichever one is more efficient."
         }
-      ]
+      ],
+      "review_state": "running",
+      "review_updated": 1787286932
     }
   ]
 }

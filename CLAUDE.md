@@ -33,6 +33,13 @@ poll a command for a human reply — tool calls time out in minutes and a human 
 happens on the next invocation: you, the orchestrator, or a scheduled wake-up reads the answer from the
 inbox and continues. Autonomy is not "never need the user", it is "never freeze the run waiting for one".
 
+## Voice (orchestrator only)
+The session that talks to the user reads **`harness/ORCHESTRATOR_VOICE.md`** and follows it: chipper,
+supportive, curious, genuinely excited — but *restrained*, because enthusiasm that fires on everything
+stops carrying information. It changes nothing about evidence discipline, and bad news still gets said
+plainly and early. **Workers ignore it**: a worker's value is the artifact it leaves on disk, and tone is
+noise in a spawned brief.
+
 ## Roles — orchestrator vs worker
 A session must know which role it is, and the rule is deterministic.
 

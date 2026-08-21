@@ -60,7 +60,10 @@ const parentsOf = (t) =>
 
 // Per-device saved arrangement. Deliberately localStorage and not the repo: where Sevan likes his nodes
 // on the iPad is not project data, and two devices may reasonably differ.
-const LAYOUT_KEY = "lt_map_layout_v1";
+// v2: the solver changed (tag/similarity clustering), so a v1 arrangement saved against the old
+// layout would mask the new one entirely. Bumping the key re-solves once; "Organize" still
+// re-applies the canonical arrangement on demand.
+const LAYOUT_KEY = "lt_map_layout_v2";
 const loadLayout = () => {
   try { return JSON.parse(localStorage.getItem(LAYOUT_KEY) || "{}") || {}; } catch { return {}; }
 };
@@ -143,13 +146,48 @@ export default function GraphView({ overview, onOpenTask, onOpenRef, focusTask, 
       n.vx = 0; n.vy = 0;
     });
 
-    // tag centroids give same-tag work a place to gather
+    // ── tag geography ────────────────────────────────────────────────────────────────────────────
+    // Anchors used to sit in ALPHABETICAL order around a ring, so two tags that always appear together
+    // could land on opposite sides and tear their shared tasks apart -- which is why multi-tag work all
+    // ended up in the middle and nothing looked grouped. Order the ring by CO-OCCURRENCE instead, with a
+    // greedy nearest-neighbour chain, so related tags become neighbours.
     const tagList = [...new Set(nodes.flatMap((n) => n.tags))].sort();
+    const tagCount = new Map(tagList.map((t) => [t, nodes.filter((n) => n.tags.includes(t)).length]));
+    const co = (a, b) => nodes.filter((n) => n.tags.includes(a) && n.tags.includes(b)).length;
+    const ring = [];
+    if (tagList.length) {
+      const rest = new Set(tagList);
+      let cur = tagList.reduce((a, b) => (tagCount.get(b) > tagCount.get(a) ? b : a));
+      ring.push(cur); rest.delete(cur);
+      while (rest.size) {
+        let best = null, bestScore = -1;
+        for (const t of rest) {
+          const sc = co(cur, t);
+          if (sc > bestScore || (sc === bestScore && best && t < best)) { best = t; bestScore = sc; }
+        }
+        ring.push(best); rest.delete(best); cur = best;
+      }
+    }
     const tagAnchor = new Map();
-    tagList.forEach((t, i) => {
-      const a = (i / Math.max(1, tagList.length)) * Math.PI * 2 - Math.PI / 2;
-      tagAnchor.set(t, { x: W / 2 + Math.cos(a) * 300, y: H / 2 + Math.sin(a) * 190 });
+    ring.forEach((t, i) => {
+      const a = (i / Math.max(1, ring.length)) * Math.PI * 2 - Math.PI / 2;
+      tagAnchor.set(t, { x: W / 2 + Math.cos(a) * 330, y: H / 2 + Math.sin(a) * 210 });
     });
+
+    // How much two tasks belong together: Jaccard overlap of their tag sets. This is the "similarity"
+    // half -- without it, two tasks sharing every tag feel no pull toward EACH OTHER, only toward the
+    // same distant anchors, which is a much weaker and much blurrier signal.
+    const simPairs = [];
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const A = nodes[i].tags, B = nodes[j].tags;
+        if (!A.length || !B.length) continue;
+        const inter = A.filter((t) => B.includes(t)).length;
+        if (!inter) continue;
+        const union = new Set([...A, ...B]).size;
+        simPairs.push({ a: nodes[i], b: nodes[j], w: inter / union });
+      }
+    }
 
     const LINK_LEN = 232, LINK_K = 0.05;
     const REPEL = 44000, DAMP = 0.82;
@@ -177,16 +215,38 @@ export default function GraphView({ overview, onOpenTask, onOpenRef, focusTask, 
         e.from.fx += (dx / d) * f; e.from.fy += (dy / d) * f;
         e.to.fx -= (dx / d) * f; e.to.fy -= (dy / d) * f;
       }
-      // tag cohesion + centre gravity + generational left-to-right bias
+      // Similarity springs: tasks that share tags pull on each other directly, weighted by Jaccard.
+      for (const sp of simPairs) {
+        const dx = sp.b.x - sp.a.x, dy = sp.b.y - sp.a.y;
+        const d = Math.max(1, Math.hypot(dx, dy));
+        const f = (d - 150) * 0.010 * sp.w;
+        sp.a.fx += (dx / d) * f; sp.a.fy += (dy / d) * f;
+        sp.b.fx -= (dx / d) * f; sp.b.fy -= (dy / d) * f;
+      }
+      // Tag cohesion, RARITY-WEIGHTED and NORMALISED. Weighting by 1/count lets the rarer (more
+      // discriminating) tag decide where a task lives; normalising by total weight stops a three-tag
+      // task being hauled toward the average of three anchors, which is the canvas centre -- the old
+      // behaviour that made everything pile up in the middle.
       for (const n of nodes) {
-        for (const t of n.tags) {
-          const a = tagAnchor.get(t);
-          if (a) { n.fx += (a.x - n.x) * 0.0055; n.fy += (a.y - n.y) * 0.0055; }
+        if (n.tags.length) {
+          let tx = 0, ty = 0, tw = 0;
+          for (const t of n.tags) {
+            const a = tagAnchor.get(t);
+            if (!a) continue;
+            const w = 1 / Math.max(1, tagCount.get(t) || 1);
+            tx += a.x * w; ty += a.y * w; tw += w;
+          }
+          if (tw > 0) {
+            n.fx += (tx / tw - n.x) * 0.016;
+            n.fy += (ty / tw - n.y) * 0.016;
+          }
         }
         n.fx += (W / 2 - n.x) * 0.004;
         n.fy += (H / 2 - n.y) * 0.006;
+        // Lineage still reads left-to-right, but weaker than tag cohesion now -- at 0.010 against the
+        // old 0.0055 it was overriding the grouping and stringing everything into generation columns.
         const targetX = 150 + (n.gen / maxGen) * (W - 300);
-        n.fx += (targetX - n.x) * 0.010;
+        n.fx += (targetX - n.x) * 0.005;
       }
       // EDGE CLEARANCE. A force layout draws straight edges, and in a dense field those cut straight
       // through unrelated boxes — the same "lines overlap blocks" complaint in a new form. So once the
@@ -269,7 +329,7 @@ export default function GraphView({ overview, onOpenTask, onOpenRef, focusTask, 
     const allX = nodes.map((n) => n.x), allY = nodes.map((n) => n.y);
     const width = Math.max(...allX) - Math.min(...allX) + pad * 2 + NODE_W;
     const height = Math.max(...allY) - Math.min(...allY) + pad * 2 + NODE_H;
-    return { nodes, edges, byKey, tags: tagList, width, height, step, canonicalLayout,
+    return { nodes, edges, byKey, tags: tagList, tagCount, width, height, step, canonicalLayout,
              hasSaved: placed.length > 0, unplaced: fresh.length };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig]);

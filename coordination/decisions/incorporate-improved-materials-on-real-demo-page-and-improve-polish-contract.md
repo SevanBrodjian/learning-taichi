@@ -41,3 +41,6 @@ against glass's 0.83 ms. The fix is porting the reconstruction, not swapping the
 
 Frame budget has room (7.06 ms of 16.67 ms), but the distance transform is not free — T-020 measured it
 at ~31% of the water pipeline. It gets re-measured, and if it does not fit that gets said plainly.
+
+
+**Resolution: AUTO-RUN** (deadline passed with no objection; the run spawned as written)

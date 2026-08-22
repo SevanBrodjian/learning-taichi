@@ -209,6 +209,15 @@ def reports_list() -> dict:
     return {"reports": out}
 
 
+def _task_status_by_id(task_id: str) -> str | None:
+    """Current board status for a task id, across every direction file. Used to tell whether a contract
+    still means anything: once its task is running, the decision has already been taken."""
+    for (_d, t), rec in _task_index().items():
+        if t == task_id:
+            return rec.get("status")
+    return None
+
+
 def decisions_list() -> dict:
     """The inbox: open decisions awaiting the user (coordination/decisions/*.md). A file whose name
     contains 'contract' is a task contract the user can Approve/Reject before the run spawns."""
@@ -223,10 +232,27 @@ def decisions_list() -> dict:
             except Exception:
                 txt = ""
             mt = re.search(r"auto_run_at:\s*(\d+)", txt)
+            kind = "contract" if "contract" in f.stem.lower() else "note"
+            resolved = "**Resolution:" in txt
+            resolution = None
+            if resolved:
+                rm = re.search(r"\*\*Resolution:\s*([A-Z-]+)", txt)
+                resolution = rm.group(1) if rm else "RESOLVED"
+            # A contract for a task that has ALREADY STARTED is moot, whether or not anything wrote a
+            # resolution into the file. The auto-run path never did, so a timed-out contract kept
+            # offering "Approve & run" forever -- and approving it would have re-spawned a live task.
+            # Derived from the board rather than from the file, so it holds even if the orchestrator
+            # forgets to stamp it.
+            if kind == "contract" and not resolved and f.stem.endswith("-contract"):
+                st = _task_status_by_id(f.stem[:-len("-contract")])
+                if st in ("active", "done"):
+                    resolved = True
+                    resolution = "AUTO-RUN"
             items.append({"id": f.stem, "title": f.stem.replace("-", " ").replace("_", " / "),
                           "url": _shared_url(f"coordination/decisions/{f.name}"),
-                          "kind": "contract" if "contract" in f.stem.lower() else "note",
-                          "resolved": "**Resolution:" in txt,
+                          "kind": kind,
+                          "resolved": resolved,
+                          "resolution": resolution,
                           "auto_run_at": int(mt.group(1)) if mt else None})
     return {"decisions": items}
 

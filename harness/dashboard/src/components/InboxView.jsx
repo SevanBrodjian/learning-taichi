@@ -86,7 +86,13 @@ export default function InboxView({ notifData }) {
                         onClick={() => { setActiveId(it.id); setRejecting(false); setNote(""); }}>
                   <span className="toc-item-title">{it.title}</span>
                   {it.kind === "contract" && !it.resolved && <span className="new-tag">contract</span>}
-                  {it.resolved && <span className="done-tag">done</span>}
+                  {it.resolved && (
+                    <span className="done-tag">
+                      {it.resolution === "AUTO-RUN" ? "auto-ran"
+                        : it.resolution === "APPROVED" ? "approved"
+                        : it.resolution === "REJECTED" ? "sent back" : "done"}
+                    </span>
+                  )}
                 </button>
               ))}
             </nav>

@@ -76,7 +76,11 @@ State the plan briefly before you start.
    The worker writes results to `runs/<direction-id>/<task-id>/`, calls `harness/tools/task_status.py` at a
    few milestones so the board shows its live step, adds a training page, fires its start/finish pings, and
    exits without committing.
-3. Flip the task to `active` on the board (POST `/api/task-status`) so the dashboard shows it live,
+3. **Close the contract** if it auto-ran at the deadline — append a resolution to
+   `coordination/decisions/<id>-contract.md` recording that it ran, so the file is honest and the git
+   history shows why. (The Inbox also derives this from the board, so a forgotten stamp cannot leave
+   an 'Approve & run' button live on a task that is already running — but stamp it anyway.)
+   Flip the task to `active` on the board (POST `/api/task-status`) so the dashboard shows it live,
    **and set its review state to `running`** (POST `/api/task-review`). That badge is how Sevan can
    tell a live worker from a finished-but-unreviewed result, and it is what stops him sending a task
    back mid-run — the server refuses that while the state is `running`.

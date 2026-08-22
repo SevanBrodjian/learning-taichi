@@ -38,7 +38,7 @@
       "ref": "T-028",
       "created": "2026-08-22T06:40:39+00:00",
       "title": "One latent-conditioned network for all four materials",
-      "status": "queued",
+      "status": "active",
       "note": "One network, one shared weight set, learns all four materials -- each identified by a latent code fed in as input. Taichi only. The open question is capacity: T-022 caps the deployable size at about a width-16 MLP.",
       "effort": "deep",
       "tags": [

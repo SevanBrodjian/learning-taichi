@@ -41,3 +41,6 @@ width and parameter count to be reported, so a "success" at width 64 cannot be p
 The **golden signatures, run against the learned simulator** — fluid spreads, sand slumps to repose, snow
 and elastic hold a slope, snow floats and sand sinks. A pass/fail table per material is the headline. A
 network passing three of four is a real result; so is one passing none.
+
+
+**Resolution: REJECTED** — Actually I DO want this task demonstrated on WebGPU, that's the whole point: we are targeting deployable real time systems, that's what we're testing. Also, even though real-time is the constraint, exploring larger nets is still fine -- maybe we'll fine a way to make it fmore efficient.

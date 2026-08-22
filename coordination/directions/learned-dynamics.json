@@ -52,8 +52,25 @@
           "note": "Actually I DO want this task demonstrated on WebGPU, that's the whole point: we are targeting deployable real time systems, that's what we're testing. Also, even though real-time is the constraint, exploring larger nets is still fine -- maybe we'll fine a way to make it fmore efficient."
         }
       ],
-      "review_state": "running",
-      "review_updated": 1787381861
+      "review_state": "reviewed",
+      "review_updated": 1787389398,
+      "follow_up_of": [
+        {
+          "id": "profile-a-nn-running-for-the-grid-update-on-webgpu",
+          "dir": "material-variants",
+          "kind": "refutes"
+        },
+        {
+          "id": "one-nn-for-three-materials",
+          "dir": "material-variants",
+          "kind": "extends"
+        },
+        {
+          "id": "improve-material-realism-in-behavior",
+          "dir": "material-variants",
+          "kind": "applies"
+        }
+      ]
     }
   ]
 }

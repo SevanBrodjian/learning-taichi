@@ -51,7 +51,9 @@
           "time": 1787381511,
           "note": "Actually I DO want this task demonstrated on WebGPU, that's the whole point: we are targeting deployable real time systems, that's what we're testing. Also, even though real-time is the constraint, exploring larger nets is still fine -- maybe we'll fine a way to make it fmore efficient."
         }
-      ]
+      ],
+      "review_state": "running",
+      "review_updated": 1787381861
     }
   ]
 }

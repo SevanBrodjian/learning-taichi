@@ -40,7 +40,7 @@
       "title": "One latent-conditioned network for all four materials",
       "status": "queued",
       "note": "One network, one shared weight set, learns ALL FOUR canonical materials, with each material designated by a compact latent code fed in as input. Taichi only -- no WebGPU needed. The seam is the PER-PARTICLE constitutive model (stress + plastic state), not the grid update. T-022 bounds the deployable size at roughly a width-16 MLP, so the open question this task answers is CAPACITY: can something that small hold four structurally different materials? Train across scenes with each material alone and scenes where they mix and interact.",
-      "effort": "standard",
+      "effort": "deep",
       "tags": [
         "learned",
         "materials"

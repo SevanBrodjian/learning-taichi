@@ -1,46 +1,48 @@
-<!-- auto_run_at: 1787381518 -->
-# Contract — One latent-conditioned network for all four materials (deep, overnight)
+<!-- auto_run_at: 1787382125 -->
+# Contract — T-028 v2: one latent-conditioned network for four materials, ON WEBGPU
 
-**Approve to run, or Reject with a note.** Auto-runs at the deadline so it uses the night either way.
+**Approve to run, or Reject with a note.** Auto-runs at the deadline so the night is used either way.
 Full brief: `coordination/tasks/one-latent-conditioned-network-for-all-four-materials.md`
 
-## Why this one, tonight
-T-022 already bounded the **cost** question. What it cannot answer is **capacity**, and that is now the
-real risk in your idea — so this is the highest-value thing to spend an unattended GPU on.
+## What changed after your reject
+> "Actually I DO want this task demonstrated on WebGPU, that's the whole point... exploring larger nets
+> is still fine."
 
-## The seam is NOT T-022's, and that matters
-This replaces the **per-particle constitutive model** (stress + plastic state), keeping P2G/G2P and the
-grid update analytic. T-022's structural accuracy failure was that gravity contributes `dt·g = 4.9e-4`
-per substep while the net's own error was `2.7e-2`. Stress is O(E) — hundreds. That failure mode does
-not transfer, which is exactly why this is worth running.
+You were right and I mis-scoped it. Testing deployability in Taichi tests the wrong thing. Two changes:
+- **WebGPU is now half the task**, not a follow-up.
+- **The width sweep explores past the cliff** instead of treating 16 as a cap.
 
-## Two latents, deliberately kept separate
-`z_m` is **identity** — one fixed code per material, well-separated, jittered during training so the
-network learns a neighbourhood rather than four point lookups. The **carried state** is **history**, per
-particle, updated every substep. This task uses the known parameterisation (`S`, `Jp`) for the state; a
-free learned latent needs backprop through a long rollout, which is this project's documented failure
-mode, and is the natural follow-up rather than this run.
+## The scheduling trick that de-risks the night
+**Inference cost does not depend on the weight VALUES** — T-022's own finding. So the cost half runs
+FIRST, with untrained nets, and does not wait for training to converge:
 
-## The size ceiling is a hard constraint, not a preference
-At 8,192 elements a width-16 per-element MLP costs 12.44 µs/substep against the analytic solver's 9.02 —
-and **width 32 costs 50.33, i.e. 11.9× more for 4× the arithmetic.** Derated to a quarter GPU, width 16
-sits right at the 60 fps edge and width 32 is dead. The brief targets **width ≤ 16** and requires the
-width and parameter count to be reported, so a "success" at width 64 cannot be passed off as shippable.
+1. WGSL latent-conditioned inference + width sweep (fast, decisive, independent)
+2. Train the real network in Taichi
+3. Load trained weights into WGSL, parity-check, run the learned sim
+4. If time: a small interactive page **in the run directory**, not the real Demo page
 
-## What it will NOT do
-- **No WebGPU.** Taichi only, as you said.
-- **No physics changes** — `sim/physics/` read-only, and parameters imported rather than copied, so it
-  cannot train against the drifted `xi = 3.0` snow.
-- **No claims of latent interpolation.** With four structurally unrelated materials the latent space is a
-  *label*, not a physical axis; "halfway between snow and water" has no ground truth to check against.
-- **No free learned state.** Deliberately out of scope tonight.
-- **No spin on a negative.** If width 16 cannot hold four materials, that gets said with the evidence and
-  the width it would actually take.
+If training stalls you still get a complete cost answer, and vice versa. Neither half can sink the other.
+
+## On width: the map, not the fence
+T-022 measured 16 → 32 costing **11.9× for 4× the arithmetic**, but its own scan saw throughput recover
+above ~48 — so the cliff looks like a *band*, plausibly register spilling, not a wall. Worth probing
+directly. Levers it never tested and that could move the ceiling: **f16** (~2×?), weights in uniform or
+workgroup storage, one dispatch per substep, batching substeps. Try what is cheap, report what each buys.
 
 ## The pass condition is the one you already own
-The **golden signatures, run against the learned simulator** — fluid spreads, sand slumps to repose, snow
-and elastic hold a slope, snow floats and sand sinks. A pass/fail table per material is the headline. A
-network passing three of four is a real result; so is one passing none.
+The **golden signatures run against the LEARNED simulator** — fluid spreads, sand slumps to repose, snow
+and elastic hold a slope, snow floats and sand sinks. A pass/fail table per material is the headline.
+Three of four is a real result; none is also a real result.
+
+## What it will NOT do
+- **No free learned latent state.** That needs backprop through a long rollout — this project's documented
+  failure mode. Natural follow-up, not tonight.
+- **No claims of latent interpolation.** With four unrelated materials the code is a *label*, not an axis.
+- **No physics changes**, and parameters imported rather than copied, so it cannot train against the
+  drifted `xi = 3.0` snow.
+- **It will not touch the real Demo page.**
+- **No spin on a negative.** If the net cannot hold four materials, or cannot hit real time at any useful
+  width, that gets said with the numbers.
 
 
-**Resolution: REJECTED** — Actually I DO want this task demonstrated on WebGPU, that's the whole point: we are targeting deployable real time systems, that's what we're testing. Also, even though real-time is the constraint, exploring larger nets is still fine -- maybe we'll fine a way to make it fmore efficient.
+**Resolution: APPROVED**

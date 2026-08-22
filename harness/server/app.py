@@ -270,6 +270,17 @@ def resolve_decision(decision_id: str, resolution: str, note: str = "") -> dict:
     with open(f, "a", encoding="utf-8") as fh:
         fh.write(line + "\n")
     _git_commit(f, f"dashboard: decision {decision_id} -> {res}")
+
+    # A REJECT is a rework INSTRUCTION, not just a note in a file. Put it where the orchestrator is
+    # required to look -- the task's own rework_history -- and send the task back to the queue.
+    # Leaving it only in the decision file is exactly how a send-back reason got missed once already.
+    if resolution != "approve" and decision_id.endswith("-contract"):
+        task_id = decision_id[:-len("-contract")]
+        for (did, tid), _rec in _task_index().items():
+            if tid == task_id:
+                set_task_status(did, tid, "queued",
+                                note or "Rejected at the contract gate (no reason given).")
+                return {"ok": True, "sent_back": {"direction": did, "task": tid}}
     return {"ok": True}
 
 

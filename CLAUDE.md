@@ -121,6 +121,16 @@ restarts the server if it dies or stops responding on `/api/health`, so a worker
 the dashboard showing an API error. (The server also sanitizes NaN/Inf out of JSON responses, so a
 degenerate metric in a manifest can't hang a task page.)
 
+## The contract is editable, and an edit is an instruction
+The user can edit a contract from the dashboard. The **worker never reads the contract** — it reads the
+brief at `coordination/tasks/<id>.md` — so the orchestrator **re-reads the contract before spawning** and
+folds any edit into the brief. An unreconciled contract edit is silently discarded, which is the same
+failure shape as missing a send-back note.
+
+**Rejecting at the gate sends the task back to the queue with the reason**, written into the task's
+`rework_history` by the server rather than left in the decision file for someone to notice. `/execute`
+then treats it as a rework, not a fresh run.
+
 ## Review state — "Active" was three different things
 `status` is Sevan's workflow (proposed → queued → active → done). It said **`active`** for a worker still
 running, for a worker finished but **unreviewed**, and for a result reviewed and waiting on his Done —

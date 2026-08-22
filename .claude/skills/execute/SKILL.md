@@ -76,7 +76,12 @@ State the plan briefly before you start.
    The worker writes results to `runs/<direction-id>/<task-id>/`, calls `harness/tools/task_status.py` at a
    few milestones so the board shows its live step, adds a training page, fires its start/finish pings, and
    exits without committing.
-3. **Close the contract** if it auto-ran at the deadline — append a resolution to
+3. **RE-READ THE CONTRACT BEFORE SPAWNING.** The user can edit the contract markdown from the
+   dashboard, and if he did, that edit is an INSTRUCTION — fold it into
+   `coordination/tasks/<id>.md` before the worker starts, and say in your report what changed.
+   The worker only ever reads the brief, so an unreconciled contract edit is silently discarded,
+   which is the same failure shape as missing a send-back note.
+   **Close the contract** if it auto-ran at the deadline — append a resolution to
    `coordination/decisions/<id>-contract.md` recording that it ran, so the file is honest and the git
    history shows why. (The Inbox also derives this from the board, so a forgotten stamp cannot leave
    an 'Approve & run' button live on a task that is already running — but stamp it anyway.)

@@ -1,0 +1,434 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>latent-conditioned constitutive net -- WebGPU cost + parity harness</title>
+<style>
+  body { background:#0a0e14; color:#dfe6ee; font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace; padding:14px; }
+  pre { white-space:pre-wrap; }
+  .ok{color:#7ee787} .bad{color:#ff8f8f} .hd{color:#6fd3ee} .wn{color:#ffd24d} .dim{color:#8899aa}
+</style>
+<h3 class="hd">one latent-conditioned net for four materials -- WebGPU harness</h3>
+<pre id="log"></pre>
+<script src="/web/params.js"></script>
+<script src="/web/netshape.js"></script>
+<script src="/web/mpm4nn-webgpu.js"></script>
+<script>
+// =================================================================================================
+// TIMING PROTOCOL -- every rule here was paid for by a wrong number somewhere in this project.
+//
+//  * performance.now() is clamped to ~100 us in Chromium. Nothing short is ever timed with it.
+//    Every GPU number below is a timestamp-query over a compute pass covering many substeps, so the
+//    pass is milliseconds long and the clamp cannot reach it.
+//  * The timestamp clock is QUANTISED (T-022 measured 32768 ns on one machine). Section 1 measures
+//    the quantum instead of assuming it, and every reported interval is checked against it.
+//  * MIN, not mean, is the estimator. This desktop has a dozen other GPU clients and contention can
+//    only ADD time, so the minimum over repetitions is the least contaminated estimate. The spread
+//    is recorded alongside so a suspiciously tight or wild distribution is visible.
+//  * VARIANTS ARE INTERLEAVED round-robin inside each repetition. Measuring all of A then all of B
+//    lets clock drift under sustained load masquerade as a difference between them; that produced a
+//    NEGATIVE cost for one kernel the first time T-022's harness ran.
+//  * NON-ZERO MOTION IS ASSERTED BEFORE ANY TIMING IS BELIEVED. An over-limit bind group makes every
+//    dispatch a silent no-op, and the resulting flat curve over all-zero trajectories is beautiful
+//    and meaningless.
+//  * COST MUST MOVE WITH PARTICLE COUNT AND WITH WIDTH. Section 5 checks that explicitly; a flat
+//    response to both means the clock is being timed, not the kernel.
+// =================================================================================================
+const LOG = document.getElementById('log');
+function say(s, c) { LOG.innerHTML += '<span class="' + (c || '') + '">' + s + '</span>\n'; window.scrollTo(0, 1e9); }
+async function post(name, body) { await fetch('/save?name=' + name, { method: 'POST', body: body }); }
+const now = () => performance.now();
+const mn = a => a.reduce((x, y) => Math.min(x, y));
+const med = a => { const b = a.slice().sort((x, y) => x - y); return b[b.length >> 1]; };
+
+function gcdAll(xs) {
+  return xs.filter(v => v > 0).reduce((a, b) => { while (b) { [a, b] = [b, a % b]; } return a; }, 0);
+}
+function finite(a) { for (let i = 0; i < a.length; i++) if (!isFinite(a[i])) return false; return true; }
+function meanDist(a, b) {
+  let s = 0, k = a.length >> 1;
+  for (let i = 0; i < k; i++) s += Math.hypot(a[2 * i] - b[2 * i], a[2 * i + 1] - b[2 * i + 1]);
+  return s / k;
+}
+function spreadWidth(f) {
+  const k = f.length >> 1, xs = new Float64Array(k);
+  for (let i = 0; i < k; i++) xs[i] = f[2 * i];
+  xs.sort();
+  return xs[Math.floor(0.95 * (k - 1))] - xs[Math.floor(0.05 * (k - 1))];
+}
+
+// Untrained weights for the COST sweep. The point of measuring cost before training is T-022's own
+// finding that inference cost does not depend on the weight VALUES -- but "does not depend" is only
+// true if the arithmetic actually runs, so W1 is drawn wide enough that tanh sees a realistic spread
+// of pre-activations, while the OUTPUT layer is tiny so the simulation stays finite and the timing
+// is not contaminated by a blow-up. The trained weights are re-timed in section 7 to check the
+// claim directly rather than inherit it.
+function randomWeights(H, seed) {
+  let s = (seed >>> 0) || 12345;
+  const rnd = () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296 - 0.5; };
+  const w = new Float32Array(MPM4NN.weightFloatCount(H));
+  for (let k = 0; k < H; k++) {
+    const b = 24 * k;
+    for (let i = 0; i < 16; i++) w[b + i] = rnd() * 0.5;      // W1 row + bias in slot 14
+    for (let i = 16; i < 24; i++) w[b + i] = rnd() * 1e-4;    // output column: deliberately tiny
+  }
+  return w;
+}
+
+async function main() {
+  const job = await (await fetch('/verify/job.json?t=' + Date.now())).json();
+  const out = { job_id: job.id, started: Date.now(), phase: job.phase };
+  try {
+    if (!MPM4NN.supported()) {
+      say('navigator.gpu MISSING (insecure origin?)', 'bad');
+      await post('done.json', JSON.stringify({ error: 'no webgpu' })); return;
+    }
+    await MPM4NN.getDevice();
+    out.device = MPM4NN.deviceInfo();
+    out.params = MPM4NN.PARAMS;
+    out.net_shape = NET_SHAPE;
+    out.user_agent = navigator.userAgent;
+    say('adapter ' + JSON.stringify(out.device.vendor + ' / ' + out.device.architecture + ' / ' + out.device.device), 'ok');
+    say('limits ' + JSON.stringify(out.device.limits), 'dim');
+    say('timestamp-query=' + out.device.timestampQuery + '  shader-f16=' + out.device.shaderF16,
+      out.device.timestampQuery ? 'ok' : 'bad');
+
+    const DT = job.dt;
+    // REAL TIME, defined once. Simulating one second of physics in one second of wall clock needs
+    // 1/dt substeps per second, so the whole solver gets dt seconds per substep. A quarter of the
+    // GPU -- the share a real page can assume, with rendering, the compositor and the browser also
+    // resident -- is a quarter of that.
+    const BUDGET_FULL_US = DT * 1e6;
+    const BUDGET_QUARTER_US = BUDGET_FULL_US / 4;
+    say('dt = ' + DT + ' s (the shared timestep four canonical materials force)');
+    say('real-time budget: ' + BUDGET_FULL_US.toFixed(1) + ' us/substep at a whole GPU, ' +
+      BUDGET_QUARTER_US.toFixed(2) + ' us/substep at a quarter', 'wn');
+
+    // ---------------------------------------------------------------- build every variant
+    const specs = [{ key: 'analytic', mode: 'analytic', hidden: 0 }];
+    for (const h of job.widths) specs.push({ key: 'nn' + h, mode: 'nn', hidden: h, weights: 'uniform' });
+    if (out.device.shaderF16) {
+      for (const h of job.f16_widths) specs.push({ key: 'f16_' + h, mode: 'nn', hidden: h, f16: true, weights: 'uniform' });
+    }
+    for (const h of (job.dyn_widths || [])) {
+      specs.push({ key: 'dyn' + h, mode: 'nn', hidden: h, weights: 'uniform', dyn: true });
+    }
+    const canStorage = out.device.limits.maxStorageBuffersPerShaderStage >= 10;
+    if (canStorage) {
+      for (const h of job.storage_widths) specs.push({ key: 'sto' + h, mode: 'nn', hidden: h, weights: 'storage' });
+    } else {
+      say('adapter reports only ' + out.device.limits.maxStorageBuffersPerShaderStage +
+        ' storage buffers per stage -- the weights-in-a-storage-buffer A/B needs 10 and is skipped', 'wn');
+    }
+    out.storage_variant_available = canStorage;
+
+    const sc = { pts: MPM4NN.seedDisk(0.5, 0.55, 0.14, job.n, 7), area: Math.PI * 0.14 * 0.14 };
+    const sim = await MPM4NN.createSim({
+      capacity: 16384, dt: DT, pVol: sc.area / job.n, variants: specs
+    });
+    out.build_errors = sim.buildErrors;
+    if (sim.buildErrors.length) {
+      say('SHADER BUILD ERRORS: ' + JSON.stringify(sim.buildErrors), 'bad');
+    }
+    sim.setCodes(new Float32Array(NET_SHAPE.z_codes.flat()));
+    const live = Object.keys(sim.variants);
+    say('variants built: ' + live.join(' '), 'ok');
+    for (const k of live) if (sim.variants[k].spec.mode === 'nn') {
+      sim.setWeights(k, randomWeights(sim.variants[k].spec.hidden, 99));
+    }
+    out.wgsl_sample = { analytic: sim.variants['analytic'].code.length,
+      nn32: sim.variants['nn32'] ? sim.variants['nn32'].code.length : null };
+
+    // The timed scene: four columns, one per material, standing ON the floor and touching each
+    // other. Deliberately not four blobs dropped from a height -- a falling blob is in free flight,
+    // its particles are spread thin over the grid and P2G's atomics barely collide, so it would time
+    // the EASY case. Material resting on the floor and on its neighbours is the dense, contended,
+    // realistic one, and it is dense from the first substep instead of a third of a second in.
+    function seedFour(s, n) {
+      s.clear();
+      const q = Math.floor(n / 4);
+      const y1 = 0.30, y0 = MPM4NN.PARAMS.floor_y;
+      s.add('fluid', MPM4NN.seedBox(0.10, 0.31, y0, y1, q, 1), 0, 0);
+      s.add('elastic', MPM4NN.seedBox(0.31, 0.50, y0, y1, q, 2), 0, 0);
+      s.add('snow', MPM4NN.seedBox(0.50, 0.71, y0, y1, q, 3), 0, 0);
+      s.add('sand', MPM4NN.seedBox(0.71, 0.90, y0, y1, n - 3 * q, 4), 0, 0);
+    }
+    // Every timed pass starts from a BIT-IDENTICAL state, warmed with the ANALYTIC solver so the
+    // particle configuration cannot depend on which variant is about to be timed.
+    //
+    // The first version of this harness did not do that and the numbers were quietly wrong: the
+    // scene was seeded once and then advanced by every probe of every variant of every repetition,
+    // roughly six seconds of physics over the sweep, so the early repetitions timed a falling blob
+    // and the late ones timed a settled puddle. Taking the MIN over repetitions then silently
+    // compared different variants on different physical states, and it showed: the P2G+grid control,
+    // which is IDENTICAL code in every variant, drifted 56% across the sweep.
+    const WARM = 1200;
+    async function freshState(s, n) {
+      seedFour(s, n);
+      s.encodeFrame('analytic', 0, { prime: true });
+      s.encodeFrame('analytic', WARM, {});
+      await s.idle();
+    }
+
+    // ============================================================ 1. clock quantum + dispatch floor
+    say('--- 1. timestamp quantum, warm clock, per-dispatch floor ---', 'hd');
+    seedFour(sim, job.n);
+    {
+      const rows = [];
+      for (const s of [1, 2, 4, 8, 16, 32, 64, 128]) {
+        const a = [];
+        for (let i = 0; i < 6; i++) {
+          sim.encodeFrame('analytic', s, { timed: true });
+          a.push(await sim.lastGpuNanos());
+        }
+        rows.push({ substeps: s, ns: a });
+      }
+      const q = gcdAll(rows.flatMap(r => r.ns));
+      out.timestamp_probe = { rows: rows, apparent_quantum_ns: q };
+      say('  apparent timestamp quantum ~ ' + q + ' ns' +
+        (q > 1000 ? '  <-- COARSE: every interval below is checked against it' : ''),
+        q > 20000 ? 'wn' : 'ok');
+      // drive the GPU to a steady clock under a heavy load before anything is measured
+      const t0 = now();
+      const heavy = live.includes('nn64') ? 'nn64' : live[live.length - 1];
+      while (now() - t0 < 2000) { for (let i = 0; i < 4; i++) sim.encodeFrame(heavy, 64, {}); await sim.idle(); }
+      say('  warmed ' + (now() - t0).toFixed(0) + ' ms under ' + heavy);
+      out.dispatch_floor = [];
+      for (const s of [8, 32, 128, 256]) {
+        sim.encodeFrame('analytic', s, { phases: 'n' }); await sim.idle();
+        const g = [];
+        for (let i = 0; i < 9; i++) {
+          sim.encodeFrame('analytic', s, { phases: 'n', timed: true });
+          g.push(await sim.lastGpuNanos());
+        }
+        out.dispatch_floor.push({ dispatches: s, gpu_ns: mn(g), ns_per_dispatch: mn(g) / s });
+      }
+      say('  empty-kernel floor: ' + out.dispatch_floor.map(r =>
+        r.dispatches + 'x -> ' + (r.ns_per_dispatch / 1000).toFixed(4) + ' us/dispatch').join('  '));
+    }
+
+    // ============================================================ 2. non-zero motion, every variant
+    // Nothing below this line is believed for a variant that did not move its particles.
+    say('--- 2. every variant actually moves particles (bind group is valid) ---', 'hd');
+    out.motion = [];
+    for (const k of live) {
+      seedFour(sim, job.n);
+      void 0;
+      sim.encodeFrame(k, 0, { prime: true });
+      const before = await (async () => { sim.encodeFrame(k, 0, { readback: true }); return sim.readPositions(); })();
+      for (let f = 0; f < 8; f++) sim.encodeFrame(k, 100, {});
+      sim.encodeFrame(k, 100, { readback: true });
+      const after = await sim.readPositions();
+      const moved = meanDist(before, after);
+      const ok = finite(after) && moved > 1e-4;
+      out.motion.push({ variant: k, moved_mean: moved, finite: finite(after), pass: ok });
+      say('  ' + (ok ? '[ok]  ' : '[BAD] ') + k.padEnd(10) + ' moved ' + moved.toExponential(3) +
+        '  finite=' + finite(after), ok ? 'ok' : 'bad');
+    }
+
+    // ============================================================ 3. the analytic port vs canonical
+    say('--- 3. analytic WGSL vs canonical Taichi (is the baseline the right baseline?) ---', 'hd');
+    out.analytic_port = [];
+    for (const refMeta of (job.refs || [])) {
+      try {
+        const ic = new Float32Array(await (await fetch('/verify/' + refMeta.ic_file)).arrayBuffer());
+        const ref = new Float32Array(await (await fetch('/verify/' + refMeta.traj_file)).arrayBuffer());
+        const NIC = refMeta.n, NF = refMeta.n_frames;
+        const spf = Math.max(1, Math.round((refMeta.T / NF) / DT));
+        sim.clear();
+        sim.add(refMeta.material, ic, 0, 0);
+        sim.encodeFrame('analytic', 0, { prime: true });
+        const traj = new Float32Array(NF * NIC * 2);
+        for (let f = 0; f < NF; f++) {
+          sim.encodeFrame('analytic', spf, { readback: true });
+          traj.set(await sim.readPositions(), f * NIC * 2);
+        }
+        await post('traj_wgsl_analytic_' + refMeta.material + '.f32', traj.buffer);
+        const row = {
+          material: refMeta.material, finite: finite(traj),
+          traj_rmse_vs_canonical: meanDist(traj, ref),
+          ic_nudge_band: refMeta.ic_nudge_band,
+          final_spread_wgsl: spreadWidth(traj.subarray((NF - 1) * NIC * 2)),
+          final_spread_canonical: spreadWidth(ref.subarray((NF - 1) * NIC * 2)),
+          n: NIC, frames: NF, substeps_per_frame: spf
+        };
+        out.analytic_port.push(row);
+        say('  ' + refMeta.material.padEnd(8) + ' traj_rmse vs canonical = ' +
+          row.traj_rmse_vs_canonical.toFixed(5) + '   (1e-7 IC-nudge band ' +
+          refMeta.ic_nudge_band.toExponential(2) + ')   final spread ' +
+          row.final_spread_wgsl.toFixed(4) + ' vs ' + row.final_spread_canonical.toFixed(4),
+          row.finite ? 'ok' : 'bad');
+      } catch (e) {
+        out.analytic_port.push({ material: refMeta.material, error: String(e) });
+        say('  ' + refMeta.material + ' skipped: ' + e, 'wn');
+      }
+    }
+
+    // ============================================================ 4. the width sweep
+    // Two numbers per variant: the WHOLE solver (P2G + grid + G2P) and G2P ALONE, which is where
+    // the seam lives. The seam's own cost is the G2P difference against analytic; the deployability
+    // question is answered by the whole solver.
+    say('--- 4. cost vs width (round-robin interleaved, fresh state per probe, min over reps) ---', 'hd');
+    const SUB = job.timing_substeps, REPS = job.reps;
+    const acc = {};
+    // Three measurements per variant, all interleaved: the whole solver, G2P alone (where the seam
+    // is), and P2G+grid alone. The third exists as a CONTROL -- it is identical code in every
+    // variant, so if it drifts between variants the timing rig is drifting and the g2p difference
+    // cannot be trusted.
+    for (const k of live) acc[k] = { full: [], g2p: [], pg: [] };
+    for (let r = 0; r < REPS; r++) {
+      for (const k of live) {
+        for (const ph of ['full', 'g2p', 'pg']) {
+          await freshState(sim, job.n);
+          const o = { timed: true };
+          if (ph === 'g2p') o.phases = 'G';
+          if (ph === 'pg') o.phases = 'pg';
+          if (ph !== 'pg') { sim.encodeFrame(k, 0, { prime: true }); }
+          sim.encodeFrame(k, SUB, o);
+          acc[k][ph].push(await sim.lastGpuNanos());
+        }
+      }
+      if (r === 0) say('  (rep 0 done; ' + live.length + ' variants x 3 probes, each on a fresh state)', 'dim');
+    }
+    out.width_sweep = live.map(k => {
+      const v = sim.variants[k].spec;
+      const full = mn(acc[k].full) / SUB / 1000, g2p = mn(acc[k].g2p) / SUB / 1000,
+        pg = mn(acc[k].pg) / SUB / 1000;
+      return {
+        variant: k, mode: v.mode, hidden: v.hidden | 0, f16: !!v.f16,
+        weights: v.weights || 'n/a',
+        us_per_substep_full: full, us_per_substep_g2p: g2p, us_per_substep_pg: pg,
+        full_ns_raw: acc[k].full, g2p_ns_raw: acc[k].g2p, pg_ns_raw: acc[k].pg,
+        full_spread_pct: 100 * (med(acc[k].full) - mn(acc[k].full)) / mn(acc[k].full),
+        g2p_spread_pct: 100 * (med(acc[k].g2p) - mn(acc[k].g2p)) / mn(acc[k].g2p),
+        fits_full_gpu: full <= BUDGET_FULL_US, fits_quarter_gpu: full <= BUDGET_QUARTER_US
+      };
+    });
+    for (const r of out.width_sweep) {
+      say('  ' + r.variant.padEnd(10) + ' whole ' + r.us_per_substep_full.toFixed(3) +
+        '  g2p ' + r.us_per_substep_g2p.toFixed(3) + '  p2g+grid ' + r.us_per_substep_pg.toFixed(3) +
+        '  (g2p spread ' + r.g2p_spread_pct.toFixed(0) + '%)  ' +
+        (r.fits_quarter_gpu ? 'FITS 60fps @ quarter GPU' : (r.fits_full_gpu ? 'fits only at a WHOLE gpu' : 'MISSES real time')),
+        r.fits_quarter_gpu ? 'ok' : (r.fits_full_gpu ? 'wn' : 'bad'));
+    }
+    const pgs = out.width_sweep.map(r => r.us_per_substep_pg);
+    out.control_pg_drift_pct = 100 * (Math.max(...pgs) - Math.min(...pgs)) / Math.min(...pgs);
+    say('  CONTROL: P2G+grid is identical code in every variant; it varies by ' +
+      out.control_pg_drift_pct.toFixed(1) + '% across the sweep',
+      out.control_pg_drift_pct < 25 ? 'ok' : 'wn');
+
+    // ============================================================ 5. cost must move with n
+    say('--- 5. does the cost move with particle count? (if not, the clock is being timed) ---', 'hd');
+    out.n_sweep = [];
+    for (const nn of job.n_sweep) {
+      for (const k of job.n_sweep_variants) {
+        if (!live.includes(k)) continue;
+        const g = [];
+        for (let i = 0; i < job.reps; i++) {
+          await freshState(sim, nn);
+          sim.encodeFrame(k, 0, { prime: true });
+          sim.encodeFrame(k, SUB, { timed: true });
+          g.push(await sim.lastGpuNanos());
+        }
+        out.n_sweep.push({ n: nn, variant: k, us_per_substep: mn(g) / SUB / 1000 });
+      }
+    }
+    for (const k of job.n_sweep_variants) {
+      const rs = out.n_sweep.filter(r => r.variant === k);
+      if (rs.length) say('  ' + k.padEnd(10) + rs.map(r => r.n + ':' + r.us_per_substep.toFixed(3)).join('  '));
+    }
+
+    // ============================================================ 6. substeps per submit
+    // Batching several substeps into one command buffer is one of the levers T-022 never tested.
+    // Everything above already batches; this measures what the batching is worth.
+    say('--- 6. what does batching substeps into one submit buy? ---', 'hd');
+    out.batching = [];
+    for (const k of job.batch_variants) {
+      if (!live.includes(k)) continue;
+      await freshState(sim, job.n);
+      sim.encodeFrame(k, 0, { prime: true });
+      for (const b of job.batch_sizes) {
+        const reps = Math.max(1, Math.round(SUB / b));
+        const t0 = now();
+        for (let r = 0; r < 3; r++) { for (let i = 0; i < reps; i++) sim.encodeFrame(k, b, {}); await sim.idle(); }
+        const wall = (now() - t0) / 3 / (reps * b) * 1000;      // us per substep, wall clock
+        out.batching.push({ variant: k, substeps_per_submit: b, us_per_substep_wall: wall });
+      }
+      const rs = out.batching.filter(r => r.variant === k);
+      say('  ' + k.padEnd(10) + rs.map(r => r.substeps_per_submit + '/submit:' +
+        r.us_per_substep_wall.toFixed(3)).join('  ') + '  (wall clock, includes submit overhead)');
+    }
+
+    // ============================================================ 7. trained weights, if present
+    if (job.trained) {
+      say('--- 7. the TRAINED network: parity against the host, and cost with real weights ---', 'hd');
+      out.trained = {};
+      const W = new Float32Array(await (await fetch('/verify/' + job.trained.weights_file)).arrayBuffer());
+      const H = job.trained.hidden;
+      const key = 'nn' + H;
+      // 7a. the MLP alone, against the host forward pass, on the host's own probe inputs
+      const X = new Float32Array(await (await fetch('/verify/' + job.trained.probe_in_file)).arrayBuffer());
+      const Y = await MPM4NN.mlpProbe(H, false, W, X);
+      await post('probe_out_f32.f32', Y.buffer);
+      if (out.device.shaderF16) {
+        const Y16 = await MPM4NN.mlpProbe(H, true, W, X);
+        await post('probe_out_f16.f32', Y16.buffer);
+      }
+      say('  posted MLP probe outputs for ' + (X.length / 16) + ' samples at hidden ' + H);
+      // 7b. the whole learned sim, against the host learned sim, same IC
+      if (live.includes(key)) {
+        sim.setWeights(key, W);
+        const refMeta = job.trained.rollout;
+        const ic = new Float32Array(await (await fetch('/verify/' + refMeta.ic_file)).arrayBuffer());
+        const mats = new Int32Array(await (await fetch('/verify/' + refMeta.mat_file)).arrayBuffer());
+        const NIC = refMeta.n, NF = refMeta.n_frames;
+        const spf = Math.max(1, Math.round((refMeta.T / NF) / DT));
+        sim.clear();
+        let o = 0;
+        for (const grp of refMeta.groups) {
+          sim.add(grp.material, ic.subarray(2 * o, 2 * (o + grp.n)), 0, 0);
+          o += grp.n;
+        }
+        sim.encodeFrame(key, 0, { prime: true });
+        const traj = new Float32Array(NF * NIC * 2);
+        for (let f = 0; f < NF; f++) {
+          sim.encodeFrame(key, spf, { readback: true });
+          traj.set(await sim.readPositions(), f * NIC * 2);
+        }
+        await post('traj_wgsl_nn.f32', traj.buffer);
+        out.trained.rollout = { hidden: H, n: NIC, frames: NF, finite: finite(traj),
+          substeps_per_frame: spf };
+        say('  posted a ' + NF + '-frame learned WGSL rollout (finite=' + finite(traj) + ')',
+          finite(traj) ? 'ok' : 'bad');
+        // 7c. cost with the REAL weights, against the random ones -- T-022's claim, tested
+        const g = [];
+        for (let i = 0; i < job.reps; i++) {
+          await freshState(sim, job.n);
+          sim.encodeFrame(key, 0, { prime: true });
+          sim.encodeFrame(key, SUB, { timed: true });
+          g.push(await sim.lastGpuNanos());
+        }
+        const trainedUs = mn(g) / SUB / 1000;
+        const randomUs = out.width_sweep.find(r => r.variant === key).us_per_substep_full;
+        out.trained.cost_us_trained = trainedUs;
+        out.trained.cost_us_random = randomUs;
+        out.trained.cost_ratio = trainedUs / randomUs;
+        say('  cost with TRAINED weights ' + trainedUs.toFixed(3) + ' us vs UNTRAINED ' +
+          randomUs.toFixed(3) + ' us  (ratio ' + (trainedUs / randomUs).toFixed(4) + ')',
+          Math.abs(trainedUs / randomUs - 1) < 0.05 ? 'ok' : 'wn');
+      }
+    }
+
+    out.budget = { dt: DT, us_per_substep_full_gpu: BUDGET_FULL_US,
+      us_per_substep_quarter_gpu: BUDGET_QUARTER_US };
+    out.webgpu_errors = MPM4NN.errors();
+    out.finished = Date.now();
+    sim.destroy();
+  } catch (e) {
+    out.fatal = String(e && e.stack || e);
+    say('FATAL ' + out.fatal, 'bad');
+  }
+  await post('bench.json', JSON.stringify(out, null, 1));
+  await post('done.json', JSON.stringify({ ok: !out.fatal, t: Date.now() }));
+  say('=== done, results posted ===', 'ok');
+}
+main();
+</script>

@@ -1,0 +1,4 @@
+_profile/
+out/*.f32
+out/serve.log
+*.f32

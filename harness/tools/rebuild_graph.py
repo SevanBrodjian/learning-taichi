@@ -50,6 +50,7 @@ TAGS = {
     "propose-new-rendering-for-each-of-the-four-materials": ["rendering", "demo"],
     "profile-a-nn-running-for-the-grid-update-on-webgpu": ["learned", "demo"],
     "incorporate-improved-materials-on-real-demo-page-and-improve-polish": ["demo", "rendering", "materials"],
+    "one-latent-conditioned-network-for-all-four-materials": ["learned", "materials"],
 }
 
 # ── the derived graph ───────────────────────────────────────────────────────────────────────────────
@@ -195,6 +196,21 @@ GRAPH = {
         ("propose-new-rendering-for-each-of-the-four-materials", "applies",
          "implements the treatments that task proposed and Sevan chose -- water film, snow powder, sand"
          " grains -- and REJECTS both of its rubber options in favour of tuning the existing one"),
+    ],
+
+    "one-latent-conditioned-network-for-all-four-materials": [
+        ("profile-a-nn-running-for-the-grid-update-on-webgpu", "refutes",
+         "that task concluded a learned operator is not viable at any useful size on this hardware. It is"
+         " refuted as a general claim: the SAME per-element network is FREE up to width 16 here, because"
+         " the analytic law being replaced (2x2 SVD + Drucker-Prager) is expensive where the grid update"
+         " was nearly free. It also re-identifies T-022's width cliff as the COMPILER giving up on"
+         " unrolling, not register spilling, using an un-unrollable control shader"),
+        ("one-nn-for-three-materials", "extends",
+         "same descriptor-conditioning idea, pushed from three parametrically-related materials to four"
+         " structurally unrelated ones, and from stress alone to stress PLUS the plastic state update"),
+        ("improve-material-realism-in-behavior", "applies",
+         "targets that task's four canonical materials, including its per-material density and friction,"
+         " and uses its golden signatures unmodified as the pass condition for the learned simulator"),
     ],
 
     "more-realistic-basic-fluid-sims": [

@@ -1,0 +1,21 @@
+loading data.npz (150000 per material, drop_nuisance=False)
+  600000 samples -> 540000 train / 60000 held out
+    h=64 L=1 step      1/6000  whitened MSE 1.11959  (0s)
+    h=64 L=1 step    500/6000  whitened MSE 0.30044  (3s)
+    h=64 L=1 step   1000/6000  whitened MSE 0.16652  (6s)
+    h=64 L=1 step   1500/6000  whitened MSE 0.10501  (10s)
+    h=64 L=1 step   2000/6000  whitened MSE 0.10457  (13s)
+    h=64 L=1 step   2500/6000  whitened MSE 0.09490  (16s)
+    h=64 L=1 step   3000/6000  whitened MSE 0.07575  (19s)
+    h=64 L=1 step   3500/6000  whitened MSE 0.07258  (22s)
+    h=64 L=1 step   4000/6000  whitened MSE 0.08972  (26s)
+    h=64 L=1 step   4500/6000  whitened MSE 0.07449  (29s)
+    h=64 L=1 step   5000/6000  whitened MSE 0.07106  (32s)
+    h=64 L=1 step   5500/6000  whitened MSE 0.06940  (35s)
+    h=64 L=1 step   6000/6000  whitened MSE 0.06016  (38s)
+  h=64: held-out relative error (1.0 = no better than the mean)
+    fluid     tau00=0.087  tau01=0.057  tau11=0.068  dS00=0.197  dS01=0.238  dS11=0.200  dJp=0.082
+    elastic   tau00=0.296  tau01=0.198  tau11=0.306  dS00=0.183  dS01=0.221  dS11=0.190  dJp=0.157
+    snow      tau00=0.648  tau01=0.509  tau11=0.548  dS00=0.431  dS01=0.453  dS11=0.485  dJp=0.590
+    sand      tau00=0.284  tau01=0.364  tau11=0.243  dS00=0.493  dS01=0.475  dS11=0.519  dJp=0.510
+    all       tau00=0.281  tau01=0.233  tau11=0.284  dS00=0.433  dS01=0.383  dS11=0.462  dJp=0.531

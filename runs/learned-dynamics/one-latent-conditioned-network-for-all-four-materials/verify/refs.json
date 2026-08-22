@@ -1,0 +1,42 @@
+[
+ {
+  "material": "fluid",
+  "ic_file": "ic_fluid.f32",
+  "traj_file": "ref_fluid.f32",
+  "n": 2048,
+  "n_frames": 40,
+  "T": 1.0,
+  "stable": true,
+  "ic_nudge_band": 0.002139042131602764
+ },
+ {
+  "material": "elastic",
+  "ic_file": "ic_elastic.f32",
+  "traj_file": "ref_elastic.f32",
+  "n": 2048,
+  "n_frames": 40,
+  "T": 1.0,
+  "stable": true,
+  "ic_nudge_band": 1.506885928392876e-05
+ },
+ {
+  "material": "snow",
+  "ic_file": "ic_snow.f32",
+  "traj_file": "ref_snow.f32",
+  "n": 2048,
+  "n_frames": 40,
+  "T": 1.0,
+  "stable": true,
+  "ic_nudge_band": 2.3573204089188948e-05
+ },
+ {
+  "material": "sand",
+  "ic_file": "ic_sand.f32",
+  "traj_file": "ref_sand.f32",
+  "n": 2048,
+  "n_frames": 40,
+  "T": 1.0,
+  "stable": true,
+  "ic_nudge_band": 3.248402936151251e-05
+ }
+]

@@ -1,0 +1,1247 @@
+{
+  "physics_version": "phys-c518316a4a05",
+  "setup": {
+    "device": "nvidia lovelace",
+    "n_grid": 128,
+    "n_particles": 16384,
+    "n_particles_timed": 8192,
+    "dt": 5e-05,
+    "materials_on_one_grid": 4,
+    "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 Edg/151.0.0.0"
+  },
+  "budget": {
+    "dt": 5e-05,
+    "us_per_substep_full_gpu": 50,
+    "us_per_substep_quarter_gpu": 12.5
+  },
+  "cost": {
+    "analytic_us_per_substep_full": 12.16,
+    "analytic_us_per_substep_g2p": 2.728,
+    "dispatch_floor_us": 0.86,
+    "max_width_realtime_quarter_gpu": 16,
+    "max_width_realtime_full_gpu": 160,
+    "by_width": [
+      {
+        "hidden": 8,
+        "us_per_substep": 12.048,
+        "us_per_substep_g2p": 2.6
+      },
+      {
+        "hidden": 16,
+        "us_per_substep": 12.368,
+        "us_per_substep_g2p": 2.928
+      },
+      {
+        "hidden": 24,
+        "us_per_substep": 12.936,
+        "us_per_substep_g2p": 3.504
+      },
+      {
+        "hidden": 32,
+        "us_per_substep": 13.784,
+        "us_per_substep_g2p": 4.336
+      },
+      {
+        "hidden": 40,
+        "us_per_substep": 14.344,
+        "us_per_substep_g2p": 4.896
+      },
+      {
+        "hidden": 48,
+        "us_per_substep": 14.808,
+        "us_per_substep_g2p": 5.368
+      },
+      {
+        "hidden": 56,
+        "us_per_substep": 15.328,
+        "us_per_substep_g2p": 5.888
+      },
+      {
+        "hidden": 64,
+        "us_per_substep": 15.808,
+        "us_per_substep_g2p": 6.36
+      },
+      {
+        "hidden": 72,
+        "us_per_substep": 16.312,
+        "us_per_substep_g2p": 6.872
+      },
+      {
+        "hidden": 80,
+        "us_per_substep": 16.776,
+        "us_per_substep_g2p": 7.336
+      },
+      {
+        "hidden": 84,
+        "us_per_substep": 17.04,
+        "us_per_substep_g2p": 7.592
+      },
+      {
+        "hidden": 88,
+        "us_per_substep": 17.384,
+        "us_per_substep_g2p": 7.856
+      },
+      {
+        "hidden": 92,
+        "us_per_substep": 26.512,
+        "us_per_substep_g2p": 17.08
+      },
+      {
+        "hidden": 96,
+        "us_per_substep": 29.504,
+        "us_per_substep_g2p": 20.072
+      },
+      {
+        "hidden": 104,
+        "us_per_substep": 28.288,
+        "us_per_substep_g2p": 18.736
+      },
+      {
+        "hidden": 112,
+        "us_per_substep": 32.096,
+        "us_per_substep_g2p": 22.664
+      },
+      {
+        "hidden": 128,
+        "us_per_substep": 32.112,
+        "us_per_substep_g2p": 22.672
+      },
+      {
+        "hidden": 160,
+        "us_per_substep": 37.8,
+        "us_per_substep_g2p": 28.344
+      },
+      {
+        "hidden": 192,
+        "us_per_substep": 50.464,
+        "us_per_substep_g2p": 39.688
+      },
+      {
+        "hidden": 224,
+        "us_per_substep": 53.896,
+        "us_per_substep_g2p": 42.912
+      },
+      {
+        "hidden": 256,
+        "us_per_substep": 56.272,
+        "us_per_substep_g2p": 43.936
+      }
+    ],
+    "f16": [
+      {
+        "hidden": 16,
+        "us_per_substep": 12.592,
+        "us_per_substep_g2p": 3.144
+      },
+      {
+        "hidden": 32,
+        "us_per_substep": 14.888,
+        "us_per_substep_g2p": 5.336
+      },
+      {
+        "hidden": 64,
+        "us_per_substep": 18.728,
+        "us_per_substep_g2p": 9.28
+      },
+      {
+        "hidden": 128,
+        "us_per_substep": 26.44,
+        "us_per_substep_g2p": 16.992
+      },
+      {
+        "hidden": 160,
+        "us_per_substep": 29.984,
+        "us_per_substep_g2p": 20.528
+      },
+      {
+        "hidden": 192,
+        "us_per_substep": 33.712,
+        "us_per_substep_g2p": 24.248
+      },
+      {
+        "hidden": 224,
+        "us_per_substep": 37.24,
+        "us_per_substep_g2p": 27.808
+      },
+      {
+        "hidden": 256,
+        "us_per_substep": 42.736,
+        "us_per_substep_g2p": 31.52
+      }
+    ],
+    "weights_in_storage_buffer": [
+      {
+        "hidden": 16,
+        "us_per_substep": 17.872,
+        "us_per_substep_g2p": 8.424
+      },
+      {
+        "hidden": 32,
+        "us_per_substep": 23.128,
+        "us_per_substep_g2p": 13.672
+      },
+      {
+        "hidden": 64,
+        "us_per_substep": 34.752,
+        "us_per_substep_g2p": 25.288
+      },
+      {
+        "hidden": 128,
+        "us_per_substep": 60.72,
+        "us_per_substep_g2p": 50.424
+      }
+    ],
+    "unrollable_control": [
+      {
+        "hidden": 16,
+        "us_per_substep_g2p": 4.552
+      },
+      {
+        "hidden": 32,
+        "us_per_substep_g2p": 7.792
+      },
+      {
+        "hidden": 64,
+        "us_per_substep_g2p": 13.88
+      },
+      {
+        "hidden": 88,
+        "us_per_substep_g2p": 18.176
+      },
+      {
+        "hidden": 96,
+        "us_per_substep_g2p": 19.616
+      },
+      {
+        "hidden": 128,
+        "us_per_substep_g2p": 25.336
+      },
+      {
+        "hidden": 192,
+        "us_per_substep_g2p": 36.808
+      },
+      {
+        "hidden": 256,
+        "us_per_substep_g2p": 50.176
+      }
+    ],
+    "batching_wall_us_per_substep": [
+      {
+        "variant": "analytic",
+        "substeps_per_submit": 1,
+        "us_per_substep_wall": 61.197916666666664
+      },
+      {
+        "variant": "analytic",
+        "substeps_per_submit": 4,
+        "us_per_substep_wall": 35.15625
+      },
+      {
+        "variant": "analytic",
+        "substeps_per_submit": 16,
+        "us_per_substep_wall": 32.552083333333336
+      },
+      {
+        "variant": "analytic",
+        "substeps_per_submit": 64,
+        "us_per_substep_wall": 28.90624999902987
+      },
+      {
+        "variant": "analytic",
+        "substeps_per_submit": 256,
+        "us_per_substep_wall": 23.4375
+      },
+      {
+        "variant": "nn64",
+        "substeps_per_submit": 1,
+        "us_per_substep_wall": 67.70833333333333
+      },
+      {
+        "variant": "nn64",
+        "substeps_per_submit": 4,
+        "us_per_substep_wall": 40.364583333333336
+      },
+      {
+        "variant": "nn64",
+        "substeps_per_submit": 16,
+        "us_per_substep_wall": 29.42708333284827
+      },
+      {
+        "variant": "nn64",
+        "substeps_per_submit": 64,
+        "us_per_substep_wall": 26.041666666666668
+      },
+      {
+        "variant": "nn64",
+        "substeps_per_submit": 256,
+        "us_per_substep_wall": 25.520833334060928
+      }
+    ],
+    "n_sweep": [
+      {
+        "n": 1024,
+        "variant": "analytic",
+        "us_per_substep": 6.56
+      },
+      {
+        "n": 1024,
+        "variant": "nn16",
+        "us_per_substep": 6.816
+      },
+      {
+        "n": 1024,
+        "variant": "nn64",
+        "us_per_substep": 10.264
+      },
+      {
+        "n": 1024,
+        "variant": "nn128",
+        "us_per_substep": 26.728
+      },
+      {
+        "n": 2048,
+        "variant": "analytic",
+        "us_per_substep": 7.112
+      },
+      {
+        "n": 2048,
+        "variant": "nn16",
+        "us_per_substep": 7.304
+      },
+      {
+        "n": 2048,
+        "variant": "nn64",
+        "us_per_substep": 10.76
+      },
+      {
+        "n": 2048,
+        "variant": "nn128",
+        "us_per_substep": 27.224
+      },
+      {
+        "n": 4096,
+        "variant": "analytic",
+        "us_per_substep": 8.864
+      },
+      {
+        "n": 4096,
+        "variant": "nn16",
+        "us_per_substep": 9.08
+      },
+      {
+        "n": 4096,
+        "variant": "nn64",
+        "us_per_substep": 12.52
+      },
+      {
+        "n": 4096,
+        "variant": "nn128",
+        "us_per_substep": 28.976
+      },
+      {
+        "n": 8192,
+        "variant": "analytic",
+        "us_per_substep": 12.184
+      },
+      {
+        "n": 8192,
+        "variant": "nn16",
+        "us_per_substep": 12.392
+      },
+      {
+        "n": 8192,
+        "variant": "nn64",
+        "us_per_substep": 15.832
+      },
+      {
+        "n": 8192,
+        "variant": "nn128",
+        "us_per_substep": 32.224
+      },
+      {
+        "n": 16384,
+        "variant": "analytic",
+        "us_per_substep": 18.968
+      },
+      {
+        "n": 16384,
+        "variant": "nn16",
+        "us_per_substep": 19.224
+      },
+      {
+        "n": 16384,
+        "variant": "nn64",
+        "us_per_substep": 22.784
+      },
+      {
+        "n": 16384,
+        "variant": "nn128",
+        "us_per_substep": 39.176
+      }
+    ],
+    "timestamp_quantum_ns": 256,
+    "control_pg_drift_pct": 0.25423728813560287,
+    "cost_trained_vs_untrained_ratio": 1.0010147133434806
+  },
+  "capacity": {
+    "onestep_rel_err_stress": {
+      "8": {
+        "fluid": 0.1759,
+        "elastic": 0.4717,
+        "snow": 0.9425,
+        "sand": 0.4846
+      },
+      "16": {
+        "fluid": 0.1296,
+        "elastic": 0.3721,
+        "snow": 0.6614,
+        "sand": 0.3765
+      },
+      "32": {
+        "fluid": 0.0671,
+        "elastic": 0.2507,
+        "snow": 0.5993,
+        "sand": 0.253
+      },
+      "64": {
+        "fluid": 0.0818,
+        "elastic": 0.2284,
+        "snow": 0.4224,
+        "sand": 0.2165
+      },
+      "128": {
+        "fluid": 0.0591,
+        "elastic": 0.1866,
+        "snow": 0.4172,
+        "sand": 0.1558
+      }
+    },
+    "onestep_rel_err_plastic": {
+      "8": {
+        "fluid": 0.4905,
+        "elastic": 0.4345,
+        "snow": 0.8083,
+        "sand": 0.6516
+      },
+      "16": {
+        "fluid": 0.3401,
+        "elastic": 0.279,
+        "snow": 0.6511,
+        "sand": 0.5399
+      },
+      "32": {
+        "fluid": 0.1717,
+        "elastic": 0.1704,
+        "snow": 0.5647,
+        "sand": 0.495
+      },
+      "64": {
+        "fluid": 0.1361,
+        "elastic": 0.1498,
+        "snow": 0.4333,
+        "sand": 0.4373
+      },
+      "128": {
+        "fluid": 0.1232,
+        "elastic": 0.1376,
+        "snow": 0.3413,
+        "sand": 0.3809
+      }
+    },
+    "two_hidden_layers_h64_stress": {
+      "fluid": 0.0324,
+      "elastic": 0.1136,
+      "snow": 0.1302,
+      "sand": 0.0884
+    },
+    "two_hidden_layers_h64_plastic": {
+      "fluid": 0.0616,
+      "elastic": 0.053,
+      "snow": 0.1802,
+      "sand": 0.1791
+    },
+    "ablation_no_C_or_v_h64_stress": {
+      "fluid": 0.0553,
+      "elastic": 0.1932,
+      "snow": 0.4283,
+      "sand": 0.1918
+    },
+    "n_params": {
+      "8": 183,
+      "16": 359,
+      "32": 711,
+      "64": 1415,
+      "128": 2823
+    },
+    "z_codes": [
+      [
+        0.8660253882408142,
+        -0.28867512941360474,
+        -0.28867512941360474,
+        -0.28867512941360474
+      ],
+      [
+        -0.28867512941360474,
+        0.8660253882408142,
+        -0.28867512941360474,
+        -0.28867512941360474
+      ],
+      [
+        -0.28867512941360474,
+        -0.28867512941360474,
+        0.8660253882408142,
+        -0.28867512941360474
+      ],
+      [
+        -0.28867512941360474,
+        -0.28867512941360474,
+        -0.28867512941360474,
+        0.8660253882408142
+      ]
+    ],
+    "z_sep": 1.6329931020736694,
+    "z_jitter": 0.19595917224884032,
+    "dataset": {
+      "n": 32400000,
+      "per_material": {
+        "fluid": 10639998,
+        "elastic": 7253334,
+        "snow": 7253334,
+        "sand": 7253334
+      },
+      "physics_version": "phys-c518316a4a05",
+      "target_std": {
+        "tau00": 9.854036331176758,
+        "tau01": 3.3986306190490723,
+        "tau11": 10.311656951904297,
+        "dS00": 0.0015786143485456705,
+        "dS01": 0.0011955737136304379,
+        "dS11": 0.0015824927249923348,
+        "dJp": 0.002150338375940919
+      },
+      "target_std_per_material": {
+        "fluid": {
+          "tau00": 7.493618011474609,
+          "tau01": 0.0,
+          "tau11": 7.493618011474609,
+          "dS00": 0.0016258795512840152,
+          "dS01": 0.0016282236902043223,
+          "dS11": 0.0016262436984106898,
+          "dJp": 0.0
+        },
+        "elastic": {
+          "tau00": 18.135135650634766,
+          "tau01": 6.828420639038086,
+          "tau11": 18.81321144104004,
+          "dS00": 0.0,
+          "dS01": 0.0,
+          "dS11": 0.0,
+          "dJp": 0.0
+        },
+        "snow": {
+          "tau00": 2.1216118335723877,
+          "tau01": 0.959075391292572,
+          "tau11": 2.370468854904175,
+          "dS00": 0.0009344186400994658,
+          "dS01": 0.0005476482911035419,
+          "dS11": 0.0009554929565638304,
+          "dJp": 0.0019449909450486302
+        },
+        "sand": {
+          "tau00": 4.178881645202637,
+          "tau01": 2.011352062225342,
+          "tau11": 5.653474807739258,
+          "dS00": 0.0025142203085124493,
+          "dS01": 0.001481930841691792,
+          "dS11": 0.0025170319713652134,
+          "dJp": 0.0040825242176651955
+        }
+      }
+    }
+  },
+  "golden_signatures": {
+    "canonical_and_oracle": {
+      "simulator": "oracle",
+      "pass": 21,
+      "fail": 0,
+      "na": 4,
+      "unsupported_calls": 5
+    },
+    "learned_h32": {
+      "simulator": "learned h=32",
+      "pass": 10,
+      "fail": 11,
+      "na": 4,
+      "unsupported_calls": 5
+    },
+    "learned_h32_rows": [
+      {
+        "name": "drop: all materials stable",
+        "pass": true,
+        "na": false,
+        "detail": "fluid=True elastic=True snow=True"
+      },
+      {
+        "name": "drop: width  fluid > snow > elastic",
+        "pass": false,
+        "na": false,
+        "detail": "0.933 > 0.953 > 0.874"
+      },
+      {
+        "name": "drop: height elastic > snow > fluid",
+        "pass": false,
+        "na": false,
+        "detail": "0.582 > 0.953 > 0.337"
+      },
+      {
+        "name": "column: elastic springs back above snow",
+        "pass": false,
+        "na": false,
+        "detail": "elastic 0.725 vs snow 0.953"
+      },
+      {
+        "name": "column: snow holds a pile above fluid",
+        "pass": true,
+        "na": false,
+        "detail": "snow 0.953 vs fluid 0.339"
+      },
+      {
+        "name": "heap: sand stable",
+        "pass": true,
+        "na": false,
+        "detail": "stable=True"
+      },
+      {
+        "name": "heap: sand holds an angle of repose, fluid does not",
+        "pass": false,
+        "na": false,
+        "detail": "sand 1.6 deg vs fluid 0.2 deg"
+      },
+      {
+        "name": "heap: sand does NOT spread flat like a fluid",
+        "pass": false,
+        "na": false,
+        "detail": "width fluid 0.886 vs sand 0.885; height sand 0.116 vs fluid 0.332"
+      },
+      {
+        "name": "heap: sand YIELDS where cohesive snow/elastic keep the seeded slope",
+        "pass": false,
+        "na": false,
+        "detail": "seeded 56.5 -> sand 1.6, snow 21.9, elastic 31.3 deg; width sand 0.885 vs snow 0.953"
+      },
+      {
+        "name": "multi-material path matches canonical for fluid",
+        "pass": true,
+        "na": false,
+        "detail": "vs canonical 1.84e-01, self-noise 1.55e-01"
+      },
+      {
+        "name": "multi-material path matches canonical for elastic",
+        "pass": true,
+        "na": false,
+        "detail": "vs canonical 1.36e-01, self-noise 1.31e-01"
+      },
+      {
+        "name": "multi-material path matches canonical for snow",
+        "pass": true,
+        "na": false,
+        "detail": "vs canonical 5.31e-01, self-noise 5.48e-01"
+      },
+      {
+        "name": "multi-material path matches canonical for sand",
+        "pass": true,
+        "na": false,
+        "detail": "vs canonical 3.51e-02, self-noise 4.24e-02"
+      },
+      {
+        "name": "viscosity: thicker fluid spreads less (and doesn't collapse)",
+        "pass": null,
+        "na": true,
+        "detail": "N/A -- overrides mu_visc -- the learned law has no viscosity knob"
+      },
+      {
+        "name": "pool: snow FLOATS -- it rises to the surface and breaks it",
+        "pass": false,
+        "na": false,
+        "detail": "rose +0.423, depth change +0.229, submerged 0.91"
+      },
+      {
+        "name": "pool: rubber SINKS -- it goes down and stays fully under",
+        "pass": true,
+        "na": false,
+        "detail": "moved -0.054, depth change +0.081, submerged 0.99"
+      },
+      {
+        "name": "pool: sand SINKS, and faster than rubber does",
+        "pass": true,
+        "na": false,
+        "detail": "moved -0.102 vs rubber -0.054, submerged 1.00"
+      },
+      {
+        "name": "pool: resting depth is ordered by density (sand > rubber > snow)",
+        "pass": false,
+        "na": false,
+        "detail": "sand +0.160 > rubber +0.081 > snow +0.229  (rho 1.6 / 1.2 / 0.3)"
+      },
+      {
+        "name": "pool: the SAME blob orders by DENSITY alone (0.3 floats, 1.0 hangs, 1.6 sinks)",
+        "pass": false,
+        "na": false,
+        "detail": "rho 0.3 -> +0.342 (84% under),  1.0 -> -0.029 (99%),  1.6 -> -0.076 (99%)"
+      },
+      {
+        "name": "density rescaling leaves a lone material unmoved (snow)",
+        "pass": null,
+        "na": true,
+        "detail": "N/A -- overrides E -- stiffness lives in the weights, there is no knob to turn"
+      },
+      {
+        "name": "density rescaling leaves a lone material unmoved (sand)",
+        "pass": null,
+        "na": true,
+        "detail": "N/A -- overrides E -- stiffness lives in the weights, there is no knob to turn"
+      },
+      {
+        "name": "density rescaling leaves a lone material unmoved (elastic)",
+        "pass": null,
+        "na": true,
+        "detail": "N/A -- overrides E -- stiffness lives in the weights, there is no knob to turn"
+      },
+      {
+        "name": "slam: rubber holds its VOLUME through a hard impact",
+        "pass": false,
+        "na": false,
+        "detail": "worst mean det(F) 0.434 (>0.95), worst 1st-pct particle -1.011 (>0.45)"
+      },
+      {
+        "name": "drop: water is nearly incompressible",
+        "pass": false,
+        "na": false,
+        "detail": "worst mean J 1.069 (>0.97), worst 1st-pct particle 0.796 (>0.85)"
+      },
+      {
+        "name": "dam break: frictionless water outruns the same water given a granular friction",
+        "pass": true,
+        "na": false,
+        "detail": "front has travelled 0.518 vs 0.478 at t = 0.20 s"
+      }
+    ]
+  },
+  "trajectory": {
+    "learned_h32": [
+      {
+        "scene": "drop",
+        "material": "fluid",
+        "traj_rmse_learned": 0.22281229496002197,
+        "traj_rmse_oracle": 0.005949620623141527,
+        "ic_nudge_band": 0.006232097279280424,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.3923789858818054,
+        "spread_learned": 0.9151848554611206,
+        "height_canonical": 0.034318577498197556,
+        "height_learned": 0.28901800513267517,
+        "repose_canonical": 11.936404316460866,
+        "repose_learned": 22.49478548626296
+      },
+      {
+        "scene": "drop",
+        "material": "elastic",
+        "traj_rmse_learned": 0.22289541363716125,
+        "traj_rmse_oracle": 3.4510158002376556e-05,
+        "ic_nudge_band": 4.427449766808422e-06,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.17645522952079773,
+        "spread_learned": 0.8694615364074707,
+        "height_canonical": 0.28339362144470215,
+        "height_learned": 0.5611223578453064,
+        "repose_canonical": 22.15836717731019,
+        "repose_learned": 9.027586052699814
+      },
+      {
+        "scene": "drop",
+        "material": "snow",
+        "traj_rmse_learned": 0.5581866502761841,
+        "traj_rmse_oracle": 0.00019209092715755105,
+        "ic_nudge_band": 1.8756267309072427e-05,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.3528202772140503,
+        "spread_learned": 0.953125,
+        "height_canonical": 0.14059662818908691,
+        "height_learned": 0.953125,
+        "repose_canonical": 30.310842615821585,
+        "repose_learned": 4.0227924757925235
+      },
+      {
+        "scene": "drop",
+        "material": "sand",
+        "traj_rmse_learned": 0.1352730542421341,
+        "traj_rmse_oracle": 0.00016696196689736098,
+        "ic_nudge_band": 4.2988001951016486e-05,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.6639967560768127,
+        "spread_learned": 0.8672150373458862,
+        "height_canonical": 0.055169351398944855,
+        "height_learned": 0.13150940835475922,
+        "repose_canonical": 9.35895003010855,
+        "repose_learned": 9.865957554570153
+      },
+      {
+        "scene": "heap",
+        "material": "fluid",
+        "traj_rmse_learned": 0.22703827917575836,
+        "traj_rmse_oracle": 0.00018353811174165457,
+        "ic_nudge_band": 8.751731911615934e-06,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.7989806532859802,
+        "spread_learned": 0.9112054109573364,
+        "height_canonical": 0.01824471727013588,
+        "height_learned": 0.2508803606033325,
+        "repose_canonical": 2.9517224271290585,
+        "repose_learned": 1.5941736022433275
+      },
+      {
+        "scene": "heap",
+        "material": "elastic",
+        "traj_rmse_learned": 0.24563255906105042,
+        "traj_rmse_oracle": 4.489190905587748e-05,
+        "ic_nudge_band": 8.330988521265681e-07,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.17811650037765503,
+        "spread_learned": 0.8873502612113953,
+        "height_canonical": 0.17544035613536835,
+        "height_learned": 0.7254154682159424,
+        "repose_canonical": 56.79538851366485,
+        "repose_learned": 27.99541273889859
+      },
+      {
+        "scene": "heap",
+        "material": "snow",
+        "traj_rmse_learned": 0.5716241002082825,
+        "traj_rmse_oracle": 0.00030584234627895057,
+        "ic_nudge_band": 1.4964906768000219e-05,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.17836138606071472,
+        "spread_learned": 0.953125,
+        "height_canonical": 0.1720752716064453,
+        "height_learned": 0.953125,
+        "repose_canonical": 56.391071369425994,
+        "repose_learned": 5.769118924626206
+      },
+      {
+        "scene": "heap",
+        "material": "sand",
+        "traj_rmse_learned": 0.14213667809963226,
+        "traj_rmse_oracle": 0.0015456908149644732,
+        "ic_nudge_band": 0.00010955280595226213,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.3119736611843109,
+        "spread_learned": 0.8797756433486938,
+        "height_canonical": 0.09305159002542496,
+        "height_learned": 0.08891110122203827,
+        "repose_canonical": 24.866801105341683,
+        "repose_learned": 1.144794135281188
+      },
+      {
+        "scene": "column",
+        "material": "fluid",
+        "traj_rmse_learned": 0.24500003457069397,
+        "traj_rmse_oracle": 0.0019467014353722334,
+        "ic_nudge_band": 0.00018612391431815922,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.9250178337097168,
+        "spread_learned": 0.919579803943634,
+        "height_canonical": 0.08495800942182541,
+        "height_learned": 0.3604620099067688,
+        "repose_canonical": 1.4785098157625678,
+        "repose_learned": 3.1288077272856065
+      },
+      {
+        "scene": "column",
+        "material": "elastic",
+        "traj_rmse_learned": 0.21752358973026276,
+        "traj_rmse_oracle": 8.607844938524067e-05,
+        "ic_nudge_band": 3.511525505928148e-07,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.1450204849243164,
+        "spread_learned": 0.8210707306861877,
+        "height_canonical": 0.5055286884307861,
+        "height_learned": 0.8489882349967957,
+        "repose_canonical": 13.0943044242627,
+        "repose_learned": 5.510004535003153
+      },
+      {
+        "scene": "column",
+        "material": "snow",
+        "traj_rmse_learned": 0.5304411053657532,
+        "traj_rmse_oracle": 0.0400264747440815,
+        "ic_nudge_band": 0.00326076103374362,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.6512341499328613,
+        "spread_learned": 0.953125,
+        "height_canonical": 0.1448146104812622,
+        "height_learned": 0.953125,
+        "repose_canonical": 17.471317304089265,
+        "repose_learned": 14.358177014874808
+      },
+      {
+        "scene": "column",
+        "material": "sand",
+        "traj_rmse_learned": 0.1381882280111313,
+        "traj_rmse_oracle": 0.005859155673533678,
+        "ic_nudge_band": 0.0002647499495651573,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.6484654545783997,
+        "spread_learned": 0.8931529521942139,
+        "height_canonical": 0.13458921015262604,
+        "height_learned": 0.15754452347755432,
+        "repose_canonical": 19.379071611962743,
+        "repose_learned": 1.4712584917526073
+      }
+    ],
+    "learned_h64_two_layer": [
+      {
+        "scene": "drop",
+        "material": "fluid",
+        "traj_rmse_learned": 0.16053880751132965,
+        "traj_rmse_oracle": 0.0059735714457929134,
+        "ic_nudge_band": 0.005153632257133722,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.418449342250824,
+        "spread_learned": 0.8964975476264954,
+        "height_canonical": 0.03227934241294861,
+        "height_learned": 0.30634042620658875,
+        "repose_canonical": 9.376315638816276,
+        "repose_learned": 0.637117543499883
+      },
+      {
+        "scene": "drop",
+        "material": "elastic",
+        "traj_rmse_learned": 0.2865771949291229,
+        "traj_rmse_oracle": 3.309729800093919e-05,
+        "ic_nudge_band": 9.714556654216722e-06,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.1764533519744873,
+        "spread_learned": 0.8633430600166321,
+        "height_canonical": 0.28339192271232605,
+        "height_learned": 0.8857517838478088,
+        "repose_canonical": 22.165562062921076,
+        "repose_learned": 4.394956034209234
+      },
+      {
+        "scene": "drop",
+        "material": "snow",
+        "traj_rmse_learned": 0.35988476872444153,
+        "traj_rmse_oracle": 0.00019340628932695836,
+        "ic_nudge_band": 1.6872474589035846e-05,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.3528302013874054,
+        "spread_learned": 0.9009883403778076,
+        "height_canonical": 0.14062081277370453,
+        "height_learned": 0.9242119193077087,
+        "repose_canonical": 30.26971628865637,
+        "repose_learned": 10.183234987190968
+      },
+      {
+        "scene": "drop",
+        "material": "sand",
+        "traj_rmse_learned": 0.06369054317474365,
+        "traj_rmse_oracle": 0.0001512533490313217,
+        "ic_nudge_band": 0.00017558912804815918,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.6644280552864075,
+        "spread_learned": 0.8270730376243591,
+        "height_canonical": 0.05520227551460266,
+        "height_learned": 0.06137330085039139,
+        "repose_canonical": 9.35961965472083,
+        "repose_learned": 3.507563308419584
+      },
+      {
+        "scene": "heap",
+        "material": "fluid",
+        "traj_rmse_learned": 0.14618152379989624,
+        "traj_rmse_oracle": 0.00017567821487318724,
+        "ic_nudge_band": 7.394050953735132e-06,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.7991386651992798,
+        "spread_learned": 0.900164783000946,
+        "height_canonical": 0.0182524174451828,
+        "height_learned": 0.4959123730659485,
+        "repose_canonical": 2.951769851085288,
+        "repose_learned": 0.38596719755695885
+      },
+      {
+        "scene": "heap",
+        "material": "elastic",
+        "traj_rmse_learned": 0.40335381031036377,
+        "traj_rmse_oracle": 4.4343567424220964e-05,
+        "ic_nudge_band": 8.046932862271206e-07,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.17811629176139832,
+        "spread_learned": 0.8642231225967407,
+        "height_canonical": 0.1754356026649475,
+        "height_learned": 0.8770301342010498,
+        "repose_canonical": 56.79526843450586,
+        "repose_learned": 1.9166383610168427
+      },
+      {
+        "scene": "heap",
+        "material": "snow",
+        "traj_rmse_learned": 0.39216479659080505,
+        "traj_rmse_oracle": 0.00031163793755695224,
+        "ic_nudge_band": 1.4643538634118158e-05,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.17836785316467285,
+        "spread_learned": 0.9018104076385498,
+        "height_canonical": 0.1720838099718094,
+        "height_learned": 0.9307900071144104,
+        "repose_canonical": 56.4372101626551,
+        "repose_learned": 33.74261050050444
+      },
+      {
+        "scene": "heap",
+        "material": "sand",
+        "traj_rmse_learned": 0.1024492159485817,
+        "traj_rmse_oracle": 0.0015893905656412244,
+        "ic_nudge_band": 0.00018356765212956816,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.31246045231819153,
+        "spread_learned": 0.7604843378067017,
+        "height_canonical": 0.09278127551078796,
+        "height_learned": 0.07713425159454346,
+        "repose_canonical": 24.735254329192955,
+        "repose_learned": 6.992414481572859
+      },
+      {
+        "scene": "column",
+        "material": "fluid",
+        "traj_rmse_learned": 0.1938815861940384,
+        "traj_rmse_oracle": 0.0016899168258532882,
+        "ic_nudge_band": 0.0002128013875335455,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.925743043422699,
+        "spread_learned": 0.8645809888839722,
+        "height_canonical": 0.08608672767877579,
+        "height_learned": 0.30591148138046265,
+        "repose_canonical": 1.2572151732765071,
+        "repose_learned": 8.444376716865412
+      },
+      {
+        "scene": "column",
+        "material": "elastic",
+        "traj_rmse_learned": 0.27829545736312866,
+        "traj_rmse_oracle": 8.587916090618819e-05,
+        "ic_nudge_band": 2.995070076394768e-07,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.1450209617614746,
+        "spread_learned": 0.8632769584655762,
+        "height_canonical": 0.5055294632911682,
+        "height_learned": 0.9021686911582947,
+        "repose_canonical": 13.094217535843319,
+        "repose_learned": 5.061041685479728
+      },
+      {
+        "scene": "column",
+        "material": "snow",
+        "traj_rmse_learned": 0.30444440245628357,
+        "traj_rmse_oracle": 0.039789360016584396,
+        "ic_nudge_band": 0.0017908265581354499,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.6509866714477539,
+        "spread_learned": 0.8853898048400879,
+        "height_canonical": 0.14489580690860748,
+        "height_learned": 0.9058902859687805,
+        "repose_canonical": 17.151037236032277,
+        "repose_learned": 17.453619585345322
+      },
+      {
+        "scene": "column",
+        "material": "sand",
+        "traj_rmse_learned": 0.08891715854406357,
+        "traj_rmse_oracle": 0.005723792128264904,
+        "ic_nudge_band": 0.00028257211670279503,
+        "learned_stable": true,
+        "oracle_stable": true,
+        "spread_canonical": 0.6485627293586731,
+        "spread_learned": 0.8534523844718933,
+        "height_canonical": 0.1346147358417511,
+        "height_learned": 0.131407231092453,
+        "repose_canonical": 19.408844460400413,
+        "repose_learned": 2.2629821800023198
+      }
+    ]
+  },
+  "parity_host_vs_wgsl": {
+    "mlp": {
+      "n": 4096,
+      "max_abs": 0.0009288787841796875,
+      "mean_abs": 5.25281902810093e-05,
+      "out_sd": 5.67970609664917,
+      "max_rel_to_sd": 0.0001635434600757435
+    },
+    "mlp_f16": {
+      "n": 4096,
+      "max_abs": 2.5879669189453125,
+      "mean_abs": 0.11583835631608963,
+      "out_sd": 5.67970609664917,
+      "max_rel_to_sd": 0.45565155148506165
+    },
+    "rollout": {
+      "traj_rmse_host_vs_wgsl": 0.08358347415924072,
+      "frame1": 0.00021400926925707608,
+      "finite": true,
+      "n": 8192,
+      "frames": 30
+    },
+    "cost_trained_vs_random": {
+      "trained_us": 15.784,
+      "random_us": 15.768,
+      "ratio": 1.0010147133434806
+    }
+  },
+  "analytic_port_vs_canonical": [
+    {
+      "material": "fluid",
+      "finite": true,
+      "traj_rmse_vs_canonical": 0.0018829508690581223,
+      "ic_nudge_band": 0.002139042131602764,
+      "final_spread_wgsl": 0.9472166113555431,
+      "final_spread_canonical": 0.9472073968499899,
+      "n": 2048,
+      "frames": 40,
+      "substeps_per_frame": 500
+    },
+    {
+      "material": "elastic",
+      "finite": true,
+      "traj_rmse_vs_canonical": 2.196633608223396e-05,
+      "ic_nudge_band": 1.506885928392876e-05,
+      "final_spread_wgsl": 0.22593998908996582,
+      "final_spread_canonical": 0.2259669005870819,
+      "n": 2048,
+      "frames": 40,
+      "substeps_per_frame": 500
+    },
+    {
+      "material": "snow",
+      "finite": true,
+      "traj_rmse_vs_canonical": 3.872995926221301e-05,
+      "ic_nudge_band": 2.3573204089188948e-05,
+      "final_spread_wgsl": 0.46475106477737427,
+      "final_spread_canonical": 0.46482107043266296,
+      "n": 2048,
+      "frames": 40,
+      "substeps_per_frame": 500
+    },
+    {
+      "material": "sand",
+      "finite": true,
+      "traj_rmse_vs_canonical": 3.214534695154e-05,
+      "ic_nudge_band": 3.248402936151251e-05,
+      "final_spread_wgsl": 0.7109013646841049,
+      "final_spread_canonical": 0.7111782729625702,
+      "n": 2048,
+      "frames": 40,
+      "substeps_per_frame": 500
+    }
+  ],
+  "gate_oracle_step_level": [
+    {
+      "material": "fluid",
+      "substeps": 1,
+      "mean_pos_diff": 1.955777380324708e-11,
+      "pass": true
+    },
+    {
+      "material": "fluid",
+      "substeps": 4,
+      "mean_pos_diff": 1.3318640634807366e-10,
+      "pass": true
+    },
+    {
+      "material": "fluid",
+      "substeps": 16,
+      "mean_pos_diff": 3.585169494613183e-09,
+      "pass": true
+    },
+    {
+      "material": "elastic",
+      "substeps": 1,
+      "mean_pos_diff": 1.8160790579702102e-11,
+      "pass": true
+    },
+    {
+      "material": "elastic",
+      "substeps": 4,
+      "mean_pos_diff": 2.7101487720671e-10,
+      "pass": true
+    },
+    {
+      "material": "elastic",
+      "substeps": 16,
+      "mean_pos_diff": 6.220178150329048e-09,
+      "pass": true
+    },
+    {
+      "material": "snow",
+      "substeps": 1,
+      "mean_pos_diff": 4.7210595433000435e-09,
+      "pass": true
+    },
+    {
+      "material": "snow",
+      "substeps": 4,
+      "mean_pos_diff": 1.7572714838820502e-08,
+      "pass": true
+    },
+    {
+      "material": "snow",
+      "substeps": 16,
+      "mean_pos_diff": 6.504401994789077e-08,
+      "pass": true
+    },
+    {
+      "material": "sand",
+      "substeps": 1,
+      "mean_pos_diff": 1.1542441447076612e-09,
+      "pass": true
+    },
+    {
+      "material": "sand",
+      "substeps": 4,
+      "mean_pos_diff": 5.4095177226543e-09,
+      "pass": true
+    },
+    {
+      "material": "sand",
+      "substeps": 16,
+      "mean_pos_diff": 5.174327455392813e-08,
+      "pass": true
+    }
+  ],
+  "verdict": {
+    "capacity_line": "Held-out one-step error reaches 0.10 to 0.25 of each material own spread at best, and that is not close enough: rolled forward, fluid, rubber and snow expand into a gas that fills the tank and sand spreads to 0.76 where canonical holds 0.31. The learned simulator passes 10 of 21 runnable golden signatures."
+  }
+}

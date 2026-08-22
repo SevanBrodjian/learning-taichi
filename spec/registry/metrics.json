@@ -1,287 +1,305 @@
 {
-  "_comment": "Canonical metric definitions. See spec/registry/README.md for the policy. Every entry MUST cite a real source in code -- if you cannot point at the function, it does not go in here. The dashboard reads this file to render hover definitions.",
-  "_schema": {
-    "label": "display name",
-    "short": "one-line plain-English meaning",
-    "formula": "the actual computation, in words or math",
-    "units": "what the number is in",
-    "range": "expected range and what good/bad looks like",
-    "source": "file:line of the implementation",
-    "caution": "optional -- traps, misleading names, what it does NOT tell you"
-  },
-  "traj_rmse": {
-    "label": "trajectory RMSE",
-    "short": "How far the run's particles sit from ground truth, averaged over the whole rollout.",
-    "formula": "mean over frames and particles of the per-particle Euclidean distance |x_learned - x_gt|. Particle p is matched to particle p (both runs seed identically).",
-    "units": "domain lengths (the domain is the unit square, so 0.1 is 10% of the box)",
-    "range": ">= 0. On the whole-material task, trained corners sit at 0.012-0.031 and the held-out corner at 0.246.",
-    "source": "sim/one_nn_whole_fluid.py:619",
-    "caution": "THE NAME IS WRONG. It is a mean absolute distance, not a root-mean-square, and it is NOT a centre-of-mass distance. It also has no interpretable scale -- 0.12 could be 'slightly off' or 'not a liquid' and the number alone cannot tell you. Use it to RANK cells, never to CERTIFY one as physical. It correlates only moderately with shape error (Spearman rho ~ 0.55 on the 5x5 whole-material grid)."
-  },
-  "roundness": {
-    "label": "roundness (circularity)",
-    "short": "How close the material's silhouette is to a perfect disk.",
-    "formula": "isoperimetric ratio 4*pi*A / P^2 of the filled occupancy mask (64x64, one closing pass), divided by the same ratio for a rasterised disk so that a disk scores 1.0. A = filled cells, P = boundary cells.",
-    "units": "dimensionless, normalised so a perfect disk = 1.0",
-    "range": "0 to ~1. Higher = rounder/more compact. A wide flat puddle is ~0.1-0.2; a settled droplet ~0.6-0.9.",
-    "source": "sim/one_nn_whole_fluid.py:663 (via _iso_raw:642, _disk_iso_raw:654)",
-    "caution": "Computed on the LAST few frames only (settled state), so it says nothing about the motion that got there. Resolution-dependent: the 64x64 raster and the closing pass set how much fine spray is ignored."
-  },
-  "shape_error": {
-    "label": "shape error",
-    "short": "How far the run's roundness is from the ground truth's roundness at the same conditions.",
-    "formula": "|roundness_learned - roundness_ground_truth|",
-    "units": "dimensionless (same scale as roundness)",
-    "range": ">= 0. Below ~0.05 is a good match; above ~0.25 the shape is qualitatively wrong.",
-    "source": "derived; introduced by the task page at runs/material-variants/train-one-nn-to-mimic-viscosity-and-st/bespoke_page.html",
-    "caution": "Directly interpretable because it is read against the ground truth's own roundness -- this is exactly what traj_rmse lacks. But it is a single scalar about the SETTLED shape and is blind to how the material got there."
-  },
-  "spread_width": {
-    "label": "spread width",
-    "short": "Horizontal extent of the material, robust to outlying particles.",
-    "formula": "95th percentile of particle x minus 5th percentile of particle x",
-    "units": "domain lengths",
-    "range": "0 to 1. A spreading fluid grows this; a holding solid does not.",
-    "source": "sim/one_nn_whole_fluid.py:607",
-    "caution": "Percentile-based, so it deliberately ignores the outermost 10% of particles -- a thin spray or a few flung particles will not show up here."
-  },
-  "pile_height": {
-    "label": "pile height",
-    "short": "How tall the settled material stands above the floor.",
-    "formula": "95th percentile of particle y, minus the floor height",
-    "units": "domain lengths",
-    "range": "0 to 1. The signature that separates snow (holds a pile) from fluid (spreads flat).",
-    "source": "sim/one_nn_whole_fluid.py:611"
-  },
-  "self_noise": {
-    "label": "simulator self-noise",
-    "short": "The canonical ground-truth simulator run against itself: the error floor nothing can beat.",
-    "formula": "traj_rmse between two runs of the same canonical simulator at the same configuration (nonzero only from GPU non-determinism, e.g. atomic scatter order)",
-    "units": "domain lengths",
-    "range": "~1e-7. Any learned model at or near this is exact to the simulator's own reproducibility.",
-    "source": "reported per trained corner as metrics.edge.<corner>.true_self_noise",
-    "caution": "This is the floor for a DETERMINISTIC comparison. It is not a claim about physical accuracy -- the canonical simulator's own error against reality is a separate, unmeasured thing."
-  },
-  "physics_version": {
-    "label": "physics version",
-    "short": "Stamp of the frozen canonical physics a run used, so two runs are provably on the same ground truth.",
-    "formula": "sim.physics.VERSION, a content hash of the canonical module",
-    "units": "opaque string, e.g. phys-1dc280eb52c9",
-    "range": "n/a",
-    "source": "sim/physics/__init__.py",
-    "caution": "Equal versions prove the same GROUND TRUTH was used. They do NOT prove a task's own differentiable variant matches it -- see the material-parameter drift noted in spec/registry/README.md."
-  },
-  "repose_angle": {
-    "label": "angle of repose",
-    "short": "The slope, in degrees, that a settled pile of material actually holds.",
-    "formula": "bin particles by x between their 1st and 99th percentile (20 bins), take the 90th percentile of y in each bin as the free surface, split the profile at its apex, least-squares fit a line to EACH WHOLE FLANK, and report atan of the mean |slope| in degrees.",
-    "units": "degrees",
-    "range": "0 to ~57. A settled fluid reads 0-5; canonical sand on the heap scene reads ~25 at its canonical dt; a material that keeps the seeded 60-degree heap reads ~57.",
-    "source": "sim/physics/core.py:622 (via surface_profile:603)",
-    "caution": "TWO traps. (1) It is NOT the model's friction-angle parameter phi -- canonical sand runs phi=50 and measures ~25. (2) It is NOT converged in the timestep for any plastic material: the same canonical sand reads ~25 at dt=1e-4 and ~14 at dt/8, and canonical snow reads ~57 at its own dt and ~17 at dt/8. Always quote it with the dt it was measured at. Fitting the WHOLE flank rather than the steep part is deliberate, so that a flat puddle with a sharp rim does not read as a steep pile."
-  },
-  "shape_drift": {
-    "label": "settled-shape drift",
-    "short": "How far a run's settled shape has moved from the same run at a converged timestep.",
-    "formula": "max over the three settled observables (spread_width, pile_height, repose_angle) of the relative difference against a reference run at dt/8; repose_angle is normalised by max(reference, 1 degree) so a near-zero reference angle cannot divide by ~0.",
-    "units": "dimensionless relative error",
-    "range": ">= 0. Below ~0.15 the settled configuration is still recognisably the same; above ~1 it is a different outcome.",
-    "source": "runs/material-variants/sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid/dt_experiment2.py:83",
-    "caution": "Measures only the SETTLED state, so it is blind to differences in the motion that got there. It is defined against a dt/8 reference, not against reality."
-  },
-  "substeps_per_frame": {
-    "label": "substeps per frame",
-    "short": "How many solver steps a real-time 60 fps frame costs at a given timestep.",
-    "formula": "round((1/60) / dt). For a grid holding several materials, dt is min(dt) over the materials present, so the stiffest material sets the number for every particle in the scene.",
-    "units": "count",
-    "range": "139 (water alone) to 333 (any scene containing snow), at the canonical timesteps and n_grid=128.",
-    "source": "sim/physics/core.py:519 (shared_dt); the division itself at runs/material-variants/sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid/experiment.py:293",
-    "caution": "It prices REAL-TIME playback only. A clip rendered offline, or labelled slow motion, pays a different bill. It also says nothing about the cost of one substep, which is machine- and implementation-dependent."
-  },
-  "dt_stable_max": {
-    "label": "largest stable timestep",
-    "short": "The biggest timestep at which a material's rollout stays finite and bounded.",
-    "formula": "largest dt in a multiplicative sweep for which the run keeps finite positions AND a finite max particle speed under 1e3, on the harder of the drop and heap scenes.",
-    "units": "seconds",
-    "range": "2.4e-4 (fluid) to 1.6e-3 (sand) at n_grid=128, i.e. 2x to 16x the canonical timesteps.",
-    "source": "runs/material-variants/sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid/dt_experiment2.py:96",
-    "caution": "STABILITY IS THE WRONG CRITERION ON ITS OWN and this number will mislead anyone who uses it to pick a timestep. Every canonical material tolerates a far larger dt than it uses, and the settled behaviour is already wrong well below this point -- compare dt_faithful_max."
-  },
-  "dt_faithful_max": {
-    "label": "largest faithful timestep",
-    "short": "The biggest timestep at which the settled shape still matches a converged reference.",
-    "formula": "largest dt in the sweep with shape_drift <= 0.15 against the same run at dt/8, on the harder of the drop and heap scenes.",
-    "units": "seconds",
-    "range": "Always well below dt_stable_max. For elastic the two nearly coincide; for the plastic and fluid paths they differ by one to two orders of magnitude.",
-    "source": "runs/material-variants/sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid/dt_experiment2.py:97",
-    "caution": "Defined against a dt/8 reference, and for materials whose settled state drifts monotonically with SUBSTEP COUNT that reference is itself not a fixed point -- so read this as 'agrees with a much finer run', not as 'converged to the true answer'."
-  },
-  "_unregistered": [
-    "airborne fraction (used by one-nn-for-three-materials)",
-    "gap closed % (used by learned-residual)",
-    "relative RMSE / relRMSE (used for stress, capillary, state fits)",
-    "effective viscosity (used by the weight-interpolation tasks)"
-  ],
-  "us_per_substep": {
-    "label": "microseconds per substep",
-    "short": "Wall-clock cost of one full P2G / grid / G2P solver step, on stated hardware.",
-    "formula": "total time for K substeps divided by K, with K large enough that the timer's resolution is negligible. Reported either as GPU-side time (timestamp-query over the whole pass) or as sustained wall time (K frames submitted back to back, one queue wait).",
-    "units": "microseconds",
-    "range": "Measured on one RTX 4090 at n_grid=128: ~345-378 (Taichi/CUDA driven per-kernel from Python, FLAT in particle count), 45-5300 (single JavaScript thread, linear in particle count), 6-140 (WebGPU with all substeps in one command buffer).",
-    "source": "runs/material-variants/webgpu-port-of-the-interactive-simulation/verify/baselines.py:66 (timeit) and runs/material-variants/webgpu-port-of-the-interactive-simulation/verify/harness.html (sustained/gpu paths)",
-    "caution": "This is an IMPLEMENTATION number, not a device number. A flat curve against particle count means the measurement is dominated by the cost of ISSUING work, not doing it -- the same kernels on the same GPU differ by ~50x depending only on whether each is launched individually or recorded into one command buffer. Never quote it without the hardware, the API, AND how the work was submitted."
-  },
-  "frame_ms": {
-    "label": "frame time",
-    "short": "What one real-time frame of simulation costs: substeps_per_frame x cost of one substep.",
-    "formula": "substeps_per_frame * us_per_substep / 1000. Compute only -- rendering and readback excluded unless stated.",
-    "units": "milliseconds",
-    "range": "16.67 ms is the 60 fps budget. Above it the simulation is not real time and must either drop particles, drop frames, or be labelled slow motion.",
-    "source": "runs/material-variants/webgpu-port-of-the-interactive-simulation/verify/score.py:52 (budget_60fps) and runs/material-variants/webgpu-port-of-the-interactive-simulation/metrics.json:three_way",
-    "caution": "Excludes drawing. A compute budget that just fits 16.67 ms is NOT a frame that hits 60 fps once rendering, readback and compositing are added."
-  },
-  "particle_budget_60fps": {
-    "label": "particle budget at 60 fps",
-    "short": "The largest particle count whose measured frame still fits inside 16.67 ms.",
-    "formula": "linear interpolation of the measured frame_ms-vs-particle-count curve at 16.67 ms. Undefined (reported as none) when even the smallest measured scene misses the budget.",
-    "units": "particles",
-    "range": "Measured for canonical elastic (167 substeps/frame) on one RTX 4090: ~1230 (single JS thread), none at any size (Taichi/CUDA from Python), ~173000 (WebGPU, one command buffer per frame).",
-    "source": "runs/material-variants/webgpu-port-of-the-interactive-simulation/verify/score.py:52",
-    "caution": "Interpolated between two measured points, not measured at the crossing. It also depends on particle DENSITY, not just count -- the cost is driven by the P2G atomic scatter, so the same count spread thinner is cheaper. Compute only; rendering excluded."
-  },
-  "dispatch_floor_us": {
-    "label": "dispatch floor",
-    "short": "What it costs to tell the GPU to run a kernel that does nothing.",
-    "formula": "time for K dispatches of an empty kernel, divided by K. The analogue on both sides of a port: an empty Taichi kernel launched from Python vs an empty WGSL dispatch recorded inside one command buffer.",
-    "units": "microseconds",
-    "range": "Measured on one RTX 4090: 55.6 (Taichi kernel launched from Python) vs 1.11 (WGSL dispatch inside a recorded command buffer) -- a 50x difference on the same device.",
-    "source": "runs/material-variants/webgpu-port-of-the-interactive-simulation/verify/baselines.py:52 (noop) and runs/material-variants/webgpu-port-of-the-interactive-simulation/verify/harness.html (phases 'e')",
-    "caution": "Multiply by the number of kernels per substep AND by substeps_per_frame before comparing to a frame budget -- that product is what actually decides whether a real-time explicit solver is possible. This is a per-SUBMISSION cost, so it is a property of how the API is driven, not of the hardware."
-  },
-  "node_mass_headroom": {
-    "label": "fixed-point node-mass headroom",
-    "short": "How far the heaviest grid node is from the point where the fixed-point mass accumulator wraps.",
-    "formula": "2^(32-kM) / max over the run of (node mass in PARTICLE MASSES). The numerator is where an unsigned 32-bit accumulator carrying 2^kM quanta per particle mass saturates: 256 particle masses at the standard kM=24. The denominator is read from the grid every frame.",
-    "units": "dimensionless ratio (a factor of safety)",
-    "range": ">1 is safe, <=1 has already wrapped. Measured 14.8x at 4096 particles and 5.6x at 12288 with all four materials deliberately crushed into one corner by the interaction force.",
-    "source": "runs/material-variants/the-demo-mvp-four-materials-on-webgpu-live-on-the-demo-page/verify/harness.html (pile probe) and runs/material-variants/the-demo-mvp-four-materials-on-webgpu-live-on-the-demo-page/verify/score.py:96 (pile_headroom)",
-    "caution": "Overrun does NOT produce a NaN or an error -- the accumulator wraps around and that node's block detonates. So this number must be measured on the WORST case a user can reach, not on a typical scene: it is a function of particles-per-cell, which an interactive demo lets the user change at will. It is also a per-node measurement, not a per-scene one; a single dense node is enough."
-  },
-  "realtime_factor": {
-    "label": "achieved real-time factor",
-    "short": "Simulated seconds advanced per wall-clock second, measured rather than assumed.",
-    "formula": "sum over a measurement window of (substeps_this_frame * dt) divided by the summed wall-clock frame intervals. 1.00 is real time; 0.5 is labelled half speed.",
-    "units": "dimensionless (simulated seconds per real second)",
-    "range": "0 to whatever the hardware allows. 1.00 measured for four materials, 9249 particles, shared dt=5e-5, on an RTX 4090 in Chromium.",
-    "source": "runs/material-variants/the-demo-mvp-four-materials-on-webgpu-live-on-the-demo-page/web/demo4.js (tick: simTime/realTime) and runs/material-variants/the-demo-mvp-four-materials-on-webgpu-live-on-the-demo-page/verify/capture_page.py",
-    "caution": "Must be computed from the MEASURED frame interval, not from an assumed 1/60 s per frame. A loop that advances a fixed 1/60 s of physics every frame runs 2.2x too fast on a 133 Hz display while reporting 1.00x. Quoting it also requires the particle count, the materials present (they set the shared dt) and the device -- it is not a property of the solver alone."
-  },
-  "rest_depth": {
-    "label": "resting depth",
-    "short": "How deep a body sits in a pool of water, measured from the water's own surface.",
-    "formula": "waterline(fluid particles) minus the mean y of the solid's particles, where the waterline is the 97th percentile of the fluid particles' y. Positive means the body's centre is under water; negative means it is riding on top. Reported as a CHANGE from the value at release, so a drifting free surface cannot be mistaken for the body moving.",
-    "units": "domain lengths (the domain is the unit square)",
-    "range": "About -0.05 to +0.16 on the canonical pool scene. Snow ends near 0 (at the surface), rubber and sand end at +0.11 to +0.15 (on the bottom).",
-    "source": "sim/physics/core.py (rest_depth, via waterline)",
-    "caution": "Measured against the FLUID's free surface, not a fixed height, because the pool's surface itself moves. The 97th percentile ignores spray, so a violently splashing pool makes it noisier. It says where a body settled, not how fast it got there."
-  },
-  "submerged_fraction": {
-    "label": "submerged fraction",
-    "short": "What fraction of a floating body is below the waterline.",
-    "formula": "fraction of the solid's particles whose y is below waterline(fluid), the 97th percentile of the fluid particles' y.",
-    "units": "dimensionless, 0 to 1",
-    "range": "1.0 for anything denser than water. Snow (rho 0.3) settles near 0.5 on the canonical pool scene.",
-    "source": "sim/physics/core.py (submerged_fraction)",
-    "caution": "For an ideal rigid float at equilibrium this would equal rho_solid/rho_fluid (Archimedes), but the canonical solids DEFORM into rafts and push a bump of water up around themselves, so the measured value runs well above the density ratio (snow reads ~0.5 against a predicted 0.3). Use it to separate floating from sunk, NOT as a quantitative test of Archimedes."
-  },
-  "volume_ratio": {
-    "label": "volume ratio det(F)",
-    "short": "How much of its original volume a piece of material still occupies, straight out of the model's own state.",
-    "formula": "det(F) per particle for a solid (J for the fluid). The body's true area is initial_area * mean(det F), because every particle carries the same p_vol. Reported as the mean and as the 1st percentile, which is the crushed tail.",
-    "units": "dimensionless, 1.0 = uncompressed",
-    "range": "Under 1 in compression, over 1 in tension. A nearly incompressible material stays within a few percent of 1 in the mean.",
-    "source": "sim/physics/core.py (F and J fields); sampled by sim/physics/signatures.py (_volume_floor)",
-    "caution": "This is a TRANSIENT: a blob crushed on impact looks fine once it has settled, so the number is only meaningful with the time it was sampled at. The mean is the honest measure of the BODY's area; the minimum is one particle and can be extreme without the body looking wrong."
-  },
-  "retained_area": {
-    "label": "retained footprint",
-    "short": "How much of its starting footprint a body still covers on screen.",
-    "formula": "occupied area of the particle cloud (160x160 occupancy raster, one 3x3 binary closing, holes filled) divided by the same quantity at frame 0.",
-    "units": "dimensionless, 1.0 = same footprint as at release",
-    "range": "0 to >1. Above 1 when material spreads out, below 1 when it is compressed or clumps.",
-    "source": "runs/material-variants/improve-material-realism-in-behavior/common.py (retained_area, via occupied_area)",
-    "caution": "This is what the EYE sees, not what the model believes. It is biased by the raster: boundary cells are counted whole, so a shape with more perimeter per unit area reads a few percent low. A pancake therefore scores below a disk of the same true area. Use volume_ratio for the physical claim and this for the visual one."
-  },
-  "render_gpu_ms": {
-    "label": "render GPU time",
-    "short": "Device time to DRAW one frame from particles, excluding the solver and excluding host-side kernel launches.",
-    "formula": "Sum of every rendering kernel's device time over N frames, divided by N, from Taichi's kernel profiler (CUDA events). Warm-up frames run first and are excluded. Reported alongside render_wall_ms, which is the same loop timed on the host. On WebGPU the same quantity comes from a timestamp-query written at the beginning of the first render pass and the end of the last, so everything between them (including intermediate screen-space passes) is inside the window; report the median of individually timed draws and say so, because a sustained loop that averages over N frames reads HIGHER on the same build and the two are not interchangeable.",
-    "units": "milliseconds",
-    "range": "Measured on one RTX 4090 at 456x456 and 16384 particles: 0.31 (the demo's current splat+resolve) to 1.12 (per-grain sand sprites). The demo leaves ~10 ms of a 16.67 ms frame for drawing after a 5.2 ms solver, so the useful reading is the RATIO to the current renderer, not the absolute number.",
-    "source": "sim/material_render_cost.py:60 (measure) -- results in runs/material-variants/propose-new-rendering-for-each-of-the-four-materials/render_cost.json",
-    "caution": "CUDA, not WebGPU, and one GPU. It is a FLOOR for the browser cost of the same passes on the same device, and says nothing about a weaker device such as the iPad the demo targets. Do NOT use render_wall_ms in its place: the wall clock here is dominated by ~25-30 Python-side kernel launches per frame (see dispatch_floor_us) and reports the same 3.3 ms at 360x360 and at 1080x1080, i.e. it does not scale with pixels at all. WEBGPU INSTRUMENT: Chromium QUANTISES timestamp-query results. Launching with --disable-dawn-features=timestamp_quantization reduces the granularity but does not remove it (~16-33 us residual on Chromium 2026-08, nvidia lovelace), which is coarser than a cheap screen-space pass. Anything under ~0.1 ms must therefore be measured as a DIFFERENCE against a matched control in the same run, or amplified (run the stage K times inside one timed region and take the slope), and ideally both -- they should agree. A value that is an exact multiple of 32768 ns is the quantum, not the cost. Source of this caution: runs/material-variants/incorporate-improved-materials-on-real-demo-page-and-improve-polish/verify/water.html."
-  },
-  "render_wall_ms": {
-    "label": "render wall time",
-    "short": "End-to-end host wall clock for one rendered frame, INCLUDING every Python-side kernel launch.",
-    "formula": "perf_counter over N frames with one ti.sync() at the end, divided by N.",
-    "units": "milliseconds",
-    "range": "Measured on one RTX 4090 at 456x456: 1.04-5.23 ms, against 0.31-1.12 ms of actual device time for the same frames.",
-    "source": "sim/material_render_cost.py:60 (measure)",
-    "caution": "This is a property of the HARNESS, not of the algorithm. The gap to render_gpu_ms is Python-side launch overhead at ~55 us per kernel (dispatch_floor_us), which a WebGPU port that records its passes into one command buffer does not pay (1.11 us there). Never quote it as the cost of a treatment."
-  },
-  "grid_update_us": {
-    "label": "grid-update cost",
-    "short": "What ONE grid-update kernel costs per substep, isolated from the rest of the solver.",
-    "formula": "time for K substeps of (P2G + grid kernel) minus the same loop with a 'null' grid kernel that performs identical memory traffic (load the three atomic accumulators, zero them, write the node vec4) and no physics, divided by K. Differencing against a null kernel rather than against nothing is what removes the per-dispatch floor and the memory traffic from the number, leaving the kernel's own arithmetic.",
-    "units": "microseconds per substep",
-    "range": "Measured on one RTX 4090 in Chromium at n_grid=128: 0.03-0.09 for the analytic kernel (at the resolution floor of the differencing), 1.3 for a width-8 per-cell MLP, 3.4 at width 16, 41 at width 32, 48 at width 64. Flat in particle count for every variant.",
-    "source": "runs/material-variants/profile-a-nn-running-for-the-grid-update-on-webgpu/verify/harness.html (section 5, grid_us) and runs/material-variants/profile-a-nn-running-for-the-grid-update-on-webgpu/web/mpm-nn-webgpu.js (the 'null' grid kernel)",
-    "caution": "The analytic value sits within the run-to-run noise of the differencing and should be read as an upper bound, not a measurement. Multiply by substeps_per_frame before comparing to a frame budget. It excludes P2G, G2P and the dispatch floor by construction."
-  },
-  "node_velocity_mae_massw": {
-    "label": "mass-weighted node velocity error",
-    "short": "How wrong a learned grid update's node velocities are, weighted by how much any particle can gather from that node.",
-    "formula": "sum over cells of m_hat_i * |v_predicted_i - v_analytic_i| divided by sum of m_hat_i, where m_hat_i is the node mass in units of one particle mass. The weighting is exact rather than a convenience: P2G scattered w_pi * p_mass into node i from particle p and sum_p w_pi = m_hat_i, so m_hat_i * |dv_i| is precisely the total velocity error node i injects into the whole particle set.",
-    "units": "domain lengths per second (the same units as a node velocity)",
-    "range": "On canonical water at n_grid=128: 0.14 at hidden width 8 down to 0.027 at width 64, against a mass-weighted mean node speed near 1.0, so 14% down to 2.7%.",
-    "source": "runs/material-variants/profile-a-nn-running-for-the-grid-update-on-webgpu/train/train_mlp.py:train_one and runs/material-variants/profile-a-nn-running-for-the-grid-update-on-webgpu/train/train_grid.py:evaluate",
-    "caution": "Small values here do NOT imply a usable solver. Gravity contributes dt*g = 4.9e-4 of velocity per substep, so an error of 0.027 is 56x the entire per-substep effect of gravity and the fluid does not fall. Compare against the per-substep increment, never against the velocity scale."
-  },
-  "node_velocity_grad_rel_err": {
-    "label": "node velocity derivative error",
-    "short": "How wrong the SPATIAL DERIVATIVE of a learned node velocity field is, which is what G2P actually reads.",
-    "formula": "mean |d_pred - d_true| over occupied interior cells divided by mean |d_true|, where d is the first difference of the node velocity field across two cells in x and in y. G2P gathers the affine matrix C, whose entries carry a 1/dx^2 factor, so a particle reads a derivative of the grid update's output and not the output itself.",
-    "units": "dimensionless (relative)",
-    "range": "On canonical water at n_grid=128 with a per-cell MLP: 0.87 at width 8 down to 0.41 at width 64 with a cell-wise loss, improving only to 0.77 and 0.38 when the derivative is trained against directly.",
-    "source": "runs/material-variants/profile-a-nn-running-for-the-grid-update-on-webgpu/train/train_grid.py:evaluate",
-    "caution": "This is the error that matters and it is far larger than the pointwise velocity error on the same field -- fitting an operator cell by cell leaves the derivative of the fit free. A central difference over two cells is a proxy for the B-spline weighted derivative G2P really computes, not that derivative itself."
-  },
-  "frames_tracked_60fps": {
-    "label": "frames tracking ground truth",
-    "short": "How many 60 fps frames a learned rollout stays the same fluid as the canonical one.",
-    "formula": "number of consecutive rendered frames, each substeps_per_frame substeps long, for which the mean per-particle distance from the canonical rollout from the same seed stays under 0.05 of a domain length. 0.05 is about a fifth of the drop's own diameter.",
-    "units": "frames at 60 fps",
-    "range": "Per-cell MLP grid update on canonical water: 1 to 4 frames with a cell-wise loss, 5 to 8 with a derivative loss, against a 60-frame rollout. Anything under ~30 is not a usable simulator.",
-    "source": "runs/material-variants/profile-a-nn-running-for-the-grid-update-on-webgpu/verify/harness.html (section 6)",
-    "caution": "The threshold is a judgement call, and a rollout can leave the band and wander back. It reports the FIRST run of frames inside the band, so it is a lower bound on any looser notion of agreement. It says nothing about whether the rollout still looks like a plausible fluid after it stops tracking -- check the video for that."
-  },
-  "field_aspect_error": {
-    "label": "field aspect error",
-    "short": "How far the rendered simulation field is from the square the simulation domain actually is.",
-    "formula": "100 * |w - h| / max(w, h) of the field element's rendered bounding box, read from the LIVE layout in a real browser, not from the stylesheet.",
-    "units": "percent",
-    "range": "0 is correct. Anything above ~1% is a visible distortion, because the canvas backing store is square and the domain is the unit square, so a non-square frame stretches the physics rather than cropping it. Measured 42% on an iPhone-portrait viewport before the fix and 0% after.",
-    "source": "runs/material-variants/incorporate-improved-materials-on-real-demo-page-and-improve-polish/verify/shots.py (MEASURE)",
-    "caution": "This is a property of the RENDERED page at one viewport size, so it must be reported per viewport. A layout can be correct on a desktop and 42% wrong on a phone; a single number for 'the page' is meaningless."
-  },
-  "field_viewport_share": {
-    "label": "field share of viewport",
-    "short": "Fraction of the browser viewport's area taken by the simulation field.",
-    "formula": "(field width * field height) / (innerWidth * innerHeight), from the live layout.",
-    "units": "dimensionless, 0 to 1",
-    "range": "0.46 on an iPhone in portrait, 0.53 on a small laptop, measured on the demo page.",
-    "source": "runs/material-variants/incorporate-improved-materials-on-real-demo-page-and-improve-polish/verify/shots.py (MEASURE)",
-    "caution": "BIGGER IS NOT BETTER ON ITS OWN. Read it only next to field_aspect_error: a distorted field scores higher simply by being wrong, and the demo page's share went 0.81 -> 0.46 on a phone as a direct result of being fixed."
-  }
+ "_comment": "Canonical metric definitions. See spec/registry/README.md for the policy. Every entry MUST cite a real source in code -- if you cannot point at the function, it does not go in here. The dashboard reads this file to render hover definitions.",
+ "_schema": {
+  "label": "display name",
+  "short": "one-line plain-English meaning",
+  "formula": "the actual computation, in words or math",
+  "units": "what the number is in",
+  "range": "expected range and what good/bad looks like",
+  "source": "file:line of the implementation",
+  "caution": "optional -- traps, misleading names, what it does NOT tell you"
+ },
+ "traj_rmse": {
+  "label": "trajectory RMSE",
+  "short": "How far the run's particles sit from ground truth, averaged over the whole rollout.",
+  "formula": "mean over frames and particles of the per-particle Euclidean distance |x_learned - x_gt|. Particle p is matched to particle p (both runs seed identically).",
+  "units": "domain lengths (the domain is the unit square, so 0.1 is 10% of the box)",
+  "range": ">= 0. On the whole-material task, trained corners sit at 0.012-0.031 and the held-out corner at 0.246.",
+  "source": "sim/one_nn_whole_fluid.py:619",
+  "caution": "THE NAME IS WRONG. It is a mean absolute distance, not a root-mean-square, and it is NOT a centre-of-mass distance. It also has no interpretable scale -- 0.12 could be 'slightly off' or 'not a liquid' and the number alone cannot tell you. Use it to RANK cells, never to CERTIFY one as physical. It correlates only moderately with shape error (Spearman rho ~ 0.55 on the 5x5 whole-material grid)."
+ },
+ "roundness": {
+  "label": "roundness (circularity)",
+  "short": "How close the material's silhouette is to a perfect disk.",
+  "formula": "isoperimetric ratio 4*pi*A / P^2 of the filled occupancy mask (64x64, one closing pass), divided by the same ratio for a rasterised disk so that a disk scores 1.0. A = filled cells, P = boundary cells.",
+  "units": "dimensionless, normalised so a perfect disk = 1.0",
+  "range": "0 to ~1. Higher = rounder/more compact. A wide flat puddle is ~0.1-0.2; a settled droplet ~0.6-0.9.",
+  "source": "sim/one_nn_whole_fluid.py:663 (via _iso_raw:642, _disk_iso_raw:654)",
+  "caution": "Computed on the LAST few frames only (settled state), so it says nothing about the motion that got there. Resolution-dependent: the 64x64 raster and the closing pass set how much fine spray is ignored."
+ },
+ "shape_error": {
+  "label": "shape error",
+  "short": "How far the run's roundness is from the ground truth's roundness at the same conditions.",
+  "formula": "|roundness_learned - roundness_ground_truth|",
+  "units": "dimensionless (same scale as roundness)",
+  "range": ">= 0. Below ~0.05 is a good match; above ~0.25 the shape is qualitatively wrong.",
+  "source": "derived; introduced by the task page at runs/material-variants/train-one-nn-to-mimic-viscosity-and-st/bespoke_page.html",
+  "caution": "Directly interpretable because it is read against the ground truth's own roundness -- this is exactly what traj_rmse lacks. But it is a single scalar about the SETTLED shape and is blind to how the material got there."
+ },
+ "spread_width": {
+  "label": "spread width",
+  "short": "Horizontal extent of the material, robust to outlying particles.",
+  "formula": "95th percentile of particle x minus 5th percentile of particle x",
+  "units": "domain lengths",
+  "range": "0 to 1. A spreading fluid grows this; a holding solid does not.",
+  "source": "sim/one_nn_whole_fluid.py:607",
+  "caution": "Percentile-based, so it deliberately ignores the outermost 10% of particles -- a thin spray or a few flung particles will not show up here."
+ },
+ "pile_height": {
+  "label": "pile height",
+  "short": "How tall the settled material stands above the floor.",
+  "formula": "95th percentile of particle y, minus the floor height",
+  "units": "domain lengths",
+  "range": "0 to 1. The signature that separates snow (holds a pile) from fluid (spreads flat).",
+  "source": "sim/one_nn_whole_fluid.py:611"
+ },
+ "self_noise": {
+  "label": "simulator self-noise",
+  "short": "The canonical ground-truth simulator run against itself: the error floor nothing can beat.",
+  "formula": "traj_rmse between two runs of the same canonical simulator at the same configuration (nonzero only from GPU non-determinism, e.g. atomic scatter order)",
+  "units": "domain lengths",
+  "range": "~1e-7. Any learned model at or near this is exact to the simulator's own reproducibility.",
+  "source": "reported per trained corner as metrics.edge.<corner>.true_self_noise",
+  "caution": "This is the floor for a DETERMINISTIC comparison. It is not a claim about physical accuracy -- the canonical simulator's own error against reality is a separate, unmeasured thing."
+ },
+ "physics_version": {
+  "label": "physics version",
+  "short": "Stamp of the frozen canonical physics a run used, so two runs are provably on the same ground truth.",
+  "formula": "sim.physics.VERSION, a content hash of the canonical module",
+  "units": "opaque string, e.g. phys-1dc280eb52c9",
+  "range": "n/a",
+  "source": "sim/physics/__init__.py",
+  "caution": "Equal versions prove the same GROUND TRUTH was used. They do NOT prove a task's own differentiable variant matches it -- see the material-parameter drift noted in spec/registry/README.md."
+ },
+ "repose_angle": {
+  "label": "angle of repose",
+  "short": "The slope, in degrees, that a settled pile of material actually holds.",
+  "formula": "bin particles by x between their 1st and 99th percentile (20 bins), take the 90th percentile of y in each bin as the free surface, split the profile at its apex, least-squares fit a line to EACH WHOLE FLANK, and report atan of the mean |slope| in degrees.",
+  "units": "degrees",
+  "range": "0 to ~57. A settled fluid reads 0-5; canonical sand on the heap scene reads ~25 at its canonical dt; a material that keeps the seeded 60-degree heap reads ~57.",
+  "source": "sim/physics/core.py:622 (via surface_profile:603)",
+  "caution": "TWO traps. (1) It is NOT the model's friction-angle parameter phi -- canonical sand runs phi=50 and measures ~25. (2) It is NOT converged in the timestep for any plastic material: the same canonical sand reads ~25 at dt=1e-4 and ~14 at dt/8, and canonical snow reads ~57 at its own dt and ~17 at dt/8. Always quote it with the dt it was measured at. Fitting the WHOLE flank rather than the steep part is deliberate, so that a flat puddle with a sharp rim does not read as a steep pile."
+ },
+ "shape_drift": {
+  "label": "settled-shape drift",
+  "short": "How far a run's settled shape has moved from the same run at a converged timestep.",
+  "formula": "max over the three settled observables (spread_width, pile_height, repose_angle) of the relative difference against a reference run at dt/8; repose_angle is normalised by max(reference, 1 degree) so a near-zero reference angle cannot divide by ~0.",
+  "units": "dimensionless relative error",
+  "range": ">= 0. Below ~0.15 the settled configuration is still recognisably the same; above ~1 it is a different outcome.",
+  "source": "runs/material-variants/sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid/dt_experiment2.py:83",
+  "caution": "Measures only the SETTLED state, so it is blind to differences in the motion that got there. It is defined against a dt/8 reference, not against reality."
+ },
+ "substeps_per_frame": {
+  "label": "substeps per frame",
+  "short": "How many solver steps a real-time 60 fps frame costs at a given timestep.",
+  "formula": "round((1/60) / dt). For a grid holding several materials, dt is min(dt) over the materials present, so the stiffest material sets the number for every particle in the scene.",
+  "units": "count",
+  "range": "139 (water alone) to 333 (any scene containing snow), at the canonical timesteps and n_grid=128.",
+  "source": "sim/physics/core.py:519 (shared_dt); the division itself at runs/material-variants/sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid/experiment.py:293",
+  "caution": "It prices REAL-TIME playback only. A clip rendered offline, or labelled slow motion, pays a different bill. It also says nothing about the cost of one substep, which is machine- and implementation-dependent."
+ },
+ "dt_stable_max": {
+  "label": "largest stable timestep",
+  "short": "The biggest timestep at which a material's rollout stays finite and bounded.",
+  "formula": "largest dt in a multiplicative sweep for which the run keeps finite positions AND a finite max particle speed under 1e3, on the harder of the drop and heap scenes.",
+  "units": "seconds",
+  "range": "2.4e-4 (fluid) to 1.6e-3 (sand) at n_grid=128, i.e. 2x to 16x the canonical timesteps.",
+  "source": "runs/material-variants/sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid/dt_experiment2.py:96",
+  "caution": "STABILITY IS THE WRONG CRITERION ON ITS OWN and this number will mislead anyone who uses it to pick a timestep. Every canonical material tolerates a far larger dt than it uses, and the settled behaviour is already wrong well below this point -- compare dt_faithful_max."
+ },
+ "dt_faithful_max": {
+  "label": "largest faithful timestep",
+  "short": "The biggest timestep at which the settled shape still matches a converged reference.",
+  "formula": "largest dt in the sweep with shape_drift <= 0.15 against the same run at dt/8, on the harder of the drop and heap scenes.",
+  "units": "seconds",
+  "range": "Always well below dt_stable_max. For elastic the two nearly coincide; for the plastic and fluid paths they differ by one to two orders of magnitude.",
+  "source": "runs/material-variants/sand-as-a-fourth-canonical-material-and-four-materials-in-one-grid/dt_experiment2.py:97",
+  "caution": "Defined against a dt/8 reference, and for materials whose settled state drifts monotonically with SUBSTEP COUNT that reference is itself not a fixed point -- so read this as 'agrees with a much finer run', not as 'converged to the true answer'."
+ },
+ "_unregistered": [
+  "airborne fraction (used by one-nn-for-three-materials)",
+  "gap closed % (used by learned-residual)",
+  "relative RMSE / relRMSE (used for stress, capillary, state fits)",
+  "effective viscosity (used by the weight-interpolation tasks)"
+ ],
+ "us_per_substep": {
+  "label": "microseconds per substep",
+  "short": "Wall-clock cost of one full P2G / grid / G2P solver step, on stated hardware.",
+  "formula": "total time for K substeps divided by K, with K large enough that the timer's resolution is negligible. Reported either as GPU-side time (timestamp-query over the whole pass) or as sustained wall time (K frames submitted back to back, one queue wait).",
+  "units": "microseconds",
+  "range": "Measured on one RTX 4090 at n_grid=128: ~345-378 (Taichi/CUDA driven per-kernel from Python, FLAT in particle count), 45-5300 (single JavaScript thread, linear in particle count), 6-140 (WebGPU with all substeps in one command buffer).",
+  "source": "runs/material-variants/webgpu-port-of-the-interactive-simulation/verify/baselines.py:66 (timeit) and runs/material-variants/webgpu-port-of-the-interactive-simulation/verify/harness.html (sustained/gpu paths)",
+  "caution": "This is an IMPLEMENTATION number, not a device number. A flat curve against particle count means the measurement is dominated by the cost of ISSUING work, not doing it -- the same kernels on the same GPU differ by ~50x depending only on whether each is launched individually or recorded into one command buffer. Never quote it without the hardware, the API, AND how the work was submitted."
+ },
+ "frame_ms": {
+  "label": "frame time",
+  "short": "What one real-time frame of simulation costs: substeps_per_frame x cost of one substep.",
+  "formula": "substeps_per_frame * us_per_substep / 1000. Compute only -- rendering and readback excluded unless stated.",
+  "units": "milliseconds",
+  "range": "16.67 ms is the 60 fps budget. Above it the simulation is not real time and must either drop particles, drop frames, or be labelled slow motion.",
+  "source": "runs/material-variants/webgpu-port-of-the-interactive-simulation/verify/score.py:52 (budget_60fps) and runs/material-variants/webgpu-port-of-the-interactive-simulation/metrics.json:three_way",
+  "caution": "Excludes drawing. A compute budget that just fits 16.67 ms is NOT a frame that hits 60 fps once rendering, readback and compositing are added."
+ },
+ "particle_budget_60fps": {
+  "label": "particle budget at 60 fps",
+  "short": "The largest particle count whose measured frame still fits inside 16.67 ms.",
+  "formula": "linear interpolation of the measured frame_ms-vs-particle-count curve at 16.67 ms. Undefined (reported as none) when even the smallest measured scene misses the budget.",
+  "units": "particles",
+  "range": "Measured for canonical elastic (167 substeps/frame) on one RTX 4090: ~1230 (single JS thread), none at any size (Taichi/CUDA from Python), ~173000 (WebGPU, one command buffer per frame).",
+  "source": "runs/material-variants/webgpu-port-of-the-interactive-simulation/verify/score.py:52",
+  "caution": "Interpolated between two measured points, not measured at the crossing. It also depends on particle DENSITY, not just count -- the cost is driven by the P2G atomic scatter, so the same count spread thinner is cheaper. Compute only; rendering excluded."
+ },
+ "dispatch_floor_us": {
+  "label": "dispatch floor",
+  "short": "What it costs to tell the GPU to run a kernel that does nothing.",
+  "formula": "time for K dispatches of an empty kernel, divided by K. The analogue on both sides of a port: an empty Taichi kernel launched from Python vs an empty WGSL dispatch recorded inside one command buffer.",
+  "units": "microseconds",
+  "range": "Measured on one RTX 4090: 55.6 (Taichi kernel launched from Python) vs 1.11 (WGSL dispatch inside a recorded command buffer) -- a 50x difference on the same device.",
+  "source": "runs/material-variants/webgpu-port-of-the-interactive-simulation/verify/baselines.py:52 (noop) and runs/material-variants/webgpu-port-of-the-interactive-simulation/verify/harness.html (phases 'e')",
+  "caution": "Multiply by the number of kernels per substep AND by substeps_per_frame before comparing to a frame budget -- that product is what actually decides whether a real-time explicit solver is possible. This is a per-SUBMISSION cost, so it is a property of how the API is driven, not of the hardware."
+ },
+ "node_mass_headroom": {
+  "label": "fixed-point node-mass headroom",
+  "short": "How far the heaviest grid node is from the point where the fixed-point mass accumulator wraps.",
+  "formula": "2^(32-kM) / max over the run of (node mass in PARTICLE MASSES). The numerator is where an unsigned 32-bit accumulator carrying 2^kM quanta per particle mass saturates: 256 particle masses at the standard kM=24. The denominator is read from the grid every frame.",
+  "units": "dimensionless ratio (a factor of safety)",
+  "range": ">1 is safe, <=1 has already wrapped. Measured 14.8x at 4096 particles and 5.6x at 12288 with all four materials deliberately crushed into one corner by the interaction force.",
+  "source": "runs/material-variants/the-demo-mvp-four-materials-on-webgpu-live-on-the-demo-page/verify/harness.html (pile probe) and runs/material-variants/the-demo-mvp-four-materials-on-webgpu-live-on-the-demo-page/verify/score.py:96 (pile_headroom)",
+  "caution": "Overrun does NOT produce a NaN or an error -- the accumulator wraps around and that node's block detonates. So this number must be measured on the WORST case a user can reach, not on a typical scene: it is a function of particles-per-cell, which an interactive demo lets the user change at will. It is also a per-node measurement, not a per-scene one; a single dense node is enough."
+ },
+ "realtime_factor": {
+  "label": "achieved real-time factor",
+  "short": "Simulated seconds advanced per wall-clock second, measured rather than assumed.",
+  "formula": "sum over a measurement window of (substeps_this_frame * dt) divided by the summed wall-clock frame intervals. 1.00 is real time; 0.5 is labelled half speed.",
+  "units": "dimensionless (simulated seconds per real second)",
+  "range": "0 to whatever the hardware allows. 1.00 measured for four materials, 9249 particles, shared dt=5e-5, on an RTX 4090 in Chromium.",
+  "source": "runs/material-variants/the-demo-mvp-four-materials-on-webgpu-live-on-the-demo-page/web/demo4.js (tick: simTime/realTime) and runs/material-variants/the-demo-mvp-four-materials-on-webgpu-live-on-the-demo-page/verify/capture_page.py",
+  "caution": "Must be computed from the MEASURED frame interval, not from an assumed 1/60 s per frame. A loop that advances a fixed 1/60 s of physics every frame runs 2.2x too fast on a 133 Hz display while reporting 1.00x. Quoting it also requires the particle count, the materials present (they set the shared dt) and the device -- it is not a property of the solver alone."
+ },
+ "rest_depth": {
+  "label": "resting depth",
+  "short": "How deep a body sits in a pool of water, measured from the water's own surface.",
+  "formula": "waterline(fluid particles) minus the mean y of the solid's particles, where the waterline is the 97th percentile of the fluid particles' y. Positive means the body's centre is under water; negative means it is riding on top. Reported as a CHANGE from the value at release, so a drifting free surface cannot be mistaken for the body moving.",
+  "units": "domain lengths (the domain is the unit square)",
+  "range": "About -0.05 to +0.16 on the canonical pool scene. Snow ends near 0 (at the surface), rubber and sand end at +0.11 to +0.15 (on the bottom).",
+  "source": "sim/physics/core.py (rest_depth, via waterline)",
+  "caution": "Measured against the FLUID's free surface, not a fixed height, because the pool's surface itself moves. The 97th percentile ignores spray, so a violently splashing pool makes it noisier. It says where a body settled, not how fast it got there."
+ },
+ "submerged_fraction": {
+  "label": "submerged fraction",
+  "short": "What fraction of a floating body is below the waterline.",
+  "formula": "fraction of the solid's particles whose y is below waterline(fluid), the 97th percentile of the fluid particles' y.",
+  "units": "dimensionless, 0 to 1",
+  "range": "1.0 for anything denser than water. Snow (rho 0.3) settles near 0.5 on the canonical pool scene.",
+  "source": "sim/physics/core.py (submerged_fraction)",
+  "caution": "For an ideal rigid float at equilibrium this would equal rho_solid/rho_fluid (Archimedes), but the canonical solids DEFORM into rafts and push a bump of water up around themselves, so the measured value runs well above the density ratio (snow reads ~0.5 against a predicted 0.3). Use it to separate floating from sunk, NOT as a quantitative test of Archimedes."
+ },
+ "volume_ratio": {
+  "label": "volume ratio det(F)",
+  "short": "How much of its original volume a piece of material still occupies, straight out of the model's own state.",
+  "formula": "det(F) per particle for a solid (J for the fluid). The body's true area is initial_area * mean(det F), because every particle carries the same p_vol. Reported as the mean and as the 1st percentile, which is the crushed tail.",
+  "units": "dimensionless, 1.0 = uncompressed",
+  "range": "Under 1 in compression, over 1 in tension. A nearly incompressible material stays within a few percent of 1 in the mean.",
+  "source": "sim/physics/core.py (F and J fields); sampled by sim/physics/signatures.py (_volume_floor)",
+  "caution": "This is a TRANSIENT: a blob crushed on impact looks fine once it has settled, so the number is only meaningful with the time it was sampled at. The mean is the honest measure of the BODY's area; the minimum is one particle and can be extreme without the body looking wrong."
+ },
+ "retained_area": {
+  "label": "retained footprint",
+  "short": "How much of its starting footprint a body still covers on screen.",
+  "formula": "occupied area of the particle cloud (160x160 occupancy raster, one 3x3 binary closing, holes filled) divided by the same quantity at frame 0.",
+  "units": "dimensionless, 1.0 = same footprint as at release",
+  "range": "0 to >1. Above 1 when material spreads out, below 1 when it is compressed or clumps.",
+  "source": "runs/material-variants/improve-material-realism-in-behavior/common.py (retained_area, via occupied_area)",
+  "caution": "This is what the EYE sees, not what the model believes. It is biased by the raster: boundary cells are counted whole, so a shape with more perimeter per unit area reads a few percent low. A pancake therefore scores below a disk of the same true area. Use volume_ratio for the physical claim and this for the visual one."
+ },
+ "render_gpu_ms": {
+  "label": "render GPU time",
+  "short": "Device time to DRAW one frame from particles, excluding the solver and excluding host-side kernel launches.",
+  "formula": "Sum of every rendering kernel's device time over N frames, divided by N, from Taichi's kernel profiler (CUDA events). Warm-up frames run first and are excluded. Reported alongside render_wall_ms, which is the same loop timed on the host. On WebGPU the same quantity comes from a timestamp-query written at the beginning of the first render pass and the end of the last, so everything between them (including intermediate screen-space passes) is inside the window; report the median of individually timed draws and say so, because a sustained loop that averages over N frames reads HIGHER on the same build and the two are not interchangeable.",
+  "units": "milliseconds",
+  "range": "Measured on one RTX 4090 at 456x456 and 16384 particles: 0.31 (the demo's current splat+resolve) to 1.12 (per-grain sand sprites). The demo leaves ~10 ms of a 16.67 ms frame for drawing after a 5.2 ms solver, so the useful reading is the RATIO to the current renderer, not the absolute number.",
+  "source": "sim/material_render_cost.py:60 (measure) -- results in runs/material-variants/propose-new-rendering-for-each-of-the-four-materials/render_cost.json",
+  "caution": "CUDA, not WebGPU, and one GPU. It is a FLOOR for the browser cost of the same passes on the same device, and says nothing about a weaker device such as the iPad the demo targets. Do NOT use render_wall_ms in its place: the wall clock here is dominated by ~25-30 Python-side kernel launches per frame (see dispatch_floor_us) and reports the same 3.3 ms at 360x360 and at 1080x1080, i.e. it does not scale with pixels at all. WEBGPU INSTRUMENT: Chromium QUANTISES timestamp-query results. Launching with --disable-dawn-features=timestamp_quantization reduces the granularity but does not remove it (~16-33 us residual on Chromium 2026-08, nvidia lovelace), which is coarser than a cheap screen-space pass. Anything under ~0.1 ms must therefore be measured as a DIFFERENCE against a matched control in the same run, or amplified (run the stage K times inside one timed region and take the slope), and ideally both -- they should agree. A value that is an exact multiple of 32768 ns is the quantum, not the cost. Source of this caution: runs/material-variants/incorporate-improved-materials-on-real-demo-page-and-improve-polish/verify/water.html."
+ },
+ "render_wall_ms": {
+  "label": "render wall time",
+  "short": "End-to-end host wall clock for one rendered frame, INCLUDING every Python-side kernel launch.",
+  "formula": "perf_counter over N frames with one ti.sync() at the end, divided by N.",
+  "units": "milliseconds",
+  "range": "Measured on one RTX 4090 at 456x456: 1.04-5.23 ms, against 0.31-1.12 ms of actual device time for the same frames.",
+  "source": "sim/material_render_cost.py:60 (measure)",
+  "caution": "This is a property of the HARNESS, not of the algorithm. The gap to render_gpu_ms is Python-side launch overhead at ~55 us per kernel (dispatch_floor_us), which a WebGPU port that records its passes into one command buffer does not pay (1.11 us there). Never quote it as the cost of a treatment."
+ },
+ "grid_update_us": {
+  "label": "grid-update cost",
+  "short": "What ONE grid-update kernel costs per substep, isolated from the rest of the solver.",
+  "formula": "time for K substeps of (P2G + grid kernel) minus the same loop with a 'null' grid kernel that performs identical memory traffic (load the three atomic accumulators, zero them, write the node vec4) and no physics, divided by K. Differencing against a null kernel rather than against nothing is what removes the per-dispatch floor and the memory traffic from the number, leaving the kernel's own arithmetic.",
+  "units": "microseconds per substep",
+  "range": "Measured on one RTX 4090 in Chromium at n_grid=128: 0.03-0.09 for the analytic kernel (at the resolution floor of the differencing), 1.3 for a width-8 per-cell MLP, 3.4 at width 16, 41 at width 32, 48 at width 64. Flat in particle count for every variant.",
+  "source": "runs/material-variants/profile-a-nn-running-for-the-grid-update-on-webgpu/verify/harness.html (section 5, grid_us) and runs/material-variants/profile-a-nn-running-for-the-grid-update-on-webgpu/web/mpm-nn-webgpu.js (the 'null' grid kernel)",
+  "caution": "The analytic value sits within the run-to-run noise of the differencing and should be read as an upper bound, not a measurement. Multiply by substeps_per_frame before comparing to a frame budget. It excludes P2G, G2P and the dispatch floor by construction."
+ },
+ "node_velocity_mae_massw": {
+  "label": "mass-weighted node velocity error",
+  "short": "How wrong a learned grid update's node velocities are, weighted by how much any particle can gather from that node.",
+  "formula": "sum over cells of m_hat_i * |v_predicted_i - v_analytic_i| divided by sum of m_hat_i, where m_hat_i is the node mass in units of one particle mass. The weighting is exact rather than a convenience: P2G scattered w_pi * p_mass into node i from particle p and sum_p w_pi = m_hat_i, so m_hat_i * |dv_i| is precisely the total velocity error node i injects into the whole particle set.",
+  "units": "domain lengths per second (the same units as a node velocity)",
+  "range": "On canonical water at n_grid=128: 0.14 at hidden width 8 down to 0.027 at width 64, against a mass-weighted mean node speed near 1.0, so 14% down to 2.7%.",
+  "source": "runs/material-variants/profile-a-nn-running-for-the-grid-update-on-webgpu/train/train_mlp.py:train_one and runs/material-variants/profile-a-nn-running-for-the-grid-update-on-webgpu/train/train_grid.py:evaluate",
+  "caution": "Small values here do NOT imply a usable solver. Gravity contributes dt*g = 4.9e-4 of velocity per substep, so an error of 0.027 is 56x the entire per-substep effect of gravity and the fluid does not fall. Compare against the per-substep increment, never against the velocity scale."
+ },
+ "node_velocity_grad_rel_err": {
+  "label": "node velocity derivative error",
+  "short": "How wrong the SPATIAL DERIVATIVE of a learned node velocity field is, which is what G2P actually reads.",
+  "formula": "mean |d_pred - d_true| over occupied interior cells divided by mean |d_true|, where d is the first difference of the node velocity field across two cells in x and in y. G2P gathers the affine matrix C, whose entries carry a 1/dx^2 factor, so a particle reads a derivative of the grid update's output and not the output itself.",
+  "units": "dimensionless (relative)",
+  "range": "On canonical water at n_grid=128 with a per-cell MLP: 0.87 at width 8 down to 0.41 at width 64 with a cell-wise loss, improving only to 0.77 and 0.38 when the derivative is trained against directly.",
+  "source": "runs/material-variants/profile-a-nn-running-for-the-grid-update-on-webgpu/train/train_grid.py:evaluate",
+  "caution": "This is the error that matters and it is far larger than the pointwise velocity error on the same field -- fitting an operator cell by cell leaves the derivative of the fit free. A central difference over two cells is a proxy for the B-spline weighted derivative G2P really computes, not that derivative itself."
+ },
+ "frames_tracked_60fps": {
+  "label": "frames tracking ground truth",
+  "short": "How many 60 fps frames a learned rollout stays the same fluid as the canonical one.",
+  "formula": "number of consecutive rendered frames, each substeps_per_frame substeps long, for which the mean per-particle distance from the canonical rollout from the same seed stays under 0.05 of a domain length. 0.05 is about a fifth of the drop's own diameter.",
+  "units": "frames at 60 fps",
+  "range": "Per-cell MLP grid update on canonical water: 1 to 4 frames with a cell-wise loss, 5 to 8 with a derivative loss, against a 60-frame rollout. Anything under ~30 is not a usable simulator.",
+  "source": "runs/material-variants/profile-a-nn-running-for-the-grid-update-on-webgpu/verify/harness.html (section 6)",
+  "caution": "The threshold is a judgement call, and a rollout can leave the band and wander back. It reports the FIRST run of frames inside the band, so it is a lower bound on any looser notion of agreement. It says nothing about whether the rollout still looks like a plausible fluid after it stops tracking -- check the video for that."
+ },
+ "field_aspect_error": {
+  "label": "field aspect error",
+  "short": "How far the rendered simulation field is from the square the simulation domain actually is.",
+  "formula": "100 * |w - h| / max(w, h) of the field element's rendered bounding box, read from the LIVE layout in a real browser, not from the stylesheet.",
+  "units": "percent",
+  "range": "0 is correct. Anything above ~1% is a visible distortion, because the canvas backing store is square and the domain is the unit square, so a non-square frame stretches the physics rather than cropping it. Measured 42% on an iPhone-portrait viewport before the fix and 0% after.",
+  "source": "runs/material-variants/incorporate-improved-materials-on-real-demo-page-and-improve-polish/verify/shots.py (MEASURE)",
+  "caution": "This is a property of the RENDERED page at one viewport size, so it must be reported per viewport. A layout can be correct on a desktop and 42% wrong on a phone; a single number for 'the page' is meaningless."
+ },
+ "field_viewport_share": {
+  "label": "field share of viewport",
+  "short": "Fraction of the browser viewport's area taken by the simulation field.",
+  "formula": "(field width * field height) / (innerWidth * innerHeight), from the live layout.",
+  "units": "dimensionless, 0 to 1",
+  "range": "0.46 on an iPhone in portrait, 0.53 on a small laptop, measured on the demo page.",
+  "source": "runs/material-variants/incorporate-improved-materials-on-real-demo-page-and-improve-polish/verify/shots.py (MEASURE)",
+  "caution": "BIGGER IS NOT BETTER ON ITS OWN. Read it only next to field_aspect_error: a distorted field scores higher simply by being wrong, and the demo page's share went 0.81 -> 0.46 on a phone as a direct result of being fixed."
+ },
+ "onestep_rel_err": {
+  "label": "one-step relative error",
+  "short": "How wrong a learned constitutive net is on ONE step, in units of the spread of the thing it is predicting.",
+  "formula": "sqrt(mean((pred - target)^2)) / std(target), computed per material and per network output on held-out samples. The denominator is that MATERIAL OWN spread, not the pooled one.",
+  "units": "dimensionless",
+  "range": "0 is exact; 1.0 means no better than predicting the material mean; > 1 is worse than useless.",
+  "source": "runs/learned-dynamics/one-latent-conditioned-network-for-all-four-materials/train/train_mlp.py:156 (evaluate.row)",
+  "caution": "A ONE-STEP number. It says nothing about rollout stability, and a net can reach 0.1 here and still scatter a material completely over thousands of substeps -- which is exactly what happened. Normalising per material is deliberate: against the POOLED spread a net that ignores snow entirely still scores well, because rubber stress is 9x larger."
+ },
+ "golden_signatures_passed": {
+  "label": "golden signatures passed",
+  "short": "How many of the canonical qualitative physics tests a simulator passes, out of the ones it can run.",
+  "formula": "count of PASS rows from sim/physics/signatures.py check(), run unmodified against the simulator under test with canonical thresholds. Rows that override a constitutive parameter the simulator has no knob for are reported N/A and excluded from both numerator and denominator.",
+  "units": "count out of a total",
+  "range": "21 of 21 for canonical physics and for any exact reimplementation of it.",
+  "source": "runs/learned-dynamics/one-latent-conditioned-network-for-all-four-materials/eval/sigproxy.py:63 (run)",
+  "caution": "Several signatures are ORDERINGS between materials, so one badly wrong material can fail rows that name two others. Read the per-row detail, not just the count."
+ }
 }

@@ -1,0 +1,300 @@
+<!doctype html><meta charset="utf-8">
+<style>
+:root{--bg:#0a0e14;--fg:#dfe6ee;--mut:#7f8ea3;--acc:#6fd3ee;--pan:#0f141c;--line:#222c3c;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.62 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:4px 2px 28px}
+h2{font-size:19px;margin:26px 0 8px;color:var(--fg);font-weight:650}
+h3{font-size:14.5px;margin:16px 0 6px;color:var(--acc);font-weight:600;letter-spacing:.02em}
+p{margin:8px 0}
+.mut{color:var(--mut)}
+.verdict{background:linear-gradient(180deg,#131b26,#0f141c);border:1px solid #2b3a4e;border-left:3px solid var(--acc);border-radius:8px;padding:14px 16px;margin:6px 0 4px}
+.verdict b{color:#fff}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:820px){.two{grid-template-columns:1fr}}
+.pan{background:var(--pan);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.ctl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#101823;border:1px solid #2b3a4e;border-radius:8px;padding:10px 14px;margin:14px 0}
+input[type=range]{flex:1;min-width:180px;accent-color:var(--acc)}
+.big{font-variant-numeric:tabular-nums;font-weight:700;font-size:21px}
+table{border-collapse:collapse;width:100%;font-size:12.6px}
+th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--mut);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em}
+td.n{text-align:right;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:700;letter-spacing:.03em}
+.pass{background:#12331f;color:#7ee787;border:1px solid #1f5c33}
+.fail{background:#3a1a1a;color:#ff9d9d;border:1px solid #6b2b2b}
+.na{background:#26252f;color:#b9a6e0;border:1px solid #453d5c}
+video{width:100%;border-radius:6px;border:1px solid var(--line);background:#000}
+.tabs{display:flex;gap:6px;margin:10px 0 6px;flex-wrap:wrap}
+.tab{padding:4px 11px;border-radius:6px;border:1px solid #2b3a4e;background:#131b26;color:var(--mut);cursor:pointer;font-size:12.5px}
+.tab.on{background:#17364a;color:#cfefff;border-color:#3b6f8c}
+.note{border-left:2px solid #55617a;padding-left:11px;color:var(--mut);font-size:13px;margin:10px 0}
+svg{display:block;max-width:100%}
+code{background:#131b26;padding:1px 5px;border-radius:4px;font-size:12.4px;color:#cfe3f2}
+.legend{font-size:11.5px;color:var(--mut);display:flex;gap:14px;flex-wrap:wrap;margin-top:6px}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:middle}
+</style>
+<div id="app"></div>
+<script>
+const D = {"budget": {"dt": 5e-05, "us_per_substep_full_gpu": 50, "us_per_substep_quarter_gpu": 12.5}, "analytic": {"full": 12.16, "g2p": 2.728}, "cost": {"f32": [[8, 12.048, 2.6], [16, 12.368, 2.928], [24, 12.936, 3.504], [32, 13.784, 4.336], [40, 14.344, 4.896], [48, 14.808, 5.368], [56, 15.328, 5.888], [64, 15.808, 6.36], [72, 16.312, 6.872], [80, 16.776, 7.336], [84, 17.04, 7.592], [88, 17.384, 7.856], [92, 26.512, 17.08], [96, 29.504, 20.072], [104, 28.288, 18.736], [112, 32.096, 22.664], [128, 32.112, 22.672], [160, 37.8, 28.344], [192, 50.464, 39.688], [224, 53.896, 42.912], [256, 56.272, 43.936]], "dyn": [[16, 4.552], [32, 7.792], [64, 13.88], [88, 18.176], [96, 19.616], [128, 25.336], [192, 36.808], [256, 50.176]], "f16": [[16, 12.592, 3.144], [32, 14.888, 5.336], [64, 18.728, 9.28], [128, 26.44, 16.992], [160, 29.984, 20.528], [192, 33.712, 24.248], [224, 37.24, 27.808], [256, 42.736, 31.52]], "sto": [[16, 17.872, 8.424], [32, 23.128, 13.672], [64, 34.752, 25.288], [128, 60.72, 50.424]]}, "acc": {"8": {"fluid": {"stress": 0.1758858064810435, "plastic": 0.49049191921949387}, "elastic": {"stress": 0.4717252055803935, "plastic": 0.43446744978427887}, "snow": {"stress": 0.9424681862195333, "plastic": 0.808266669511795}, "sand": {"stress": 0.48464850584665936, "plastic": 0.651602640748024}}, "16": {"fluid": {"stress": 0.1295861912270387, "plastic": 0.34005284681916237}, "elastic": {"stress": 0.37209194898605347, "plastic": 0.27899372950196266}, "snow": {"stress": 0.6613702178001404, "plastic": 0.6510535776615143}, "sand": {"stress": 0.37650176882743835, "plastic": 0.5399312078952789}}, "32": {"fluid": {"stress": 0.06706457336743672, "plastic": 0.17168974690139294}, "elastic": {"stress": 0.25068635245164234, "plastic": 0.17044499889016151}, "snow": {"stress": 0.5992695887883505, "plastic": 0.5646988302469254}, "sand": {"stress": 0.2529729853073756, "plastic": 0.49500303715467453}}, "64": {"fluid": {"stress": 0.08179421350359917, "plastic": 0.13607366010546684}, "elastic": {"stress": 0.22843270003795624, "plastic": 0.14976214990019798}, "snow": {"stress": 0.42243339618047077, "plastic": 0.4333104342222214}, "sand": {"stress": 0.2165428251028061, "plastic": 0.4373121112585068}}, "128": {"fluid": {"stress": 0.059108421206474304, "plastic": 0.12321431562304497}, "elastic": {"stress": 0.18663232525189719, "plastic": 0.13763507269322872}, "snow": {"stress": 0.4172346591949463, "plastic": 0.34127838909626007}, "sand": {"stress": 0.15583466490109762, "plastic": 0.3808823451399803}}}, "params": {"8": 183, "16": 359, "32": 711, "64": 1415, "128": 2823}, "evals": {"width 32, 1 hidden layer": {"sig": [{"name": "drop: all materials stable", "pass": true, "na": false, "detail": "fluid=True elastic=True snow=True"}, {"name": "drop: width  fluid > snow > elastic", "pass": false, "na": false, "detail": "0.933 > 0.953 > 0.874"}, {"name": "drop: height elastic > snow > fluid", "pass": false, "na": false, "detail": "0.582 > 0.953 > 0.337"}, {"name": "column: elastic springs back above snow", "pass": false, "na": false, "detail": "elastic 0.725 vs snow 0.953"}, {"name": "column: snow holds a pile above fluid", "pass": true, "na": false, "detail": "snow 0.953 vs fluid 0.339"}, {"name": "heap: sand stable", "pass": true, "na": false, "detail": "stable=True"}, {"name": "heap: sand holds an angle of repose, fluid does not", "pass": false, "na": false, "detail": "sand 1.6 deg vs fluid 0.2 deg"}, {"name": "heap: sand does NOT spread flat like a fluid", "pass": false, "na": false, "detail": "width fluid 0.886 vs sand 0.885; height sand 0.116 vs fluid 0.332"}, {"name": "heap: sand YIELDS where cohesive snow/elastic keep the seeded slope", "pass": false, "na": false, "detail": "seeded 56.5 -> sand 1.6, snow 21.9, elastic 31.3 deg; width sand 0.885 vs snow 0.953"}, {"name": "multi-material path matches canonical for fluid", "pass": true, "na": false, "detail": "vs canonical 1.84e-01, self-noise 1.55e-01"}, {"name": "multi-material path matches canonical for elastic", "pass": true, "na": false, "detail": "vs canonical 1.36e-01, self-noise 1.31e-01"}, {"name": "multi-material path matches canonical for snow", "pass": true, "na": false, "detail": "vs canonical 5.31e-01, self-noise 5.48e-01"}, {"name": "multi-material path matches canonical for sand", "pass": true, "na": false, "detail": "vs canonical 3.51e-02, self-noise 4.24e-02"}, {"name": "viscosity: thicker fluid spreads less (and doesn't collapse)", "pass": null, "na": true, "detail": "N/A -- overrides mu_visc -- the learned law has no viscosity knob"}, {"name": "pool: snow FLOATS -- it rises to the surface and breaks it", "pass": false, "na": false, "detail": "rose +0.423, depth change +0.229, submerged 0.91"}, {"name": "pool: rubber SINKS -- it goes down and stays fully under", "pass": true, "na": false, "detail": "moved -0.054, depth change +0.081, submerged 0.99"}, {"name": "pool: sand SINKS, and faster than rubber does", "pass": true, "na": false, "detail": "moved -0.102 vs rubber -0.054, submerged 1.00"}, {"name": "pool: resting depth is ordered by density (sand > rubber > snow)", "pass": false, "na": false, "detail": "sand +0.160 > rubber +0.081 > snow +0.229  (rho 1.6 / 1.2 / 0.3)"}, {"name": "pool: the SAME blob orders by DENSITY alone (0.3 floats, 1.0 hangs, 1.6 sinks)", "pass": false, "na": false, "detail": "rho 0.3 -> +0.342 (84% under),  1.0 -> -0.029 (99%),  1.6 -> -0.076 (99%)"}, {"name": "density rescaling leaves a lone material unmoved (snow)", "pass": null, "na": true, "detail": "N/A -- overrides E -- stiffness lives in the weights, there is no knob to turn"}, {"name": "density rescaling leaves a lone material unmoved (sand)", "pass": null, "na": true, "detail": "N/A -- overrides E -- stiffness lives in the weights, there is no knob to turn"}, {"name": "density rescaling leaves a lone material unmoved (elastic)", "pass": null, "na": true, "detail": "N/A -- overrides E -- stiffness lives in the weights, there is no knob to turn"}, {"name": "slam: rubber holds its VOLUME through a hard impact", "pass": false, "na": false, "detail": "worst mean det(F) 0.434 (>0.95), worst 1st-pct particle -1.011 (>0.45)"}, {"name": "drop: water is nearly incompressible", "pass": false, "na": false, "detail": "worst mean J 1.069 (>0.97), worst 1st-pct particle 0.796 (>0.85)"}, {"name": "dam break: frictionless water outruns the same water given a granular friction", "pass": true, "na": false, "detail": "front has travelled 0.518 vs 0.478 at t = 0.20 s"}], "summary": {"simulator": "learned h=32", "pass": 10, "fail": 11, "na": 4, "unsupported_calls": 5}, "traj": [{"scene": "drop", "material": "fluid", "traj_rmse_learned": 0.22281229496002197, "traj_rmse_oracle": 0.005949620623141527, "ic_nudge_band": 0.006232097279280424, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.3923789858818054, "spread_learned": 0.9151848554611206, "height_canonical": 0.034318577498197556, "height_learned": 0.28901800513267517, "repose_canonical": 11.936404316460866, "repose_learned": 22.49478548626296}, {"scene": "drop", "material": "elastic", "traj_rmse_learned": 0.22289541363716125, "traj_rmse_oracle": 3.4510158002376556e-05, "ic_nudge_band": 4.427449766808422e-06, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.17645522952079773, "spread_learned": 0.8694615364074707, "height_canonical": 0.28339362144470215, "height_learned": 0.5611223578453064, "repose_canonical": 22.15836717731019, "repose_learned": 9.027586052699814}, {"scene": "drop", "material": "snow", "traj_rmse_learned": 0.5581866502761841, "traj_rmse_oracle": 0.00019209092715755105, "ic_nudge_band": 1.8756267309072427e-05, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.3528202772140503, "spread_learned": 0.953125, "height_canonical": 0.14059662818908691, "height_learned": 0.953125, "repose_canonical": 30.310842615821585, "repose_learned": 4.0227924757925235}, {"scene": "drop", "material": "sand", "traj_rmse_learned": 0.1352730542421341, "traj_rmse_oracle": 0.00016696196689736098, "ic_nudge_band": 4.2988001951016486e-05, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.6639967560768127, "spread_learned": 0.8672150373458862, "height_canonical": 0.055169351398944855, "height_learned": 0.13150940835475922, "repose_canonical": 9.35895003010855, "repose_learned": 9.865957554570153}, {"scene": "heap", "material": "fluid", "traj_rmse_learned": 0.22703827917575836, "traj_rmse_oracle": 0.00018353811174165457, "ic_nudge_band": 8.751731911615934e-06, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.7989806532859802, "spread_learned": 0.9112054109573364, "height_canonical": 0.01824471727013588, "height_learned": 0.2508803606033325, "repose_canonical": 2.9517224271290585, "repose_learned": 1.5941736022433275}, {"scene": "heap", "material": "elastic", "traj_rmse_learned": 0.24563255906105042, "traj_rmse_oracle": 4.489190905587748e-05, "ic_nudge_band": 8.330988521265681e-07, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.17811650037765503, "spread_learned": 0.8873502612113953, "height_canonical": 0.17544035613536835, "height_learned": 0.7254154682159424, "repose_canonical": 56.79538851366485, "repose_learned": 27.99541273889859}, {"scene": "heap", "material": "snow", "traj_rmse_learned": 0.5716241002082825, "traj_rmse_oracle": 0.00030584234627895057, "ic_nudge_band": 1.4964906768000219e-05, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.17836138606071472, "spread_learned": 0.953125, "height_canonical": 0.1720752716064453, "height_learned": 0.953125, "repose_canonical": 56.391071369425994, "repose_learned": 5.769118924626206}, {"scene": "heap", "material": "sand", "traj_rmse_learned": 0.14213667809963226, "traj_rmse_oracle": 0.0015456908149644732, "ic_nudge_band": 0.00010955280595226213, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.3119736611843109, "spread_learned": 0.8797756433486938, "height_canonical": 0.09305159002542496, "height_learned": 0.08891110122203827, "repose_canonical": 24.866801105341683, "repose_learned": 1.144794135281188}, {"scene": "column", "material": "fluid", "traj_rmse_learned": 0.24500003457069397, "traj_rmse_oracle": 0.0019467014353722334, "ic_nudge_band": 0.00018612391431815922, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.9250178337097168, "spread_learned": 0.919579803943634, "height_canonical": 0.08495800942182541, "height_learned": 0.3604620099067688, "repose_canonical": 1.4785098157625678, "repose_learned": 3.1288077272856065}, {"scene": "column", "material": "elastic", "traj_rmse_learned": 0.21752358973026276, "traj_rmse_oracle": 8.607844938524067e-05, "ic_nudge_band": 3.511525505928148e-07, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.1450204849243164, "spread_learned": 0.8210707306861877, "height_canonical": 0.5055286884307861, "height_learned": 0.8489882349967957, "repose_canonical": 13.0943044242627, "repose_learned": 5.510004535003153}, {"scene": "column", "material": "snow", "traj_rmse_learned": 0.5304411053657532, "traj_rmse_oracle": 0.0400264747440815, "ic_nudge_band": 0.00326076103374362, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.6512341499328613, "spread_learned": 0.953125, "height_canonical": 0.1448146104812622, "height_learned": 0.953125, "repose_canonical": 17.471317304089265, "repose_learned": 14.358177014874808}, {"scene": "column", "material": "sand", "traj_rmse_learned": 0.1381882280111313, "traj_rmse_oracle": 0.005859155673533678, "ic_nudge_band": 0.0002647499495651573, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.6484654545783997, "spread_learned": 0.8931529521942139, "height_canonical": 0.13458921015262604, "height_learned": 0.15754452347755432, "repose_canonical": 19.379071611962743, "repose_learned": 1.4712584917526073}], "hidden": 32, "layers": 1}, "width 64, 2 hidden layers": {"sig": [], "summary": {}, "traj": [{"scene": "drop", "material": "fluid", "traj_rmse_learned": 0.16053880751132965, "traj_rmse_oracle": 0.0059735714457929134, "ic_nudge_band": 0.005153632257133722, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.418449342250824, "spread_learned": 0.8964975476264954, "height_canonical": 0.03227934241294861, "height_learned": 0.30634042620658875, "repose_canonical": 9.376315638816276, "repose_learned": 0.637117543499883}, {"scene": "drop", "material": "elastic", "traj_rmse_learned": 0.2865771949291229, "traj_rmse_oracle": 3.309729800093919e-05, "ic_nudge_band": 9.714556654216722e-06, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.1764533519744873, "spread_learned": 0.8633430600166321, "height_canonical": 0.28339192271232605, "height_learned": 0.8857517838478088, "repose_canonical": 22.165562062921076, "repose_learned": 4.394956034209234}, {"scene": "drop", "material": "snow", "traj_rmse_learned": 0.35988476872444153, "traj_rmse_oracle": 0.00019340628932695836, "ic_nudge_band": 1.6872474589035846e-05, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.3528302013874054, "spread_learned": 0.9009883403778076, "height_canonical": 0.14062081277370453, "height_learned": 0.9242119193077087, "repose_canonical": 30.26971628865637, "repose_learned": 10.183234987190968}, {"scene": "drop", "material": "sand", "traj_rmse_learned": 0.06369054317474365, "traj_rmse_oracle": 0.0001512533490313217, "ic_nudge_band": 0.00017558912804815918, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.6644280552864075, "spread_learned": 0.8270730376243591, "height_canonical": 0.05520227551460266, "height_learned": 0.06137330085039139, "repose_canonical": 9.35961965472083, "repose_learned": 3.507563308419584}, {"scene": "heap", "material": "fluid", "traj_rmse_learned": 0.14618152379989624, "traj_rmse_oracle": 0.00017567821487318724, "ic_nudge_band": 7.394050953735132e-06, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.7991386651992798, "spread_learned": 0.900164783000946, "height_canonical": 0.0182524174451828, "height_learned": 0.4959123730659485, "repose_canonical": 2.951769851085288, "repose_learned": 0.38596719755695885}, {"scene": "heap", "material": "elastic", "traj_rmse_learned": 0.40335381031036377, "traj_rmse_oracle": 4.4343567424220964e-05, "ic_nudge_band": 8.046932862271206e-07, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.17811629176139832, "spread_learned": 0.8642231225967407, "height_canonical": 0.1754356026649475, "height_learned": 0.8770301342010498, "repose_canonical": 56.79526843450586, "repose_learned": 1.9166383610168427}, {"scene": "heap", "material": "snow", "traj_rmse_learned": 0.39216479659080505, "traj_rmse_oracle": 0.00031163793755695224, "ic_nudge_band": 1.4643538634118158e-05, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.17836785316467285, "spread_learned": 0.9018104076385498, "height_canonical": 0.1720838099718094, "height_learned": 0.9307900071144104, "repose_canonical": 56.4372101626551, "repose_learned": 33.74261050050444}, {"scene": "heap", "material": "sand", "traj_rmse_learned": 0.1024492159485817, "traj_rmse_oracle": 0.0015893905656412244, "ic_nudge_band": 0.00018356765212956816, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.31246045231819153, "spread_learned": 0.7604843378067017, "height_canonical": 0.09278127551078796, "height_learned": 0.07713425159454346, "repose_canonical": 24.735254329192955, "repose_learned": 6.992414481572859}, {"scene": "column", "material": "fluid", "traj_rmse_learned": 0.1938815861940384, "traj_rmse_oracle": 0.0016899168258532882, "ic_nudge_band": 0.0002128013875335455, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.925743043422699, "spread_learned": 0.8645809888839722, "height_canonical": 0.08608672767877579, "height_learned": 0.30591148138046265, "repose_canonical": 1.2572151732765071, "repose_learned": 8.444376716865412}, {"scene": "column", "material": "elastic", "traj_rmse_learned": 0.27829545736312866, "traj_rmse_oracle": 8.587916090618819e-05, "ic_nudge_band": 2.995070076394768e-07, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.1450209617614746, "spread_learned": 0.8632769584655762, "height_canonical": 0.5055294632911682, "height_learned": 0.9021686911582947, "repose_canonical": 13.094217535843319, "repose_learned": 5.061041685479728}, {"scene": "column", "material": "snow", "traj_rmse_learned": 0.30444440245628357, "traj_rmse_oracle": 0.039789360016584396, "ic_nudge_band": 0.0017908265581354499, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.6509866714477539, "spread_learned": 0.8853898048400879, "height_canonical": 0.14489580690860748, "height_learned": 0.9058902859687805, "repose_canonical": 17.151037236032277, "repose_learned": 17.453619585345322}, {"scene": "column", "material": "sand", "traj_rmse_learned": 0.08891715854406357, "traj_rmse_oracle": 0.005723792128264904, "ic_nudge_band": 0.00028257211670279503, "learned_stable": true, "oracle_stable": true, "spread_canonical": 0.6485627293586731, "spread_learned": 0.8534523844718933, "height_canonical": 0.1346147358417511, "height_learned": 0.131407231092453, "repose_canonical": 19.408844460400413, "repose_learned": 2.2629821800023198}], "hidden": 64, "layers": 2}}, "parity": {"mlp": {"n": 4096, "max_abs": 0.0009288787841796875, "mean_abs": 5.25281902810093e-05, "out_sd": 5.67970609664917, "max_rel_to_sd": 0.0001635434600757435}, "mlp_f16": {"n": 4096, "max_abs": 2.5879669189453125, "mean_abs": 0.11583835631608963, "out_sd": 5.67970609664917, "max_rel_to_sd": 0.45565155148506165}, "rollout": {"traj_rmse_host_vs_wgsl": 0.08358347415924072, "frame1": 0.00021400926925707608, "finite": true, "n": 8192, "frames": 30}, "cost_trained_vs_random": {"trained_us": 15.784, "random_us": 15.768, "ratio": 1.0010147133434806}}, "port": [{"material": "fluid", "finite": true, "traj_rmse_vs_canonical": 0.0018829508690581223, "ic_nudge_band": 0.002139042131602764, "final_spread_wgsl": 0.9472166113555431, "final_spread_canonical": 0.9472073968499899, "n": 2048, "frames": 40, "substeps_per_frame": 500}, {"material": "elastic", "finite": true, "traj_rmse_vs_canonical": 2.196633608223396e-05, "ic_nudge_band": 1.506885928392876e-05, "final_spread_wgsl": 0.22593998908996582, "final_spread_canonical": 0.2259669005870819, "n": 2048, "frames": 40, "substeps_per_frame": 500}, {"material": "snow", "finite": true, "traj_rmse_vs_canonical": 3.872995926221301e-05, "ic_nudge_band": 2.3573204089188948e-05, "final_spread_wgsl": 0.46475106477737427, "final_spread_canonical": 0.46482107043266296, "n": 2048, "frames": 40, "substeps_per_frame": 500}, {"material": "sand", "finite": true, "traj_rmse_vs_canonical": 3.214534695154e-05, "ic_nudge_band": 3.248402936151251e-05, "final_spread_wgsl": 0.7109013646841049, "final_spread_canonical": 0.7111782729625702, "n": 2048, "frames": 40, "substeps_per_frame": 500}], "device": {"vendor": "nvidia", "architecture": "lovelace", "device": "", "description": "", "timestampQuery": true, "shaderF16": true, "limits": {"maxStorageBuffersPerShaderStage": 16, "maxUniformBufferBindingSize": 65536, "maxStorageBufferBindingSize": 2147483644, "maxBufferSize": 2147483648, "maxComputeInvocationsPerWorkgroup": 1024}}, "dispatch_floor_us": 0.86, "batching": [{"variant": "analytic", "substeps_per_submit": 1, "us_per_substep_wall": 61.197916666666664}, {"variant": "analytic", "substeps_per_submit": 4, "us_per_substep_wall": 35.15625}, {"variant": "analytic", "substeps_per_submit": 16, "us_per_substep_wall": 32.552083333333336}, {"variant": "analytic", "substeps_per_submit": 64, "us_per_substep_wall": 28.90624999902987}, {"variant": "analytic", "substeps_per_submit": 256, "us_per_substep_wall": 23.4375}, {"variant": "nn64", "substeps_per_submit": 1, "us_per_substep_wall": 67.70833333333333}, {"variant": "nn64", "substeps_per_submit": 4, "us_per_substep_wall": 40.364583333333336}, {"variant": "nn64", "substeps_per_submit": 16, "us_per_substep_wall": 29.42708333284827}, {"variant": "nn64", "substeps_per_submit": 64, "us_per_substep_wall": 26.041666666666668}, {"variant": "nn64", "substeps_per_submit": 256, "us_per_substep_wall": 25.520833334060928}], "zcodes": [[0.8660253882408142, -0.28867512941360474, -0.28867512941360474, -0.28867512941360474], [-0.28867512941360474, 0.8660253882408142, -0.28867512941360474, -0.28867512941360474], [-0.28867512941360474, -0.28867512941360474, 0.8660253882408142, -0.28867512941360474], [-0.28867512941360474, -0.28867512941360474, -0.28867512941360474, 0.8660253882408142]], "zsep": 1.6329931020736694, "zjit": 0.19595917224884032, "verdict": {"capacity_line": "Held-out one-step error reaches 0.10 to 0.25 of each material own spread at best, and that is not close enough: rolled forward, fluid, rubber and snow expand into a gas that fills the tank and sand spreads to 0.76 where canonical holds 0.31. The learned simulator passes 10 of 21 runnable golden signatures."}, "base": "/api/data/learning-taichi/runs/learned-dynamics/one-latent-conditioned-network-for-all-four-materials/"};
+const MATS=["fluid","elastic","snow","sand"];
+const COL={fluid:"#4db6ff",elastic:"#ff9d5c",snow:"#e6ecff",sand:"#ffd24d"};
+const WIDTHS = D.cost.f32.map(r=>r[0]);
+const ACCW = Object.keys(D.acc).map(Number).sort((a,b)=>a-b);
+const nearestAcc = w => ACCW.reduce((a,b)=>Math.abs(b-w)<Math.abs(a-w)?b:a, ACCW[0]);
+const fmt=(x,n)=>x.toFixed(n===undefined?2:n);
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+
+// widest width whose WHOLE-SOLVER cost still fits each budget
+function maxFit(b){let m=0;for(const [h,f] of D.cost.f32) if(f<=b) m=Math.max(m,h);return m;}
+const FITQ = maxFit(D.budget.us_per_substep_quarter_gpu);
+const FITF = maxFit(D.budget.us_per_substep_full_gpu);
+
+function svgCost(sel){
+  const W=470,H=250,L=44,R=14,T=14,B=34;
+  const xs=v=>L+(Math.log2(v)-3)/(Math.log2(256)-3)*(W-L-R);
+  const ymax=62, ys=v=>H-B-(v/ymax)*(H-T-B);
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%">`;
+  s+=`<rect x="${L}" y="${ys(D.budget.us_per_substep_quarter_gpu)}" width="${W-L-R}" height="${H-B-ys(D.budget.us_per_substep_quarter_gpu)}" fill="#7ee787" opacity="0.07"/>`;
+  for(const v of [0,10,20,30,40,50,60]) s+=`<line x1="${L}" y1="${ys(v)}" x2="${W-R}" y2="${ys(v)}" stroke="#222c3c"/><text x="${L-6}" y="${ys(v)+4}" fill="#7f8ea3" font-size="9" text-anchor="end">${v}</text>`;
+  for(const h of [8,16,32,64,128,256]) s+=`<text x="${xs(h)}" y="${H-14}" fill="#7f8ea3" font-size="9" text-anchor="middle">${h}</text>`;
+  const line=(pts,c,dash)=>{let d="";pts.forEach((p,i)=>{d+=(i?"L":"M")+xs(p[0])+" "+ys(Math.min(p[1],ymax));});return `<path d="${d}" fill="none" stroke="${c}" stroke-width="2" ${dash?'stroke-dasharray="5 4"':''}/>`;};
+  s+=`<line x1="${L}" y1="${ys(D.budget.us_per_substep_full_gpu)}" x2="${W-R}" y2="${ys(D.budget.us_per_substep_full_gpu)}" stroke="#ffd24d" stroke-width="1.4" stroke-dasharray="6 4"/>`;
+  s+=`<text x="${L+5}" y="${ys(D.budget.us_per_substep_full_gpu)-5}" fill="#ffd24d" font-size="9.5">60 fps, whole GPU (${D.budget.us_per_substep_full_gpu} us)</text>`;
+  s+=`<line x1="${L}" y1="${ys(D.budget.us_per_substep_quarter_gpu)}" x2="${W-R}" y2="${ys(D.budget.us_per_substep_quarter_gpu)}" stroke="#7ee787" stroke-width="1.4" stroke-dasharray="6 4"/>`;
+  s+=`<text x="${L+5}" y="${ys(D.budget.us_per_substep_quarter_gpu)-5}" fill="#7ee787" font-size="9.5">60 fps, quarter GPU (${D.budget.us_per_substep_quarter_gpu} us)</text>`;
+  s+=`<line x1="${L}" y1="${ys(D.analytic.full)}" x2="${W-R}" y2="${ys(D.analytic.full)}" stroke="#ff8f8f" stroke-width="1.6"/>`;
+  s+=`<text x="${W-R-4}" y="${ys(D.analytic.full)+12}" fill="#ff8f8f" font-size="9.5" text-anchor="end">the analytic solver it replaces</text>`;
+  s+=line(D.cost.sto.map(r=>[r[0],r[1]]),"#ff9d5c",false);
+  s+=line(D.cost.f16.map(r=>[r[0],r[1]]),"#c792ea",false);
+  s+=line(D.cost.f32.map(r=>[r[0],r[1]]),"#6fd3ee",false);
+  const cur=D.cost.f32.find(r=>r[0]===sel)||D.cost.f32[0];
+  s+=`<line x1="${xs(sel)}" y1="${T}" x2="${xs(sel)}" y2="${H-B}" stroke="#dfe6ee" stroke-width="1" opacity="0.45"/>`;
+  s+=`<circle cx="${xs(sel)}" cy="${ys(Math.min(cur[1],ymax))}" r="5" fill="#fff"/>`;
+  s+=`<text x="${L}" y="${H-2}" fill="#7f8ea3" font-size="9.5">hidden width</text>`;
+  s+=`<text x="6" y="${T+4}" fill="#7f8ea3" font-size="9.5">us/substep</text></svg>`;
+  return s;
+}
+
+function svgAcc(sel){
+  const w=nearestAcc(sel);
+  const W=470,H=250,L=64,R=90,T=18,B=30;
+  const bw=(H-T-B)/4;
+  const xs=v=>L+Math.min(v,1.25)/1.25*(W-L-R);
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%">`;
+  for(const v of [0,0.25,0.5,0.75,1.0,1.25]) s+=`<line x1="${xs(v)}" y1="${T}" x2="${xs(v)}" y2="${H-B}" stroke="#222c3c"/><text x="${xs(v)}" y="${H-14}" fill="#7f8ea3" font-size="9" text-anchor="middle">${v}</text>`;
+  s+=`<line x1="${xs(1)}" y1="${T}" x2="${xs(1)}" y2="${H-B}" stroke="#ff8f8f" stroke-width="1.3" stroke-dasharray="4 3"/>`;
+  s+=`<text x="${xs(1)+4}" y="${T+10}" fill="#ff8f8f" font-size="9">no better than predicting the mean</text>`;
+  MATS.forEach((m,i)=>{
+    const y=T+i*bw, a=D.acc[w][m];
+    s+=`<text x="${L-8}" y="${y+bw*0.42}" fill="${COL[m]}" font-size="10.5" text-anchor="end">${m}</text>`;
+    s+=`<rect x="${L}" y="${y+bw*0.16}" width="${xs(a.stress)-L}" height="${bw*0.30}" fill="${COL[m]}" opacity="0.95"/>`;
+    s+=`<rect x="${L}" y="${y+bw*0.52}" width="${xs(a.plastic)-L}" height="${bw*0.30}" fill="${COL[m]}" opacity="0.42"/>`;
+    s+=`<text x="${xs(Math.min(a.stress,1.25))+5}" y="${y+bw*0.36}" fill="#cfe3f2" font-size="9.5">${fmt(a.stress)} stress</text>`;
+    s+=`<text x="${xs(Math.min(a.plastic,1.25))+5}" y="${y+bw*0.72}" fill="#8fa3bf" font-size="9.5">${fmt(a.plastic)} plastic</text>`;
+  });
+  s+=`<text x="${L}" y="${H-2}" fill="#7f8ea3" font-size="9.5">held-out one-step error / that material's own spread &nbsp; (trained width ${w})</text></svg>`;
+  return s;
+}
+
+function svgCliff(mode){
+  const W=470,H=230,L=44,R=14,T=16,B=32;
+  const xs=v=>L+(Math.log2(v)-3)/(Math.log2(256)-3)*(W-L-R);
+  const ymax=55, ys=v=>H-B-(v/ymax)*(H-T-B);
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%">`;
+  for(const v of [0,10,20,30,40,50]) s+=`<line x1="${L}" y1="${ys(v)}" x2="${W-R}" y2="${ys(v)}" stroke="#222c3c"/><text x="${L-6}" y="${ys(v)+4}" fill="#7f8ea3" font-size="9" text-anchor="end">${v}</text>`;
+  for(const h of [8,16,32,64,128,256]) s+=`<text x="${xs(h)}" y="${H-12}" fill="#7f8ea3" font-size="9" text-anchor="middle">${h}</text>`;
+  const line=(pts,c,dash)=>{let d="";pts.forEach((p,i)=>{d+=(i?"L":"M")+xs(p[0])+" "+ys(Math.min(p[1],ymax));});return `<path d="${d}" fill="none" stroke="${c}" stroke-width="2.1" ${dash?'stroke-dasharray="5 4"':''}/>`;};
+  s+=`<line x1="${L}" y1="${ys(D.analytic.g2p)}" x2="${W-R}" y2="${ys(D.analytic.g2p)}" stroke="#ff8f8f" stroke-width="1.4"/>`;
+  if(mode!=="unrolled") s+=line(D.cost.dyn,"#ffd24d",true);
+  s+=line(D.cost.f32.map(r=>[r[0],r[2]]),"#6fd3ee",false);
+  s+=`<text x="6" y="${T+4}" fill="#7f8ea3" font-size="9.5">us/substep, G2P only</text>`;
+  s+=`<text x="${L}" y="${H-1}" fill="#7f8ea3" font-size="9.5">hidden width</text></svg>`;
+  return s;
+}
+
+function sigTable(w){
+  const e=D.evals[w];
+  if(!e||!e.sig||!e.sig.length) return `<p class="note">The golden signature suite was not run against
+  this network. It is ~35 full rollouts of the learned simulator and takes far longer than the
+  trajectory table below; it was run against the width-32 single-layer net only. The trajectory
+  numbers below ARE this network's.</p>`;
+  let rows="";
+  for(const r of e.sig){
+    const cls=r.na?"na":(r.pass?"pass":"fail"), lab=r.na?"N/A":(r.pass?"PASS":"FAIL");
+    rows+=`<tr><td><span class="pill ${cls}">${lab}</span></td><td>${esc(r.name)}</td><td class="mut" style="font-size:11.6px">${esc(r.detail)}</td></tr>`;
+  }
+  return `<table><thead><tr><th></th><th>golden signature (canonical thresholds, unmodified)</th><th>detail</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function trajTable(w){
+  const e=D.evals[w]; if(!e) return "";
+  let rows="";
+  for(const r of e.traj){
+    const bad=r.traj_rmse_learned>0.05;
+    rows+=`<tr><td>${r.scene}</td><td style="color:${COL[r.material]}">${r.material}</td>`
+      +`<td class="n" style="color:${bad?'#ff9d9d':'#dfe6ee'}">${r.traj_rmse_learned.toFixed(4)}</td>`
+      +`<td class="n mut">${r.traj_rmse_oracle.toExponential(1)}</td>`
+      +`<td class="n mut">${r.ic_nudge_band.toExponential(1)}</td>`
+      +`<td class="n">${r.spread_learned.toFixed(3)} <span class="mut">vs ${r.spread_canonical.toFixed(3)}</span></td>`
+      +`<td class="n">${r.repose_learned.toFixed(0)}&deg; <span class="mut">vs ${r.repose_canonical.toFixed(0)}&deg;</span></td>`
+      +`<td>${r.learned_stable?'<span class="pill pass">stable</span>':'<span class="pill fail">blew up</span>'}</td></tr>`;
+  }
+  return `<table><thead><tr><th>scene</th><th>material</th><th>traj_rmse learned</th><th>oracle floor</th><th>1e-7 nudge band</th><th>spread width</th><th>repose angle</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+let SEL = 64, CLIFF="both";
+// default to whichever evaluated network actually has signature rows
+let SIGW = Object.keys(D.evals).find(k=>D.evals[k].sig && D.evals[k].sig.length) || Object.keys(D.evals)[0];
+function render(){
+  const cur=D.cost.f32.find(r=>r[0]===SEL);
+  const accw=nearestAcc(SEL);
+  const fitsQ=cur[1]<=D.budget.us_per_substep_quarter_gpu, fitsF=cur[1]<=D.budget.us_per_substep_full_gpu;
+  const v=D.verdict||{};
+  document.getElementById("app").innerHTML = `
+<div class="verdict">
+  <p style="margin:0 0 6px"><b>Both halves answered, and they do not meet.</b> One network with one shared
+  weight set, told which material it is only by a 4-dimensional code, runs the constitutive model for
+  fluid, rubber, snow and sand on WebGPU. <b>Cost is not the obstacle</b>: the analytic four-material
+  law it replaces already costs ${fmt(D.analytic.full)} us per substep, and a width-16 network costs
+  ${fmt(D.cost.f32.find(r=>r[0]===16)[1])} us, so the seam is essentially <b>free up to width
+  ${FITQ}</b> at a quarter of this GPU and affordable to width ${FITF} on the whole device.
+  <b>Capacity is the obstacle.</b> ${esc(v.capacity_line||"See the accuracy panel and the signature table below.")}</p>
+  <p class="mut" style="margin:0;font-size:12.8px">One RTX 4090, Chromium/WebGPU, 128&times;128 grid,
+  8192 particles, four materials on one shared grid at the timestep they force
+  (dt = ${D.budget.dt}). Every number is that setup and no other.</p>
+</div>
+
+<div class="ctl">
+  <span class="mut">hidden width</span>
+  <span class="big" style="color:var(--acc);min-width:52px">${SEL}</span>
+  <input type="range" min="0" max="${WIDTHS.length-1}" value="${WIDTHS.indexOf(SEL)}" id="wslider">
+  <span class="big" style="color:${fitsQ?'#7ee787':(fitsF?'#ffd24d':'#ff8f8f')}">${fmt(cur[1])} us</span>
+  <span class="mut">${fitsQ?'fits 60 fps at a quarter GPU':(fitsF?'needs the WHOLE GPU':'misses real time')}</span>
+  <span class="mut">&nbsp;|&nbsp; ${D.params[String(accw)]||"?"} parameters</span>
+</div>
+
+<div class="two">
+  <div class="pan"><h3>What it costs</h3>${svgCost(SEL)}
+    <div class="legend"><span><span class="sw" style="background:#6fd3ee"></span>f32, weights in a uniform buffer</span>
+    <span><span class="sw" style="background:#c792ea"></span>f16 weights</span>
+    <span><span class="sw" style="background:#ff9d5c"></span>f32, weights in a storage buffer</span></div>
+  </div>
+  <div class="pan"><h3>What it learns</h3>${svgAcc(SEL)}
+    <p class="mut" style="font-size:11.8px;margin:6px 0 0">Solid bar: the stress the network predicts.
+    Faded bar: the plastic state update (snow's clamp, sand's return map). Both in units of that
+    material's own spread, so 1.0 means the network has learned nothing about it.</p>
+  </div>
+</div>
+<p class="note">Drag the slider. The cost bar crosses the quarter-GPU budget at width ${FITQ}; the
+accuracy bars are still well above where they need to be there, and they are still coming down at the
+largest width measured. That gap is the result.</p>
+
+<h2>Does it still behave like the material? The golden signatures</h2>
+<p class="mut" style="margin-top:0">These are <code>sim/physics/signatures.py</code>, unmodified, with
+canonical thresholds, run against the learned simulator instead of the canonical one. Nothing was tuned
+to them.</p>
+<div class="tabs">${Object.keys(D.evals).map(w=>`<span class="tab ${w===SIGW?'on':''}" data-sig="${w}">${w}</span>`).join("")}</div>
+${sigTable(SIGW)}
+
+<h2>Learned vs canonical, same scene, same seed</h2>
+<div class="two">
+  <div><p class="mut" style="margin-top:0">The angle-of-repose scene, which separates all four materials:
+  fluid runs flat, rubber and snow keep the seeded slope, sand yields to a finite one.</p>
+  <video src="${D.base}learned_vs_canonical_heap.mp4" controls muted loop playsinline></video></div>
+  <div><p class="mut" style="margin-top:0">A dropped disk. Top row canonical, bottom row the one shared
+  network.</p>
+  <video src="${D.base}learned_vs_canonical_drop.mp4" controls muted loop playsinline></video></div>
+</div>
+
+<h2>Trajectory error, against references that make it mean something &nbsp;<span class="mut"
+  style="font-size:13px;font-weight:400">&mdash; ${esc(SIGW)}</span></h2>
+<p class="mut" style="margin-top:0"><code>traj_rmse</code> is the mean per-particle Euclidean distance
+(not an RMS). It is quoted beside the ORACLE floor -- the same scaffolding running the exact analytic
+law, so the best any network could do -- and the 1e-7 initial-condition nudge band, which is how far
+canonical moves from a perturbation with no physical meaning. Against zero it would be meaningless.</p>
+${trajTable(SIGW)}
+
+<h2>The cost cliff is the compiler, not the hardware</h2>
+<div class="two">
+  <div class="pan">${svgCliff(CLIFF)}
+  <div class="tabs" style="margin-top:8px">
+    <span class="tab ${CLIFF==='unrolled'?'on':''}" data-cliff="unrolled">just the shipped shader</span>
+    <span class="tab ${CLIFF==='both'?'on':''}" data-cliff="both">with the un-unrollable control</span>
+  </div></div>
+  <div>
+  <p style="margin-top:0">The G2P cost is a clean straight line in width up to 88, then jumps 2.2&times;
+  between width 88 and 92 for 1.05&times; the arithmetic, then is a straight line again on a steeper
+  slope.</p>
+  <p>Flip to the control: the identical shader with the hidden-loop bound read from a uniform, so the
+  compiler cannot unroll it. Below the cliff the unrolled version is 2-3&times; faster. Above it, the two
+  curves lie on top of each other. The compiler was fully unrolling the loop, that was worth a factor of
+  two to three, and somewhere between 88 and 92 hidden units it stopped.</p>
+  <p class="mut" style="font-size:12.8px">This refines rather than confirms the earlier guess that the
+  width cliff was register spilling. A spill would degrade past the un-unrolled cost, not land exactly on
+  it.</p>
+  </div>
+</div>
+
+<h2>Is the WebGPU solver the canonical physics?</h2>
+<p class="mut" style="margin-top:0">A cost measurement against a baseline that is not the real physics is
+a cost measurement of something else. The analytic WGSL path was scored against canonical Taichi on the
+same initial condition, per material.</p>
+<table><thead><tr><th>material</th><th>traj_rmse, WGSL vs canonical Taichi</th><th>1e-7 IC-nudge band</th><th>final spread width</th><th></th></tr></thead><tbody>
+${D.port.map(r=>`<tr><td style="color:${COL[r.material]}">${r.material}</td><td class="n">${r.traj_rmse_vs_canonical.toExponential(2)}</td><td class="n mut">${r.ic_nudge_band.toExponential(2)}</td><td class="n">${r.final_spread_wgsl.toFixed(4)} <span class="mut">vs ${r.final_spread_canonical.toFixed(4)}</span></td><td>${r.traj_rmse_vs_canonical<=3*r.ic_nudge_band?'<span class="pill pass">within the band</span>':'<span class="pill fail">outside</span>'}</td></tr>`).join("")}
+</tbody></table>
+${D.parity && D.parity.mlp ? `<p style="margin-top:12px">Host-vs-shader parity for the trained network:
+max absolute disagreement <b>${D.parity.mlp.max_abs.toExponential(2)}</b> over
+${D.parity.mlp.n} real feature vectors (relative to an output spread of
+${D.parity.mlp.out_sd.toExponential(2)}), in f32.
+${D.parity.mlp_f16 ? `In f16 the same comparison gives ${D.parity.mlp_f16.max_abs.toExponential(2)}.` : ""}</p>` : ""}
+
+<h2>The seam, and what is learned</h2>
+<svg viewBox="0 0 720 128" width="100%" style="margin:6px 0 2px">
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+    <path d="M0,0 L7,3 L0,6 z" fill="#55617a"/></marker></defs>
+  <g font-size="11.5" fill="#dfe6ee" text-anchor="middle">
+    <rect x="8" y="34" width="120" height="42" rx="6" fill="#131b26" stroke="#2b3a4e"/><text x="68" y="52">P2G</text><text x="68" y="66" font-size="9.5" fill="#7f8ea3">scatters cached stress</text>
+    <rect x="164" y="34" width="120" height="42" rx="6" fill="#131b26" stroke="#2b3a4e"/><text x="224" y="52">grid update</text><text x="224" y="66" font-size="9.5" fill="#7f8ea3">gravity, walls, friction</text>
+    <rect x="320" y="34" width="120" height="42" rx="6" fill="#131b26" stroke="#2b3a4e"/><text x="380" y="52">G2P gather</text><text x="380" y="66" font-size="9.5" fill="#7f8ea3">advect, trial F</text>
+    <rect x="476" y="20" width="236" height="70" rx="6" fill="#17364a" stroke="#6fd3ee" stroke-width="1.6"/>
+    <text x="594" y="38" fill="#cfefff" font-weight="700">THE ONE NETWORK</text>
+    <text x="594" y="54" font-size="9.8" fill="#cfe3f2">in: S00 S01 S11, C(4), v(2), Jp, z(4)</text>
+    <text x="594" y="68" font-size="9.8" fill="#cfe3f2">out: stress(3), dS(3), dJp(1)</text>
+    <text x="594" y="82" font-size="9.5" fill="#8fbdd6">fused into G2P -- no extra dispatch</text>
+    <path d="M130,55 L160,55" stroke="#55617a" marker-end="url(#a)"/>
+    <path d="M286,55 L316,55" stroke="#55617a" marker-end="url(#a)"/>
+    <path d="M442,55 L472,55" stroke="#55617a" marker-end="url(#a)"/>
+    <path d="M594,92 L594,110 L20,110 L20,80" stroke="#3b6f8c" fill="none" stroke-dasharray="4 3" marker-end="url(#a)"/>
+    <text x="300" y="123" font-size="9.5" fill="#7f8ea3">stress cached for the next substep's P2G</text>
+  </g>
+</svg>
+<div class="two" style="margin-top:8px">
+  <div class="pan"><h3>z_m is IDENTITY, and only identity</h3>
+  <p class="mut" style="font-size:13px;margin-top:4px">Four fixed codes at the corners of a regular
+  simplex in R<sup>4</sup>, separation ${fmt(D.zsep,3)}, jittered by ${fmt(D.zjit,3)} every training batch
+  so the network learns a neighbourhood rather than four point lookups. Never updated during a rollout.</p>
+  <p class="mut" style="font-size:13px"><b>This is a label, not a physical axis.</b> Four structurally
+  unrelated materials have no ground truth anywhere between their codes, so nothing here is a claim about
+  interpolating between them, and none was tested.</p></div>
+  <div class="pan"><h3>The carried state is HISTORY</h3>
+  <p class="mut" style="font-size:13px;margin-top:4px">Per particle, updated every substep, in the known
+  parameterisation: the symmetric stretch <code>S</code> of the deformation gradient and the plastic
+  record <code>Jp</code>. The network predicts their <i>update</i>, which is what makes snow's clamp and
+  sand's return mapping learned rather than applied analytically afterwards.</p>
+  <p class="mut" style="font-size:13px">A free learned latent state was deliberately out of scope: it
+  needs backprop through a long rollout, which is this project's documented failure mode.</p></div>
+</div>
+
+<h2 style="margin-bottom:2px">Scope</h2>
+<p class="note" style="margin-top:6px">One GPU, one browser, one grid resolution, one particle count,
+one scene family. The training used per-step supervision only, with no data aggregation round, so
+rollout drift is not controlled for. Trajectory numbers are single-seed. The four materials are the
+canonical four and nothing was tested between them.</p>
+`;
+  const sl=document.getElementById("wslider");
+  if(sl) sl.oninput=e=>{SEL=WIDTHS[+e.target.value];render();};
+  document.querySelectorAll("[data-cliff]").forEach(t=>t.onclick=()=>{CLIFF=t.dataset.cliff;render();});
+  document.querySelectorAll("[data-sig]").forEach(t=>t.onclick=()=>{SIGW=t.dataset.sig;render();});
+}
+render();
+</script>

@@ -1,0 +1,390 @@
+{
+  "gate": "oracle == canonical",
+  "physics_version": "phys-c518316a4a05",
+  "n": 4000,
+  "frames": 8,
+  "ic_nudge": 1e-07,
+  "step_level": [
+    {
+      "material": "fluid",
+      "substeps": 1,
+      "mean_pos_diff": 1.955777380324708e-11,
+      "pass": true
+    },
+    {
+      "material": "fluid",
+      "substeps": 4,
+      "mean_pos_diff": 1.3318640634807366e-10,
+      "pass": true
+    },
+    {
+      "material": "fluid",
+      "substeps": 16,
+      "mean_pos_diff": 3.585169494613183e-09,
+      "pass": true
+    },
+    {
+      "material": "elastic",
+      "substeps": 1,
+      "mean_pos_diff": 1.8160790579702102e-11,
+      "pass": true
+    },
+    {
+      "material": "elastic",
+      "substeps": 4,
+      "mean_pos_diff": 2.7101487720671e-10,
+      "pass": true
+    },
+    {
+      "material": "elastic",
+      "substeps": 16,
+      "mean_pos_diff": 6.220178150329048e-09,
+      "pass": true
+    },
+    {
+      "material": "snow",
+      "substeps": 1,
+      "mean_pos_diff": 4.7210595433000435e-09,
+      "pass": true
+    },
+    {
+      "material": "snow",
+      "substeps": 4,
+      "mean_pos_diff": 1.7572714838820502e-08,
+      "pass": true
+    },
+    {
+      "material": "snow",
+      "substeps": 16,
+      "mean_pos_diff": 6.504401994789077e-08,
+      "pass": true
+    },
+    {
+      "material": "sand",
+      "substeps": 1,
+      "mean_pos_diff": 1.1542441447076612e-09,
+      "pass": true
+    },
+    {
+      "material": "sand",
+      "substeps": 4,
+      "mean_pos_diff": 5.4095177226543e-09,
+      "pass": true
+    },
+    {
+      "material": "sand",
+      "substeps": 16,
+      "mean_pos_diff": 5.174327455392813e-08,
+      "pass": true
+    }
+  ],
+  "signatures": [
+    {
+      "name": "drop: all materials stable",
+      "pass": true,
+      "na": false,
+      "detail": "fluid=True elastic=True snow=True"
+    },
+    {
+      "name": "drop: width  fluid > snow > elastic",
+      "pass": true,
+      "na": false,
+      "detail": "0.435 > 0.334 > 0.174"
+    },
+    {
+      "name": "drop: height elastic > snow > fluid",
+      "pass": true,
+      "na": false,
+      "detail": "0.290 > 0.140 > 0.029"
+    },
+    {
+      "name": "column: elastic springs back above snow",
+      "pass": true,
+      "na": false,
+      "detail": "elastic 0.505 vs snow 0.184"
+    },
+    {
+      "name": "column: snow holds a pile above fluid",
+      "pass": true,
+      "na": false,
+      "detail": "snow 0.184 vs fluid 0.107"
+    },
+    {
+      "name": "heap: sand stable",
+      "pass": true,
+      "na": false,
+      "detail": "stable=True"
+    },
+    {
+      "name": "heap: sand holds an angle of repose, fluid does not",
+      "pass": true,
+      "na": false,
+      "detail": "sand 26.2 deg vs fluid 3.0 deg"
+    },
+    {
+      "name": "heap: sand does NOT spread flat like a fluid",
+      "pass": true,
+      "na": false,
+      "detail": "width fluid 0.793 vs sand 0.306; height sand 0.095 vs fluid 0.018"
+    },
+    {
+      "name": "heap: sand YIELDS where cohesive snow/elastic keep the seeded slope",
+      "pass": true,
+      "na": false,
+      "detail": "seeded 56.5 -> sand 26.2, snow 56.3, elastic 56.4 deg; width sand 0.306 vs snow 0.180"
+    },
+    {
+      "name": "multi-material path matches canonical for fluid",
+      "pass": true,
+      "na": false,
+      "detail": "vs canonical 5.32e-03, self-noise 6.05e-03"
+    },
+    {
+      "name": "multi-material path matches canonical for elastic",
+      "pass": true,
+      "na": false,
+      "detail": "vs canonical 4.11e-06, self-noise 6.63e-06"
+    },
+    {
+      "name": "multi-material path matches canonical for snow",
+      "pass": true,
+      "na": false,
+      "detail": "vs canonical 1.01e-06, self-noise 1.01e-06"
+    },
+    {
+      "name": "multi-material path matches canonical for sand",
+      "pass": true,
+      "na": false,
+      "detail": "vs canonical 4.41e-06, self-noise 2.96e-06"
+    },
+    {
+      "name": "viscosity: thicker fluid spreads less (and doesn't collapse)",
+      "pass": null,
+      "na": true,
+      "detail": "N/A -- overrides mu_visc -- the learned law has no viscosity knob"
+    },
+    {
+      "name": "pool: snow FLOATS -- it rises to the surface and breaks it",
+      "pass": true,
+      "na": false,
+      "detail": "rose +0.015, depth change -0.129, submerged 0.47"
+    },
+    {
+      "name": "pool: rubber SINKS -- it goes down and stays fully under",
+      "pass": true,
+      "na": false,
+      "detail": "moved -0.110, depth change +0.015, submerged 1.00"
+    },
+    {
+      "name": "pool: sand SINKS, and faster than rubber does",
+      "pass": true,
+      "na": false,
+      "detail": "moved -0.128 vs rubber -0.110, submerged 1.00"
+    },
+    {
+      "name": "pool: resting depth is ordered by density (sand > rubber > snow)",
+      "pass": true,
+      "na": false,
+      "detail": "sand +0.031 > rubber +0.015 > snow -0.129  (rho 1.6 / 1.2 / 0.3)"
+    },
+    {
+      "name": "pool: the SAME blob orders by DENSITY alone (0.3 floats, 1.0 hangs, 1.6 sinks)",
+      "pass": true,
+      "na": false,
+      "detail": "rho 0.3 -> +0.019 (42% under),  1.0 -> -0.028 (97%),  1.6 -> -0.116 (100%)"
+    },
+    {
+      "name": "density rescaling leaves a lone material unmoved (snow)",
+      "pass": null,
+      "na": true,
+      "detail": "N/A -- overrides E -- stiffness lives in the weights, there is no knob to turn"
+    },
+    {
+      "name": "density rescaling leaves a lone material unmoved (sand)",
+      "pass": null,
+      "na": true,
+      "detail": "N/A -- overrides E -- stiffness lives in the weights, there is no knob to turn"
+    },
+    {
+      "name": "density rescaling leaves a lone material unmoved (elastic)",
+      "pass": null,
+      "na": true,
+      "detail": "N/A -- overrides E -- stiffness lives in the weights, there is no knob to turn"
+    },
+    {
+      "name": "slam: rubber holds its VOLUME through a hard impact",
+      "pass": true,
+      "na": false,
+      "detail": "worst mean det(F) 0.978 (>0.95), worst 1st-pct particle 0.684 (>0.45)"
+    },
+    {
+      "name": "drop: water is nearly incompressible",
+      "pass": true,
+      "na": false,
+      "detail": "worst mean J 0.999 (>0.97), worst 1st-pct particle 0.939 (>0.85)"
+    },
+    {
+      "name": "dam break: frictionless water outruns the same water given a granular friction",
+      "pass": true,
+      "na": false,
+      "detail": "front has travelled 0.278 vs 0.248 at t = 0.20 s"
+    }
+  ],
+  "signature_summary": {
+    "simulator": "oracle",
+    "pass": 21,
+    "fail": 0,
+    "na": 4,
+    "unsupported_calls": 5
+  },
+  "trajectory_floor": [
+    {
+      "scene": "drop",
+      "material": "fluid",
+      "oracle_vs_canonical": 0.007463851012289524,
+      "ic_nudge_band": 0.0063769761472940445,
+      "stable": true
+    },
+    {
+      "scene": "drop",
+      "material": "elastic",
+      "oracle_vs_canonical": 3.7802768929395825e-05,
+      "ic_nudge_band": 2.1122039470355958e-05,
+      "stable": true
+    },
+    {
+      "scene": "drop",
+      "material": "snow",
+      "oracle_vs_canonical": 0.0001962182723218575,
+      "ic_nudge_band": 1.8304204786545597e-05,
+      "stable": true
+    },
+    {
+      "scene": "drop",
+      "material": "sand",
+      "oracle_vs_canonical": 0.00015431821520905942,
+      "ic_nudge_band": 0.00011517231178004295,
+      "stable": true
+    },
+    {
+      "scene": "column",
+      "material": "fluid",
+      "oracle_vs_canonical": 0.0017719425959512591,
+      "ic_nudge_band": 0.00020517867233138531,
+      "stable": true
+    },
+    {
+      "scene": "column",
+      "material": "elastic",
+      "oracle_vs_canonical": 8.556120155844837e-05,
+      "ic_nudge_band": 5.245493639449705e-07,
+      "stable": true
+    },
+    {
+      "scene": "column",
+      "material": "snow",
+      "oracle_vs_canonical": 0.03774373605847359,
+      "ic_nudge_band": 0.00374966231174767,
+      "stable": true
+    },
+    {
+      "scene": "column",
+      "material": "sand",
+      "oracle_vs_canonical": 0.005769325420260429,
+      "ic_nudge_band": 0.00019614884513430297,
+      "stable": true
+    },
+    {
+      "scene": "heap",
+      "material": "fluid",
+      "oracle_vs_canonical": 0.000175512905116193,
+      "ic_nudge_band": 7.927979822852649e-06,
+      "stable": true
+    },
+    {
+      "scene": "heap",
+      "material": "elastic",
+      "oracle_vs_canonical": 4.441874261829071e-05,
+      "ic_nudge_band": 6.604865347981104e-07,
+      "stable": true
+    },
+    {
+      "scene": "heap",
+      "material": "snow",
+      "oracle_vs_canonical": 0.0003097566368523985,
+      "ic_nudge_band": 2.550135104684159e-05,
+      "stable": true
+    },
+    {
+      "scene": "heap",
+      "material": "sand",
+      "oracle_vs_canonical": 0.0013854780700057745,
+      "ic_nudge_band": 0.0001289757201448083,
+      "stable": true
+    },
+    {
+      "scene": "dam",
+      "material": "fluid",
+      "oracle_vs_canonical": 0.0006922841421328485,
+      "ic_nudge_band": 5.8678691857494414e-05,
+      "stable": true
+    },
+    {
+      "scene": "dam",
+      "material": "elastic",
+      "oracle_vs_canonical": 7.954711327329278e-05,
+      "ic_nudge_band": 2.835757300090336e-07,
+      "stable": true
+    },
+    {
+      "scene": "dam",
+      "material": "snow",
+      "oracle_vs_canonical": 0.019362222403287888,
+      "ic_nudge_band": 0.0028106365352869034,
+      "stable": true
+    },
+    {
+      "scene": "dam",
+      "material": "sand",
+      "oracle_vs_canonical": 0.002146987710148096,
+      "ic_nudge_band": 0.00012126194633310661,
+      "stable": true
+    },
+    {
+      "scene": "slam",
+      "material": "fluid",
+      "oracle_vs_canonical": 0.0455368347465992,
+      "ic_nudge_band": 0.054101813584566116,
+      "stable": true
+    },
+    {
+      "scene": "slam",
+      "material": "elastic",
+      "oracle_vs_canonical": 0.00011117499525425956,
+      "ic_nudge_band": 1.2230494576215278e-05,
+      "stable": true
+    },
+    {
+      "scene": "slam",
+      "material": "snow",
+      "oracle_vs_canonical": 0.00015838681429158896,
+      "ic_nudge_band": 1.511328446213156e-05,
+      "stable": true
+    },
+    {
+      "scene": "slam",
+      "material": "sand",
+      "oracle_vs_canonical": 0.000509444042108953,
+      "ic_nudge_band": 0.0002445717400405556,
+      "stable": true
+    },
+    {
+      "scene": "mixed4",
+      "material": "all",
+      "oracle_vs_canonical": 0.0008846962591633201,
+      "ic_nudge_band": 0.00026247670757584274,
+      "stable": true
+    }
+  ],
+  "all_pass": true
+}

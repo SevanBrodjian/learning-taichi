@@ -1,0 +1,31 @@
+{
+ "ic_file": "ic_mixed4.f32",
+ "mat_file": "mat_mixed4.i32",
+ "host_nn_file": "host_nn_mixed4.f32",
+ "host_analytic_file": "host_analytic_mixed4.f32",
+ "n": 8192,
+ "n_frames": 30,
+ "T": 0.9,
+ "dt": 5e-05,
+ "pVol": 2.7008056640625e-05,
+ "groups": [
+  {
+   "material": "fluid",
+   "n": 2048
+  },
+  {
+   "material": "elastic",
+   "n": 2048
+  },
+  {
+   "material": "snow",
+   "n": 2048
+  },
+  {
+   "material": "sand",
+   "n": 2048
+  }
+ ],
+ "host_stable": true,
+ "host_analytic_stable": true
+}

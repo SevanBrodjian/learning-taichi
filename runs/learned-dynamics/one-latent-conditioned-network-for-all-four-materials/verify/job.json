@@ -1,0 +1,103 @@
+{
+ "id": "t028-trained",
+ "phase": "trained",
+ "dt": 5e-05,
+ "n": 8192,
+ "widths": [
+  64
+ ],
+ "f16_widths": [],
+ "storage_widths": [],
+ "dyn_widths": [],
+ "timing_substeps": 128,
+ "reps": 7,
+ "n_sweep": [],
+ "n_sweep_variants": [],
+ "batch_variants": [],
+ "batch_sizes": [
+  1,
+  4,
+  16,
+  64,
+  256
+ ],
+ "physics_version": "phys-c518316a4a05",
+ "refs": [
+  {
+   "material": "fluid",
+   "ic_file": "ic_fluid.f32",
+   "traj_file": "ref_fluid.f32",
+   "n": 2048,
+   "n_frames": 40,
+   "T": 1.0,
+   "stable": true,
+   "ic_nudge_band": 0.002139042131602764
+  },
+  {
+   "material": "elastic",
+   "ic_file": "ic_elastic.f32",
+   "traj_file": "ref_elastic.f32",
+   "n": 2048,
+   "n_frames": 40,
+   "T": 1.0,
+   "stable": true,
+   "ic_nudge_band": 1.506885928392876e-05
+  },
+  {
+   "material": "snow",
+   "ic_file": "ic_snow.f32",
+   "traj_file": "ref_snow.f32",
+   "n": 2048,
+   "n_frames": 40,
+   "T": 1.0,
+   "stable": true,
+   "ic_nudge_band": 2.3573204089188948e-05
+  },
+  {
+   "material": "sand",
+   "ic_file": "ic_sand.f32",
+   "traj_file": "ref_sand.f32",
+   "n": 2048,
+   "n_frames": 40,
+   "T": 1.0,
+   "stable": true,
+   "ic_nudge_band": 3.248402936151251e-05
+  }
+ ],
+ "trained": {
+  "hidden": 64,
+  "weights_file": "weights.f32",
+  "probe_in_file": "probe_in.f32",
+  "rollout": {
+   "ic_file": "ic_mixed4.f32",
+   "mat_file": "mat_mixed4.i32",
+   "host_nn_file": "host_nn_mixed4.f32",
+   "host_analytic_file": "host_analytic_mixed4.f32",
+   "n": 8192,
+   "n_frames": 30,
+   "T": 0.9,
+   "dt": 5e-05,
+   "pVol": 2.7008056640625e-05,
+   "groups": [
+    {
+     "material": "fluid",
+     "n": 2048
+    },
+    {
+     "material": "elastic",
+     "n": 2048
+    },
+    {
+     "material": "snow",
+     "n": 2048
+    },
+    {
+     "material": "sand",
+     "n": 2048
+    }
+   ],
+   "host_stable": true,
+   "host_analytic_stable": true
+  }
+ }
+}

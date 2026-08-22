@@ -215,3 +215,13 @@ byte-for-byte identical at all five viewports; snow, sand, rubber and `sim/physi
 Honest consequence, found by driving the real page rather than by reasoning: option B makes shallow
 water nearly invisible. That is what the treatment is, not a defect in the port, and it is the
 user's call whether to accept it. In section 4 of the task page and in limitations.
+
+## T-028 one-latent-conditioned-network-for-all-four-materials (worker)
+Two independent questions, both answered. COST: one latent-conditioned constitutive net fused into
+G2P on WebGPU is free up to width 16 at a quarter of an RTX 4090, because the analytic four-material
+law it replaces (SVD + Drucker-Prager + logs/exps) already costs 12.16 us/substep. The width cliff is
+the shader compiler abandoning loop unrolling between width 88 and 92, proven with an un-unrollable
+control. CAPACITY: no. Held-out one-step error bottoms out at 0.10-0.25 of each material's own spread
+and every material scatters into a gas over a full rollout; 10 of 21 runnable golden signatures pass.
+Gated the reparameterised step against canonical first (21/21 signatures, 5e-12 step-level agreement).
+Left on disk, uncommitted.

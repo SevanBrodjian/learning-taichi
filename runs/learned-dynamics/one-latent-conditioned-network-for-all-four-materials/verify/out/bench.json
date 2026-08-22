@@ -1,0 +1,464 @@
+{
+ "job_id": "t028-trained",
+ "started": 1787387909562,
+ "phase": "trained",
+ "device": {
+  "vendor": "nvidia",
+  "architecture": "lovelace",
+  "device": "",
+  "description": "",
+  "timestampQuery": true,
+  "shaderF16": true,
+  "limits": {
+   "maxStorageBuffersPerShaderStage": 16,
+   "maxUniformBufferBindingSize": 65536,
+   "maxStorageBufferBindingSize": 2147483644,
+   "maxBufferSize": 2147483648,
+   "maxComputeInvocationsPerWorkgroup": 1024
+  }
+ },
+ "params": {
+  "dim": 2,
+  "n_grid": 128,
+  "dx": 0.0078125,
+  "inv_dx": 128,
+  "p_rho": 1,
+  "gravity": 9.8,
+  "bound": 3,
+  "floor_y": 0.0234375,
+  "NU": 0.2,
+  "FRICTION": 0.5,
+  "MAX_P": 16384,
+  "materials": {
+   "fluid": {
+    "id": 0,
+    "E": 900,
+    "dt": 0.00005,
+    "xi": 0,
+    "tc": 0,
+    "ts": 0,
+    "phi": 0,
+    "alpha": 0,
+    "nu": 0.2,
+    "rho": 1,
+    "fric": 0,
+    "mu": 375,
+    "la": 250,
+    "color": "#4db6ff"
+   },
+   "elastic": {
+    "id": 1,
+    "E": 580,
+    "dt": 0.00005,
+    "xi": 0,
+    "tc": 0,
+    "ts": 0,
+    "phi": 0,
+    "alpha": 0,
+    "nu": 0.45,
+    "rho": 1.2,
+    "fric": 0.5,
+    "mu": 200,
+    "la": 1800.0000000000005,
+    "color": "#ff9d5c"
+   },
+   "snow": {
+    "id": 2,
+    "E": 45,
+    "dt": 0.00005,
+    "xi": 10,
+    "tc": 0.025,
+    "ts": 0.0075,
+    "phi": 0,
+    "alpha": 0,
+    "nu": 0.2,
+    "rho": 0.3,
+    "fric": 0.5,
+    "mu": 18.75,
+    "la": 12.5,
+    "color": "#e6ecff"
+   },
+   "sand": {
+    "id": 3,
+    "E": 480,
+    "dt": 0.0001,
+    "xi": 0,
+    "tc": 0,
+    "ts": 0,
+    "phi": 50,
+    "alpha": 0.5599687663604146,
+    "nu": 0.2,
+    "rho": 1.6,
+    "fric": 0.5,
+    "mu": 200,
+    "la": 133.33333333333334,
+    "color": "#ffd24d"
+   }
+  },
+  "mat_order": [
+   "fluid",
+   "elastic",
+   "snow",
+   "sand"
+  ],
+  "mat_id": {
+   "fluid": 0,
+   "elastic": 1,
+   "snow": 2,
+   "sand": 3
+  },
+  "kM": 24,
+  "kV": 22,
+  "physics_version": "phys-c518316a4a05",
+  "source": "sim.physics (MAT with per-material nu/rho/fric, MAT_ID, dp_alpha, world constants)"
+ },
+ "net_shape": {
+  "z_dim": 4,
+  "n_feat": 10,
+  "n_in": 14,
+  "n_in_pad": 16,
+  "n_out": 7,
+  "n_out_pad": 8,
+  "feat_names": [
+   "S00",
+   "S01",
+   "S11",
+   "C00",
+   "C01",
+   "C10",
+   "C11",
+   "vx",
+   "vy",
+   "Jp",
+   "z0",
+   "z1",
+   "z2",
+   "z3"
+  ],
+  "out_names": [
+   "tau00",
+   "tau01",
+   "tau11",
+   "dS00",
+   "dS01",
+   "dS11",
+   "dJp"
+  ],
+  "z_codes": [
+   [
+    0.8660253882408142,
+    -0.28867512941360474,
+    -0.28867512941360474,
+    -0.28867512941360474
+   ],
+   [
+    -0.28867512941360474,
+    0.8660253882408142,
+    -0.28867512941360474,
+    -0.28867512941360474
+   ],
+   [
+    -0.28867512941360474,
+    -0.28867512941360474,
+    0.8660253882408142,
+    -0.28867512941360474
+   ],
+   [
+    -0.28867512941360474,
+    -0.28867512941360474,
+    -0.28867512941360474,
+    0.8660253882408142
+   ]
+  ],
+  "z_sep": 1.6329931020736694,
+  "z_jitter": 0.19595917224884032
+ },
+ "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 Edg/151.0.0.0",
+ "storage_variant_available": true,
+ "build_errors": [],
+ "wgsl_sample": {
+  "analytic": 12011,
+  "nn32": null
+ },
+ "timestamp_probe": {
+  "rows": [
+   {
+    "substeps": 1,
+    "ns": [
+     637120,
+     78848,
+     77824,
+     77824,
+     77824,
+     76800
+    ]
+   },
+   {
+    "substeps": 2,
+    "ns": [
+     145408,
+     146432,
+     145408,
+     146432,
+     145408,
+     146432
+    ]
+   },
+   {
+    "substeps": 4,
+    "ns": [
+     282624,
+     283648,
+     284672,
+     284672,
+     283648,
+     285696
+    ]
+   },
+   {
+    "substeps": 8,
+    "ns": [
+     561152,
+     1672192,
+     563200,
+     1741824,
+     564224,
+     565248
+    ]
+   },
+   {
+    "substeps": 16,
+    "ns": [
+     2304000,
+     1125376,
+     2297856,
+     1126400,
+     1123328,
+     2240512
+    ]
+   },
+   {
+    "substeps": 32,
+    "ns": [
+     3417088,
+     2236416,
+     3366912,
+     4545536,
+     4535296,
+     4545536
+    ]
+   },
+   {
+    "substeps": 64,
+    "ns": [
+     6777856,
+     6777856,
+     6767616,
+     5641216,
+     4708352,
+     4045824
+    ]
+   },
+   {
+    "substeps": 128,
+    "ns": [
+     8115200,
+     8132608,
+     9057280,
+     8527872,
+     8139776,
+     8169472
+    ]
+   }
+  ],
+  "apparent_quantum_ns": 64
+ },
+ "dispatch_floor": [
+  {
+   "dispatches": 8,
+   "gpu_ns": 8192,
+   "ns_per_dispatch": 1024
+  },
+  {
+   "dispatches": 32,
+   "gpu_ns": 28672,
+   "ns_per_dispatch": 896
+  },
+  {
+   "dispatches": 128,
+   "gpu_ns": 110592,
+   "ns_per_dispatch": 864
+  },
+  {
+   "dispatches": 256,
+   "gpu_ns": 220160,
+   "ns_per_dispatch": 860
+  }
+ ],
+ "motion": [
+  {
+   "variant": "analytic",
+   "moved_mean": 0.005046881452287195,
+   "finite": true,
+   "pass": true
+  },
+  {
+   "variant": "nn64",
+   "moved_mean": 0.009717080082999506,
+   "finite": true,
+   "pass": true
+  }
+ ],
+ "analytic_port": [
+  {
+   "material": "fluid",
+   "finite": true,
+   "traj_rmse_vs_canonical": 0.0018829508690581223,
+   "ic_nudge_band": 0.002139042131602764,
+   "final_spread_wgsl": 0.9472166113555431,
+   "final_spread_canonical": 0.9472073968499899,
+   "n": 2048,
+   "frames": 40,
+   "substeps_per_frame": 500
+  },
+  {
+   "material": "elastic",
+   "finite": true,
+   "traj_rmse_vs_canonical": 0.00002196633608223396,
+   "ic_nudge_band": 0.00001506885928392876,
+   "final_spread_wgsl": 0.22593998908996582,
+   "final_spread_canonical": 0.2259669005870819,
+   "n": 2048,
+   "frames": 40,
+   "substeps_per_frame": 500
+  },
+  {
+   "material": "snow",
+   "finite": true,
+   "traj_rmse_vs_canonical": 0.00003872995926221301,
+   "ic_nudge_band": 0.000023573204089188948,
+   "final_spread_wgsl": 0.46475106477737427,
+   "final_spread_canonical": 0.46482107043266296,
+   "n": 2048,
+   "frames": 40,
+   "substeps_per_frame": 500
+  },
+  {
+   "material": "sand",
+   "finite": true,
+   "traj_rmse_vs_canonical": 0.00003214534695154,
+   "ic_nudge_band": 0.00003248402936151251,
+   "final_spread_wgsl": 0.7109013646841049,
+   "final_spread_canonical": 0.7111782729625702,
+   "n": 2048,
+   "frames": 40,
+   "substeps_per_frame": 500
+  }
+ ],
+ "width_sweep": [
+  {
+   "variant": "analytic",
+   "mode": "analytic",
+   "hidden": 0,
+   "f16": false,
+   "weights": "n/a",
+   "us_per_substep_full": 12.128,
+   "us_per_substep_g2p": 2.736,
+   "us_per_substep_pg": 9.424,
+   "full_ns_raw": [
+    1553408,
+    1552384,
+    1554432,
+    1553408,
+    1552384,
+    1552384,
+    1552384
+   ],
+   "g2p_ns_raw": [
+    350208,
+    350208,
+    351232,
+    350208,
+    350208,
+    351232,
+    350208
+   ],
+   "pg_ns_raw": [
+    1206272,
+    1207296,
+    1210368,
+    1212416,
+    1580032,
+    1210368,
+    1211392
+   ],
+   "full_spread_pct": 0,
+   "g2p_spread_pct": 0,
+   "fits_full_gpu": true,
+   "fits_quarter_gpu": true
+  },
+  {
+   "variant": "nn64",
+   "mode": "nn",
+   "hidden": 64,
+   "f16": false,
+   "weights": "uniform",
+   "us_per_substep_full": 15.768,
+   "us_per_substep_g2p": 6.368,
+   "us_per_substep_pg": 9.432,
+   "full_ns_raw": [
+    2254848,
+    2018304,
+    2019328,
+    2483200,
+    2019328,
+    2383648,
+    2018304
+   ],
+   "g2p_ns_raw": [
+    817152,
+    816128,
+    1056768,
+    816128,
+    1184768,
+    815104,
+    817152
+   ],
+   "pg_ns_raw": [
+    1575936,
+    1208320,
+    1207296,
+    1207296,
+    1207296,
+    1571840,
+    1207296
+   ],
+   "full_spread_pct": 0.050735667174023336,
+   "g2p_spread_pct": 0.25125628140703515,
+   "fits_full_gpu": true,
+   "fits_quarter_gpu": false
+  }
+ ],
+ "control_pg_drift_pct": 0.08488964346350696,
+ "n_sweep": [],
+ "batching": [],
+ "trained": {
+  "rollout": {
+   "hidden": 64,
+   "n": 8192,
+   "frames": 30,
+   "finite": true,
+   "substeps_per_frame": 600
+  },
+  "cost_us_trained": 15.784,
+  "cost_us_random": 15.768,
+  "cost_ratio": 1.0010147133434806
+ },
+ "budget": {
+  "dt": 0.00005,
+  "us_per_substep_full_gpu": 50,
+  "us_per_substep_quarter_gpu": 12.5
+ },
+ "webgpu_errors": [],
+ "finished": 1787387918410
+}

@@ -1,154 +1,159 @@
 {
- "title": "Differentiable MPM — a ground-up textbook",
- "intro": "The teaching companion to the DiffMPM work, written to be read in order. Motivation frames why differentiable physics matters, with no equations. Prerequisites build the math and the simulation mental model from zero; skim them once you have them. Core is the spine: the forward engine, how gradients flow through a rollout and how to verify one, what breaks, how materials enter the solver, what happens when you try to learn them, and finally how any of it gets drawn. Task runs link into these pages rather than restating them.",
- "groups": [
-  {
-   "id": "motivation",
-   "title": "Motivation & Background",
-   "sections": [
+  "title": "Differentiable MPM — a ground-up textbook",
+  "intro": "The teaching companion to the DiffMPM work, written to be read in order. Motivation frames why differentiable physics matters, with no equations. Prerequisites build the math and the simulation mental model from zero; skim them once you have them. Core is the spine: the forward engine, how gradients flow through a rollout and how to verify one, what breaks, how materials enter the solver, what happens when you try to learn them, and finally how any of it gets drawn. Task runs link into these pages rather than restating them.",
+  "groups": [
     {
-     "id": "why-differentiable-physics",
-     "title": "Why differentiable physics",
-     "file": "motivation/01-why-differentiable-physics.md"
+      "id": "motivation",
+      "title": "Motivation & Background",
+      "sections": [
+        {
+          "id": "why-differentiable-physics",
+          "title": "Why differentiable physics",
+          "file": "motivation/01-why-differentiable-physics.md"
+        },
+        {
+          "id": "where-mpm-sits",
+          "title": "Where MPM sits",
+          "file": "motivation/02-where-mpm-sits.md"
+        }
+      ]
     },
     {
-     "id": "where-mpm-sits",
-     "title": "Where MPM sits",
-     "file": "motivation/02-where-mpm-sits.md"
+      "id": "prerequisites",
+      "title": "Prerequisites (skim as needed)",
+      "sections": [
+        {
+          "id": "mpm-in-context",
+          "title": "MPM in context",
+          "file": "prerequisites/01-mpm-in-context.md"
+        },
+        {
+          "id": "linear-algebra",
+          "title": "Linear algebra for MPM",
+          "file": "prerequisites/02-linear-algebra.md"
+        },
+        {
+          "id": "svd-polar",
+          "title": "SVD and polar decomposition",
+          "file": "prerequisites/03-svd-polar.md"
+        },
+        {
+          "id": "math-toolkit",
+          "title": "Math toolkit",
+          "file": "prerequisites/04-math-toolkit.md"
+        },
+        {
+          "id": "vector-calculus",
+          "title": "Vector calculus on a grid: gradient, divergence, curvature",
+          "file": "prerequisites/05-vector-calculus.md"
+        },
+        {
+          "id": "filters-and-samples",
+          "title": "Filters and point samples: convolution, separability, sampling noise",
+          "file": "prerequisites/06-filters-and-samples.md"
+        }
+      ]
+    },
+    {
+      "id": "core",
+      "title": "Core",
+      "sections": [
+        {
+          "id": "mls-mpm-forward",
+          "title": "The MLS-MPM forward step",
+          "file": "core/01-mls-mpm-forward.md"
+        },
+        {
+          "id": "differentiating-the-rollout",
+          "title": "Differentiating the rollout",
+          "file": "core/02-differentiating-the-rollout.md"
+        },
+        {
+          "id": "failure-modes",
+          "title": "Failure modes",
+          "file": "core/03-failure-modes.md"
+        },
+        {
+          "id": "constitutive-models",
+          "title": "Constitutive models: the stress slot and the gradient",
+          "file": "core/04-constitutive-models.md"
+        },
+        {
+          "id": "material-stiffness",
+          "title": "Material dials: stiffness E, incompressibility nu, density rho",
+          "file": "core/05-material-stiffness.md"
+        },
+        {
+          "id": "material-showcase",
+          "title": "Four materials, one solver: fluid, elastic, snow, sand",
+          "file": "core/06-material-showcase.md"
+        },
+        {
+          "id": "differentiable-materials",
+          "title": "Differentiable materials: finite vs meaningful gradients",
+          "file": "core/07-differentiable-materials.md"
+        },
+        {
+          "id": "viscosity",
+          "title": "Viscosity: resistance to the rate of shear",
+          "file": "core/08-viscosity.md"
+        },
+        {
+          "id": "surface-tension",
+          "title": "Surface tension: the force that minimizes the interface",
+          "file": "core/09-surface-tension.md"
+        },
+        {
+          "id": "hybrid-learned-residual",
+          "title": "Hybrid simulation: a learned residual inside the step",
+          "file": "core/10-hybrid-learned-residual.md"
+        },
+        {
+          "id": "learned-materials",
+          "title": "Learned materials: building a continuous material dial",
+          "file": "core/11-learned-materials.md"
+        },
+        {
+          "id": "fluid-rendering",
+          "title": "Rendering the MPM fluid: particles to a believable liquid",
+          "file": "core/12-fluid-rendering.md"
+        },
+        {
+          "id": "fluid-color-mixing",
+          "title": "Two liquids in one solver: advecting a color",
+          "file": "core/13-fluid-color-mixing.md"
+        },
+        {
+          "id": "real-time-cost",
+          "title": "What a real-time step costs",
+          "file": "core/14-real-time-cost.md"
+        },
+        {
+          "id": "fixed-point-atomics",
+          "title": "Scattering floats without an atomic float add",
+          "file": "core/15-fixed-point-atomics.md"
+        },
+        {
+          "id": "svd-in-practice",
+          "title": "Computing the 2x2 SVD, and proving it before trusting it",
+          "file": "core/16-svd-in-practice.md"
+        },
+        {
+          "id": "material-appearance",
+          "title": "Four materials, one shader: reconstruction is what makes them different",
+          "file": "core/17-material-appearance.md"
+        },
+        {
+          "id": "scattering-material-properties",
+          "title": "Scattering a material property to a shared grid",
+          "file": "core/18-scattering-material-properties.md"
+        },
+        {
+          "id": "networks-inside-a-kernel",
+          "title": "Putting a network inside a simulation kernel",
+          "file": "core/19-networks-inside-a-kernel.md"
+        }
+      ]
     }
-   ]
-  },
-  {
-   "id": "prerequisites",
-   "title": "Prerequisites (skim as needed)",
-   "sections": [
-    {
-     "id": "mpm-in-context",
-     "title": "MPM in context",
-     "file": "prerequisites/01-mpm-in-context.md"
-    },
-    {
-     "id": "linear-algebra",
-     "title": "Linear algebra for MPM",
-     "file": "prerequisites/02-linear-algebra.md"
-    },
-    {
-     "id": "svd-polar",
-     "title": "SVD and polar decomposition",
-     "file": "prerequisites/03-svd-polar.md"
-    },
-    {
-     "id": "math-toolkit",
-     "title": "Math toolkit",
-     "file": "prerequisites/04-math-toolkit.md"
-    },
-    {
-     "id": "vector-calculus",
-     "title": "Vector calculus on a grid: gradient, divergence, curvature",
-     "file": "prerequisites/05-vector-calculus.md"
-    },
-    {
-     "id": "filters-and-samples",
-     "title": "Filters and point samples: convolution, separability, sampling noise",
-     "file": "prerequisites/06-filters-and-samples.md"
-    }
-   ]
-  },
-  {
-   "id": "core",
-   "title": "Core",
-   "sections": [
-    {
-     "id": "mls-mpm-forward",
-     "title": "The MLS-MPM forward step",
-     "file": "core/01-mls-mpm-forward.md"
-    },
-    {
-     "id": "differentiating-the-rollout",
-     "title": "Differentiating the rollout",
-     "file": "core/02-differentiating-the-rollout.md"
-    },
-    {
-     "id": "failure-modes",
-     "title": "Failure modes",
-     "file": "core/03-failure-modes.md"
-    },
-    {
-     "id": "constitutive-models",
-     "title": "Constitutive models: the stress slot and the gradient",
-     "file": "core/04-constitutive-models.md"
-    },
-    {
-     "id": "material-stiffness",
-     "title": "Material dials: stiffness E, incompressibility nu, density rho",
-     "file": "core/05-material-stiffness.md"
-    },
-    {
-     "id": "material-showcase",
-     "title": "Four materials, one solver: fluid, elastic, snow, sand",
-     "file": "core/06-material-showcase.md"
-    },
-    {
-     "id": "differentiable-materials",
-     "title": "Differentiable materials: finite vs meaningful gradients",
-     "file": "core/07-differentiable-materials.md"
-    },
-    {
-     "id": "viscosity",
-     "title": "Viscosity: resistance to the rate of shear",
-     "file": "core/08-viscosity.md"
-    },
-    {
-     "id": "surface-tension",
-     "title": "Surface tension: the force that minimizes the interface",
-     "file": "core/09-surface-tension.md"
-    },
-    {
-     "id": "hybrid-learned-residual",
-     "title": "Hybrid simulation: a learned residual inside the step",
-     "file": "core/10-hybrid-learned-residual.md"
-    },
-    {
-     "id": "learned-materials",
-     "title": "Learned materials: building a continuous material dial",
-     "file": "core/11-learned-materials.md"
-    },
-    {
-     "id": "fluid-rendering",
-     "title": "Rendering the MPM fluid: particles to a believable liquid",
-     "file": "core/12-fluid-rendering.md"
-    },
-    {
-     "id": "fluid-color-mixing",
-     "title": "Two liquids in one solver: advecting a color",
-     "file": "core/13-fluid-color-mixing.md"
-    },
-    {
-     "id": "real-time-cost",
-     "title": "What a real-time step costs",
-     "file": "core/14-real-time-cost.md"
-    },
-    {
-     "id": "fixed-point-atomics",
-     "title": "Scattering floats without an atomic float add",
-     "file": "core/15-fixed-point-atomics.md"
-    },
-    {
-     "id": "svd-in-practice",
-     "title": "Computing the 2x2 SVD, and proving it before trusting it",
-     "file": "core/16-svd-in-practice.md"
-    },
-    {
-     "id": "material-appearance",
-     "title": "Four materials, one shader: reconstruction is what makes them different",
-     "file": "core/17-material-appearance.md"
-    },
-    {
-     "id": "scattering-material-properties",
-     "title": "Scattering a material property to a shared grid",
-     "file": "core/18-scattering-material-properties.md"
-    }
-   ]
-  }
- ]
+  ]
 }

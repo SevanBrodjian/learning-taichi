@@ -855,3 +855,16 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); -web
   border: 1px solid var(--border); white-space: nowrap; }
 .rev-running { color: #7fd8f0; border-color: #17323f; background: #0f2230; }
 .rev-awaiting-review { color: #ffd24d; border-color: #4a3c12; background: #2a2410; }
+
+/* Tags on the task page, editable at any status. */
+.task-tags { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; position: relative; }
+.task-tag { font-size: 10.5px; letter-spacing: .03em; padding: 2px 8px; border-radius: 999px;
+  color: var(--tc); border: 1px solid color-mix(in srgb, var(--tc) 45%, transparent);
+  background: color-mix(in srgb, var(--tc) 12%, transparent); }
+.task-tag-edit { font-size: 10.5px; padding: 2px 8px; border-radius: 999px; cursor: pointer;
+  background: transparent; border: 1px dashed var(--border); color: var(--muted); }
+.task-tag-edit:hover { color: var(--text); border-color: var(--accent); }
+.task-tag-pop { position: absolute; top: 100%; left: 0; margin-top: 6px; z-index: 30;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.55); display: flex; flex-direction: column; gap: 8px;
+  min-width: 300px; }

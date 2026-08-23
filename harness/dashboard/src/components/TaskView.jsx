@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { fetchTask, fetchJSON, fetchText, fetchTraining, fetchOverview, setTaskStatus, deleteTask, proposeFollowUp, fetchDefinitions, addTaskNote, deleteTaskNote } from "../api.js";
+import { setTaskTags, fetchTask, fetchJSON, fetchText, fetchTraining, fetchOverview, setTaskStatus, deleteTask, proposeFollowUp, fetchDefinitions, addTaskNote, deleteTaskNote } from "../api.js";
 import LossChart from "./LossChart.jsx";
 import MarkdownReport from "./MarkdownReport.jsx";
 import VideoPlayer from "./VideoPlayer.jsx";
 import LiveLine from "./LiveLine.jsx";
+import TagPicker from "./TagPicker.jsx";
 
 // The four canonical tags (spec/registry). Directions are no longer user-facing anywhere.
 const GRAPH_TAGS = ["gradients", "materials", "learned", "rendering", "demo"];
@@ -259,8 +260,48 @@ function TaskRef({ r, onOpenRef }) {
   );
 }
 
+
+// Tags on the task page, editable at ANY status. They are how the board is navigated now (the Tasks
+// list and the Map both filter by them), and a FINISHED task is often exactly when you know what it
+// should have been filed under -- so this is deliberately not gated on the task still being open.
+function TaskTags({ task, options, onChange, onTagCreated }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const tags = task.tags || [];
+
+  const save = async (next) => {
+    setBusy(true);
+    try {
+      // The DETAIL object carries `task_id`, not `id` (it is the manifest, not the board entry).
+      // Posting task.id sent `undefined` and the save failed silently.
+      await setTaskTags(task.direction, task.task_id || task.id, next);
+      onChange && onChange();
+    } finally { setBusy(false); }
+  };
+
+  const colour = (n) => (options || []).find((o) => o.name === n)?.color || "#7f8ea3";
+
+  return (
+    <span className="task-tags">
+      {tags.map((t) => (
+        <span key={t} className="task-tag" style={{ "--tc": colour(t) }}>{t}</span>
+      ))}
+      <button className="task-tag-edit" disabled={busy} onClick={() => setOpen((o) => !o)}
+              title="Edit this task's tags">
+        {tags.length ? "edit tags" : "+ tags"}
+      </button>
+      {open && (
+        <span className="task-tag-pop" onClick={(e) => e.stopPropagation()}>
+          <TagPicker options={options || []} value={tags} onChange={save} onTagCreated={onTagCreated} />
+          <button className="act-btn" onClick={() => setOpen(false)}>done</button>
+        </span>
+      )}
+    </span>
+  );
+}
+
 export default function TaskView({ detail, reloadToken, onChange, onDeleted, onOpenRef, onOpenTraining,
-                                   onOpenOnMap }) {
+                                   onOpenOnMap, tagOptions, onTagCreated }) {
   const defs = useDefinitions();
   const [task, setTask] = useState(null);
   const [refs, setRefs] = useState([]);
@@ -385,6 +426,7 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
       <div className="task-head">
         <div className="task-head-title">
           {task.ref && <span className="task-handle" title="Permanent reference for this task">{task.ref}</span>}
+          <TaskTags task={task} options={tagOptions} onChange={onChange} onTagCreated={onTagCreated} />
           <h1>{task.title}</h1>
           <span className={`status status-${isDone ? "done" : "active"}`}>{isDone ? "Done" : "Active"}</span>
           {task.review_state && task.review_state !== "reviewed" && (

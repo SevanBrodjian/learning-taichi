@@ -542,6 +542,10 @@ def task_detail(direction: str, task: str) -> dict | None:
             # The permanent handle + date, so the task PAGE can show them too (the overview's copy
             # is a separate code path and adding it there did not reach here).
             m["ref"] = this.get("ref")
+            # Tags too. The task page can EDIT these, and serving them empty would make the picker
+            # open with nothing selected -- so the first save would silently wipe the real tags.
+            m["tags"] = this.get("tags", [])
+            m["review_state"] = this.get("review_state")
             m["created"] = this.get("created") or info.get("created") or m.get("created")
             m["effort"] = this.get("effort", "standard")
             m["budget_minutes"] = this.get("budget_minutes") or default_budget(this.get("effort", "standard"))

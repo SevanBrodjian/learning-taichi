@@ -131,3 +131,9 @@ export const deleteTaskNote = (direction, task, ts) =>
 export const fetchTags = () => get("/api/tags", "json");
 export const createTag = (name, color) =>
   post("/api/tag-create", { name, color });
+
+// Set a task's tags. Tags are how the board is navigated (the Tasks list and the Map both filter by
+// them), so this is available at any status -- a finished task is often exactly when you know what it
+// should have been filed under.
+export const setTaskTags = (direction, task, tags) =>
+  post("/api/task-tags", { direction, task, tags });

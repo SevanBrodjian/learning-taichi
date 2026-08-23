@@ -40,6 +40,9 @@ import './mpm4.js';
   var LABEL = { fluid: 'WATER', elastic: 'RUBBER', snow: 'SNOW', sand: 'SAND' };
   var TOOLS = ['fluid', 'elastic', 'snow', 'sand', 'grab', 'erase'];
   var CAP = 16384;                  // measured: 5.25 ms of compute per real-time frame at 333 substeps
+  var HARD_CAP = 65536;             // buffers are sized for this once; the ceiling slider moves
+                                    // within it, so the limit can be pushed past comfortable and
+                                    // watched to fall over. Past CAP is deliberately unsupported.
   // ONE particle density for the whole domain, so a single global p_vol is exact. The value is the
   // one the four-material verification scene ran at (500 particles in a disc of radius 0.075), i.e.
   // ~1.7 particles per grid cell -- deliberately taken from a scene that was measured against
@@ -83,6 +86,11 @@ import './mpm4.js';
       '<button data-view="pts">particles</button></div>' +
       '<div class="note">Everything is really carried by the <b>grid</b> in the middle view — the ' +
       'particles only remember where the material is.</div></div>' +
+      '<div class="grp"><div class="lbl">ceiling</div><div class="row">' +
+      '<input type="range" min="2048" max="' + HARD_CAP + '" step="2048" value="' + CAP + '" data-k="cap">' +
+      '<span class="val" data-k="capv">' + CAP.toLocaleString() + '</span></div>' +
+      '<div class="note">How many particles may exist. Past <b>' + CAP.toLocaleString() + '</b> the frame ' +
+      'stops keeping up — that is the point, drag it and watch the speed readout fall.</div></div>' +
       '<div class="grp"><div class="lbl">speed</div><div class="row">' +
       '<input type="range" min="10" max="150" step="5" value="100" data-k="speed">' +
       '<span class="val" data-k="speedv">1.00&times;</span></div>' +
@@ -100,7 +108,7 @@ import './mpm4.js';
     host.innerHTML = markup();
     var q = function (s) { return host.querySelector(s); };
     var canvas = q('canvas');
-    var state = { tool: 'fluid', view: 'blob', speed: 1.0, running: true };
+    var state = { tool: 'fluid', view: 'blob', speed: 1.0, running: true, cap: CAP };
     var sim = null, ren = null, raf = 0, stopped = false;
     var counts = { fluid: 0, elastic: 0, snow: 0, sand: 0 };
     var dt = M.MAT.elastic.dt, spfFull = 167, spf = 167;
@@ -180,6 +188,12 @@ import './mpm4.js';
       if (!sim) return;
       var s = toSim(ev);
       ptr.down = true; ptr.x = s.x; ptr.y = s.y; ptr.t = performance.now(); ptr.poured = 0;
+      if (state.tool === 'erase') {
+        // The eraser kernel deletes around poke.x/poke.y, so that position has to be CURRENT even
+        // though no push force is wanted -- poke.on stays false. Without this it erased around a
+        // stale point and appeared to do nothing.
+        sim.poke.x = s.x; sim.poke.y = s.y; sim.syncUniform();
+      }
       if (state.tool === 'grab') {
         sim.poke.on = true; sim.poke.x = s.x; sim.poke.y = s.y; sim.poke.vx = 0; sim.poke.vy = 0;
         sim.syncUniform();
@@ -191,6 +205,7 @@ import './mpm4.js';
       if (!ptr.down || !sim) return;
       var s = toSim(ev), now = performance.now();
       var dtms = Math.max(8, now - ptr.t);
+      if (state.tool === 'erase') { sim.poke.x = s.x; sim.poke.y = s.y; sim.syncUniform(); }
       if (state.tool === 'grab') {
         var vx = (s.x - ptr.x) / (dtms / 1000), vy = (s.y - ptr.y) / (dtms / 1000);
         sim.poke.vx = 0.6 * sim.poke.vx + 0.4 * Math.max(-6, Math.min(6, vx));
@@ -239,11 +254,11 @@ import './mpm4.js';
       if (!ptr.down) return;
       if (state.tool === 'erase') { ptr.erased = true; return; }
       if (state.tool === 'grab') return;
-      if (sim.n >= sim.capacity) return;
+      if (sim.n >= state.cap) return;
       // pour a small disc per frame at the cursor, at the ONE global density
       var r = 0.030;
       var k = Math.max(2, Math.round(DENSITY * Math.PI * r * r * 0.34));
-      k = Math.min(k, sim.capacity - sim.n);
+      k = Math.min(k, state.cap - sim.n);
       if (k <= 0) return;
       var pts = M.seedDisk(
         Math.max(P.floor_y + r, Math.min(1 - P.floor_y - r, ptr.x)),
@@ -387,6 +402,17 @@ import './mpm4.js';
       state.speed = Number(sl.value) / 100;
       q('[data-k=speedv]').textContent = state.speed.toFixed(2) + '×';
     });
+    // The ceiling only limits how far `n` may GROW -- lowering it never deletes anything, because
+    // silently destroying material the user poured would be a nasty surprise from a slider.
+    var cs = q('input[data-k=cap]');
+    if (cs) cs.addEventListener('input', function () {
+      state.cap = Number(cs.value) | 0;
+      var el = q('[data-k=capv]');
+      el.textContent = state.cap.toLocaleString() + (state.cap > CAP ? ' ⚠' : '');
+      el.title = state.cap > CAP
+        ? 'Past the measured real-time budget: the frame will fall behind and the speed readout will drop.'
+        : '';
+    });
 
     // ---------------------------------------------------------------- boot
     var api = {
@@ -430,7 +456,7 @@ import './mpm4.js';
     api.ready = (async function () {
       resize();
       sim = await deadline(
-        M.createSim({ capacity: opts.capacity || CAP, dt: M.MAT.elastic.dt, pVol: 1 / DENSITY }),
+        M.createSim({ capacity: opts.capacity || HARD_CAP, dt: M.MAT.elastic.dt, pVol: 1 / DENSITY }),
         9000, 'the browser exposes WebGPU but never returned a device (no usable adapter)');
       ren = await M.createRenderer(canvas, sim);
       useTS = M.hasTimestamp();

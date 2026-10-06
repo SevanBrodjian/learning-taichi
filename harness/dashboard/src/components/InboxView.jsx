@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchDecisions, resolveDecision } from "../api.js";
 import DocView from "./DocView.jsx";
+import { PUBLIC } from "../publicMode.js";
 
 // The I/O channel. Two clean parts: Decisions (things that need you, from coordination/decisions/ —
 // including task CONTRACTS you Approve/Reject before a run spawns) and a live ntfy notification feed.
@@ -29,7 +30,11 @@ export default function InboxView({ notifData }) {
   const notifs = notifData;
 
   // Tick every second so a contract's "auto-runs in M:SS" countdown updates live.
-  useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, []);
+  useEffect(() => {
+    if (PUBLIC) return undefined; // public snapshot: no countdowns, nothing to approve
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const load = () =>
     fetchDecisions()
@@ -97,7 +102,7 @@ export default function InboxView({ notifData }) {
               ))}
             </nav>
             <article className="doc-body">
-              {active && active.kind === "contract" && !active.resolved && (
+              {!PUBLIC && active && active.kind === "contract" && !active.resolved && (
                 <div className="contract-actions">
                   <span className="contract-label">Run this task?</span>
                   {active.auto_run_at && (() => {
@@ -129,6 +134,7 @@ export default function InboxView({ notifData }) {
         )}
       </section>
 
+      {!PUBLIC && (
       <section className="inbox-block inbox-notifs">
         <div className="inbox-head">
           <h2>Notifications</h2>
@@ -160,6 +166,7 @@ export default function InboxView({ notifData }) {
           </div>
         )}
       </section>
+      )}
     </div>
   );
 }

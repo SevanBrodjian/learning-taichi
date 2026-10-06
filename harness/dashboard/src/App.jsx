@@ -8,6 +8,7 @@ import ReportsView from "./components/ReportsView.jsx";
 import InboxView from "./components/InboxView.jsx";
 import DemoView from "./components/DemoView.jsx";
 import NotebookView from "./components/NotebookView.jsx";
+import { PUBLIC, useSnapshotMeta, formatSnapshotDate } from "./publicMode.js";
 
 const SECTIONS = [
   { id: "overview", label: "Overview" },
@@ -19,6 +20,18 @@ const SECTIONS = [
   { id: "inbox", label: "Inbox" },
   { id: "demo", label: "Demo" },
 ];
+
+// Public snapshot: Notebook (Sevan's own scratchpad) and Inbox (approvals + the ntfy feed) are never part
+// of it. Reports and a read-only Decisions list appear only if the export opted into them (snapshot meta).
+const PUBLIC_HIDDEN = new Set(["notebook", "inbox", "reports"]);
+const visibleSections = (meta) => {
+  if (!PUBLIC) return SECTIONS;
+  const views = (meta && meta.views) || {};
+  return SECTIONS
+    .filter((s) => !PUBLIC_HIDDEN.has(s.id) || (s.id === "reports" && views.reports)
+                   || (s.id === "inbox" && views.decisions))
+    .map((s) => (s.id === "inbox" ? { ...s, label: "Decisions" } : s));
+};
 
 // The iPad PWA reloads from scratch when resumed after even a few seconds in the background, so we
 // persist the current place (section, filter, open task) and restore it on load (#12).
@@ -69,6 +82,12 @@ function useMediaQuery(query) {
 export default function App() {
   const [place] = useState(loadPlace); // snapshot once at mount
   const [section, setSection] = useState(place.section || "overview");
+  const snapMeta = useSnapshotMeta();
+  const sections = useMemo(() => visibleSections(snapMeta), [snapMeta]);
+  // A restored place may point at a view this build does not have (e.g. the Notebook, in public mode).
+  useEffect(() => {
+    if (PUBLIC && snapMeta && !sections.some((s) => s.id === section)) setSection("overview");
+  }, [sections, section, snapMeta]);
   const [overview, setOverview] = useState(null);
   const [error, setError] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -105,12 +124,17 @@ export default function App() {
   const reloadAll = () => { reloadOverview(); setReloadToken((k) => k + 1); };
   useEffect(() => {
     reloadOverview();
+    if (PUBLIC) return undefined; // a static snapshot never changes: load once, never poll
     const id = setInterval(() => { if (!document.hidden && !isTyping()) reloadOverview(); }, 4000);
     return () => clearInterval(id);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Badge feeds, refreshed on a slower cadence than the board.
   useEffect(() => {
+    if (PUBLIC) { // no badges, no notification feed, no polling: just the tag colours, once
+      fetchTags().then(setTagReg).catch(() => {});
+      return undefined;
+    }
     const loadBadges = () => {
       fetchTraining().then(setTrainingToc).catch(() => {});
       fetchNotifications().then(setNotifData).catch(() => {});
@@ -205,7 +229,11 @@ export default function App() {
     () => notifList.filter((n) => !seenNotifs.has(n.id)).length,
     [notifList, seenNotifs]
   );
-  const sectionBadge = (id) => (id === "training" ? newTrainingCount : id === "inbox" ? unreadNotifCount : 0);
+  const sectionBadge = (id) =>
+    PUBLIC ? 0 : (id === "training" ? newTrainingCount : id === "inbox" ? unreadNotifCount : 0);
+  // One plain line, public build only.
+  const snapshotLine = PUBLIC && snapMeta && snapMeta.snapshot_date
+    ? `Read-only snapshot · ${formatSnapshotDate(snapMeta.snapshot_date)}` : null;
 
   // Opening the Inbox clears the unread badge (all current notifications become "seen").
   useEffect(() => {
@@ -262,8 +290,8 @@ export default function App() {
         />
       )}
       {section === "reports" && <ReportsView />}
-      {section === "notebook" && <NotebookView />}
-      {section === "inbox" && <InboxView notifData={notifData} />}
+      {!PUBLIC && section === "notebook" && <NotebookView />}
+      {section === "inbox" && (!PUBLIC || snapMeta?.views?.decisions) && <InboxView notifData={notifData} />}
       {section === "demo" && <DemoView />}
     </main>
   );
@@ -335,7 +363,7 @@ export default function App() {
         <header className="mobile-bar">
           <div className="brand"><span className="dot" /> learning-taichi</div>
           <select className="mobile-select" value={section} onChange={(e) => setSection(e.target.value)}>
-            {SECTIONS.map((s) => {
+            {sections.map((s) => {
               const b = sectionBadge(s.id);
               return <option key={s.id} value={s.id}>{s.label}{b > 0 ? ` (${b})` : ""}</option>;
             })}
@@ -352,6 +380,7 @@ export default function App() {
             </select>
           )}
           {error && <div className="error">{error}</div>}
+          {snapshotLine && <div className="snapshot-line">{snapshotLine}</div>}
         </header>
         {mainContent}
       </div>
@@ -365,7 +394,7 @@ export default function App() {
       <header className="tabbar">
         <div className="brand"><span className="dot" /> learning-taichi</div>
         <nav className="tabstrip">
-          {SECTIONS.map((s) => {
+          {sections.map((s) => {
             const b = sectionBadge(s.id);
             return (
               <button
@@ -380,6 +409,7 @@ export default function App() {
           })}
         </nav>
         {error && <div className="error tabbar-error">{error}</div>}
+        {snapshotLine && <div className="snapshot-line">{snapshotLine}</div>}
       </header>
 
       {section === "tasks" ? (

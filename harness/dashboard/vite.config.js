@@ -22,10 +22,29 @@ const API_TARGET = process.env.DASHBOARD_API || "http://localhost:8732";
 // https://<machine>.<tailnet>.ts.net, which is a secure context on every device with no cert to install.
 const ALLOWED_HOSTS = [".ts.net"];
 
-export default defineConfig({
-  plugins: [react()],
-  server: { port: 5174, strictPort: true, host: true, allowedHosts: ALLOWED_HOSTS,
-            proxy: { "/api": { target: API_TARGET, changeOrigin: true } } },
-  preview: { port: 5174, strictPort: true, host: true, allowedHosts: ALLOWED_HOSTS,
-             proxy: { "/api": { target: API_TARGET, changeOrigin: true } } },
+// PUBLIC STATIC EXPORT (`npm run build:public`, i.e. `--mode public`): the read-only build that browses
+// a snapshot written by harness/tools/export_public.py. Relative base so the bundle works under any
+// subpath; no PWA manifest link (it is root-absolute and meaningless off the iPad); no public/ fixtures.
+// Output goes to dist-public/, never to dist/, so the two builds cannot overwrite each other.
+const stripPwaManifest = {
+  name: "strip-pwa-manifest",
+  transformIndexHtml: (html) => html.replace(/\s*<link rel="manifest"[^>]*>/, ""),
+};
+
+export default defineConfig(({ mode }) => {
+  const isPublic = mode === "public" || process.env.VITE_PUBLIC === "1";
+  return {
+    plugins: [react(), ...(isPublic ? [stripPwaManifest] : [])],
+    ...(isPublic
+      ? {
+          base: "./",
+          publicDir: false,
+          build: { outDir: "dist-public", emptyOutDir: true, chunkSizeWarningLimit: 1500 },
+        }
+      : {}),
+    server: { port: 5174, strictPort: true, host: true, allowedHosts: ALLOWED_HOSTS,
+              proxy: { "/api": { target: API_TARGET, changeOrigin: true } } },
+    preview: { port: 5174, strictPort: true, host: true, allowedHosts: ALLOWED_HOSTS,
+               proxy: { "/api": { target: API_TARGET, changeOrigin: true } } },
+  };
 });

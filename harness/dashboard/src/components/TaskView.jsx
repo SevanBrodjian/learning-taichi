@@ -5,6 +5,7 @@ import MarkdownReport from "./MarkdownReport.jsx";
 import VideoPlayer from "./VideoPlayer.jsx";
 import LiveLine from "./LiveLine.jsx";
 import TagPicker from "./TagPicker.jsx";
+import { PUBLIC } from "../publicMode.js";
 
 // The four canonical tags (spec/registry). Directions are no longer user-facing anywhere.
 const GRAPH_TAGS = ["gradients", "materials", "learned", "rendering", "demo"];
@@ -180,6 +181,9 @@ function TaskNotes({ task, onChange }) {
     finally { setBusy(false); }
   };
 
+  // Public snapshot: notes are shown read-only, and only if any were exported; no input, no delete.
+  if (PUBLIC && !notes.length) return null;
+
   return (
     <div className={"notes" + (open ? " open" : "") + (notes.length ? " has" : "")}>
       <button className="notes-tab" onClick={() => setOpen((o) => !o)}>
@@ -196,11 +200,12 @@ function TaskNotes({ task, onChange }) {
               <div className="note-meta">
                 <span>{n.author || "Sevan"}</span>
                 <span className="note-ts">{String(n.ts).replace("T", " ").slice(0, 16)}</span>
-                <button className="note-x" title="Delete note" disabled={busy} onClick={() => remove(n.ts)}>×</button>
+                {!PUBLIC && <button className="note-x" title="Delete note" disabled={busy} onClick={() => remove(n.ts)}>×</button>}
               </div>
               <div className="note-text">{n.text}</div>
             </div>
           ))}
+          {!PUBLIC && (<>
           <textarea
             className="note-input"
             rows={2}
@@ -213,6 +218,7 @@ function TaskNotes({ task, onChange }) {
             <span className="note-hint">⌘/Ctrl + Enter</span>
             <button className="act-btn primary" disabled={busy || !draft.trim()} onClick={submit}>Add note</button>
           </div>
+          </>)}
         </div>
       )}
     </div>
@@ -222,7 +228,10 @@ function TaskNotes({ task, onChange }) {
 // One typed result. Anything absent or unknown renders nothing (no placeholders cluttering the view).
 function Result({ r, defs = {} }) {
   let body = null;
-  if (r.type === "video" && r.src) {
+  if (r.omitted) {
+    // Public snapshot: the exporter left this file out (size cap / budget) and said so in the data.
+    body = <div className="muted pad">This {r.type || "file"} is not included in the public snapshot.</div>;
+  } else if (r.type === "video" && r.src) {
     body = <VideoPlayer src={r.src} />;
   } else if (r.type === "image" && r.src) {
     body = <img className="task-image" src={r.src} alt={r.caption || ""} />;
@@ -286,11 +295,13 @@ function TaskTags({ task, options, onChange, onTagCreated }) {
       {tags.map((t) => (
         <span key={t} className="task-tag" style={{ "--tc": colour(t) }}>{t}</span>
       ))}
+      {!PUBLIC && (
       <button className="task-tag-edit" disabled={busy} onClick={() => setOpen((o) => !o)}
               title="Edit this task's tags">
         {tags.length ? "edit tags" : "+ tags"}
       </button>
-      {open && (
+      )}
+      {!PUBLIC && open && (
         <span className="task-tag-pop" onClick={(e) => e.stopPropagation()}>
           <TagPicker options={options || []} value={tags} onChange={save} onTagCreated={onTagCreated} />
           <button className="act-btn" onClick={() => setOpen(false)}>done</button>
@@ -439,7 +450,7 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
           )}
         </div>
         <div className="task-actions">
-          {isDone ? (
+          {PUBLIC ? null : isDone ? (
             <button className="act-btn" onClick={() => setSendBack(true)}>Reopen</button>
           ) : (
             <>
@@ -450,14 +461,16 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
           <button className="act-btn" onClick={() => onOpenOnMap && onOpenOnMap(task.direction, task.id)}>
             View on Map
           </button>
+          {!PUBLIC && (<>
           <button className="act-btn" onClick={() => setProposing((p) => !p)}>Propose follow-up</button>
           <button className="act-btn danger" onClick={() => setConfirmDelete(true)}>Delete</button>
+          </>)}
         </div>
       </div>
       <TaskNotes task={task} onChange={onChange} />
       {!isDone && <LiveLine live={task.live} className="task-live" />}
 
-      {confirmDelete && (
+      {!PUBLIC && confirmDelete && (
         <div className="confirm-box">
           <p><strong>Delete this task?</strong> It is removed from the board and the Tasks list entirely.
           The run files stay on disk (recoverable from git), but nothing links to them anymore.</p>
@@ -468,7 +481,7 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
         </div>
       )}
 
-      {sendBack && (
+      {!PUBLIC && sendBack && (
         <div className="reopen-box">
           <p>
             This sends the task back to the <strong>Queue</strong> with a flagged note so a worker knows
@@ -495,7 +508,7 @@ export default function TaskView({ detail, reloadToken, onChange, onDeleted, onO
         </div>
       )}
 
-      {proposing && (
+      {!PUBLIC && proposing && (
         <div className="reopen-box">
           <p>
             Spin this result into a <strong>proposed follow-up</strong> in the same direction — an

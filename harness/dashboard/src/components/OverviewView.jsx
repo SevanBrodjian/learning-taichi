@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { setTaskStatus, setTaskEffort, setTaskBudget, createTask, editTask, deleteTask } from "../api.js";
 import { EFFORTS, effortMeta } from "../effort.js";
 import LiveLine from "./LiveLine.jsx";
+import { PUBLIC } from "../publicMode.js";
 
 // Quick / Standard / Deep picker. Used in the task modal; writes back immediately.
 function EffortPicker({ value, onPick, disabled }) {
@@ -33,7 +34,8 @@ const COLUMNS = [
   { id: "queued", label: "Queued" },
   { id: "active", label: "Active" },
 ];
-const DRAGGABLE = new Set(["proposed", "queued"]);
+// Nothing is draggable in the public snapshot: the board is read-only.
+const DRAGGABLE = PUBLIC ? new Set() : new Set(["proposed", "queued"]);
 
 // The task-detail / edit modal. Holds its OWN draft state so typing never re-renders the board behind
 // it (that, plus pausing the board poll while a field is focused, is what fixes the input lag).
@@ -84,6 +86,7 @@ function TaskModal({ task, onClose, onChanged }) {
             <p className="modal-note">{form.note || "No description yet."}</p>
             <LiveLine live={task.live} />
             <div className="modal-status">Status: {task.status}</div>
+            {!PUBLIC && (<>
             <div className="modal-effort">
               <span className="modal-effort-label">Intensity</span>
               <EffortPicker
@@ -103,13 +106,14 @@ function TaskModal({ task, onClose, onChanged }) {
               </span>
               <span className="modal-effort-hint">Soft expectation — the orchestrator checks in and steps in if a worker goes silent or blows past this.</span>
             </div>
+            </>)}
             {task.rework_history?.length > 0 && (
               <div className="modal-rework">
                 <span className="modal-rework-flag">⚑ Sent back with notes</span>
                 <ul>{task.rework_history.map((h, i) => <li key={i}>{h.note}</li>)}</ul>
               </div>
             )}
-            {confirmDelete ? (
+            {PUBLIC ? null : confirmDelete ? (
               <div className="confirm-box">
                 <p><strong>Delete this task?</strong> It is removed from the dashboard entirely. This cannot be undone here.</p>
                 <div className="modal-actions">
@@ -256,7 +260,7 @@ export default function OverviewView({ overview, onOpenTask, onChange, focus, on
           </button>
         ))}
         <span className="dir-filter-spacer" />
-        <button className="chip add" onClick={() => setAuthor(true)}>+ Task</button>
+        {!PUBLIC && <button className="chip add" onClick={() => setAuthor(true)}>+ Task</button>}
       </div>
 
       <div className="board3">
@@ -326,7 +330,7 @@ export default function OverviewView({ overview, onOpenTask, onChange, focus, on
         />
       )}
 
-      {author && (
+      {!PUBLIC && author && (
         <AuthorModal tagOptions={tagOptions} onTagCreated={onTagCreated} onClose={() => setAuthor(null)} onChanged={refresh} />
       )}
     </div>

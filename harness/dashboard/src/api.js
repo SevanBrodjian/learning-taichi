@@ -1,19 +1,49 @@
 import { API_BASE } from "./config.js";
+import { PUBLIC, SNAPSHOT_ROOT } from "./publicMode.js";
+
+// Public snapshot: the GET endpoints that were exported as static files. Anything else (notebook,
+// notifications, decisions unless opted in, health) is simply not there, and asking for it fails locally
+// instead of reaching for a server.
+const SNAPSHOT_ENDPOINTS = new Set([
+  "/api/index", "/api/overview", "/api/directions", "/api/reports", "/api/training",
+  "/api/definitions", "/api/epochs", "/api/tags", "/api/decisions",
+]);
+
+// Map a live-server path to its place in the static snapshot. Returns null for anything not exported.
+// The exporter already rewrites URLs inside the data to `snapshot/...`, so those pass straight through.
+export function snapshotUrl(path) {
+  if (!path) return null;
+  if (path.startsWith(SNAPSHOT_ROOT)) return path;
+  if (path.startsWith("/api/data/")) return SNAPSHOT_ROOT + path.slice(1);
+  const t = /^\/api\/task\/([^/]+)\/([^/?#]+)$/.exec(path);
+  if (t) return `${SNAPSHOT_ROOT}api/task/${t[1]}/${t[2]}.json`;
+  if (SNAPSHOT_ENDPOINTS.has(path)) return `${SNAPSHOT_ROOT}${path.slice(1)}.json`;
+  return null;
+}
 
 // The data server returns fully-resolved /api/data/... URLs inside the index and every manifest,
 // so callers just pass those paths straight back here. API_BASE is "" in dev (same-origin proxy).
 async function get(path, kind) {
-  const res = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
+  let url = `${API_BASE}${path}`;
+  if (PUBLIC) {
+    url = snapshotUrl(path);
+    if (!url) throw new Error(`${path} is not part of this snapshot`);
+  }
+  const res = await fetch(url, PUBLIC ? undefined : { cache: "no-store" });
   if (!res.ok) throw new Error(`${path} -> ${res.status}`);
   return kind === "text" ? res.text() : res.json();
 }
+
+// Every write in public mode resolves to a refusal without touching the network. The UI that would call
+// these is not rendered in public mode either; this is the second lock, not the first.
+const READ_ONLY = () => Promise.resolve({ ok: false, error: "read-only snapshot" });
 
 export const fetchIndex = () => get("/api/index", "json");
 export const fetchJSON = (path) => get(path, "json");
 export const fetchText = (path) => get(path, "text");
 
 // Media (video/frames) is referenced by an already-resolved /api/data/... URL in the manifest.
-export const mediaUrl = (path) => `${API_BASE}${path}`;
+export const mediaUrl = (path) => (PUBLIC ? snapshotUrl(path) || path : `${API_BASE}${path}`);
 
 // Shared, repo-level doc sets (served from the main checkout).
 export const fetchTraining = () => get("/api/training", "json");
@@ -29,7 +59,7 @@ export const fetchOverview = () => get("/api/overview", "json");
 export const fetchTask = (detail) => get(detail, "json"); // detail is /api/task/<dir>/<task>
 
 // Write-back: change a task's board status (drag / Mark Done / send back).
-export const setTaskStatus = (direction, task, status, note) =>
+export const setTaskStatus = (direction, task, status, note) => PUBLIC ? READ_ONLY() :
   fetch(`${API_BASE}/api/task-status`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -37,7 +67,7 @@ export const setTaskStatus = (direction, task, status, note) =>
   }).then((r) => r.json());
 
 // Set a task's intensity tier (quick | standard | deep). The orchestrator reads it at spawn time.
-export const setTaskEffort = (direction, task, effort) =>
+export const setTaskEffort = (direction, task, effort) => PUBLIC ? READ_ONLY() :
   fetch(`${API_BASE}/api/task-effort`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -45,14 +75,14 @@ export const setTaskEffort = (direction, task, effort) =>
   }).then((r) => r.json());
 
 // Set a task's adaptive time budget in minutes (a soft expectation the orchestrator watches against).
-export const setTaskBudget = (direction, task, minutes) =>
+export const setTaskBudget = (direction, task, minutes) => PUBLIC ? READ_ONLY() :
   fetch(`${API_BASE}/api/task-budget`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ direction, task, minutes }),
   }).then((r) => r.json());
 
-const post = (path, payload) =>
+const post = (path, payload) => PUBLIC ? READ_ONLY() :
   fetch(`${API_BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -76,7 +106,7 @@ export const saveFile = (url, content, commit = true) => {
 // does not. Fire-and-forget by design — there is no response to read at that point.
 export const beaconSave = (url, content) => {
   const p = parseDataUrl(url);
-  if (!p || !navigator.sendBeacon) return false;
+  if (PUBLIC || !p || !navigator.sendBeacon) return false;
   const body = new Blob([JSON.stringify({ rid: p.rid, path: p.path, content, commit: false })],
                         { type: "application/json" });
   try { return navigator.sendBeacon(`${API_BASE}/api/file`, body); } catch { return false; }

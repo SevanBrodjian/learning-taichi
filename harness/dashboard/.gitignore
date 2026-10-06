@@ -5,3 +5,5 @@ public/data/runs/
 !public/data/runs/sample/
 public/data/reports/
 !public/data/reports/training/sample.md
+dist-public/
+dist-demo/

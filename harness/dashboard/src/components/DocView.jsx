@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { fetchText } from "../api.js";
 import MarkdownReport from "./MarkdownReport.jsx";
 import DocEditor from "./DocEditor.jsx";
+import { PUBLIC } from "../publicMode.js";
 
 // Generic single-markdown panel (Directions, Reports, a single inbox item). Editable in place —
 // except where the document is a frozen copy (an epoch's report), which is `readOnly` by definition:
@@ -28,7 +29,7 @@ export default function DocView({ url, empty, readOnly = false }) {
 
   if (missing) return <div className="muted pad">{empty || "Nothing here yet."}</div>;
   if (body == null) return <div className="muted pad">Loading…</div>;
-  if (readOnly) {
+  if (readOnly || PUBLIC) {
     return (
       <div className="content-doc">
         <MarkdownReport markdown={body} />

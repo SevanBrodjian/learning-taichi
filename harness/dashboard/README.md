@@ -20,3 +20,10 @@ first real run exists.
 
 > Installable-PWA + live-monitoring wiring is deferred to the dedicated setup pass (manifest icons,
 > service worker, ntfy, auto-refresh).
+
+## Public static export (read-only)
+`npm run build:public` builds the same dashboard in a read-only mode that browses a frozen snapshot
+(`snapshot/api/...`, relative base, no polling, no write controls, no Notebook/Inbox) instead of the live
+server; `npm run build:demo` builds the WebGPU demo as one self-contained `index.html`. Don't run these by
+hand to publish: `harness/tools/export_public.py` writes the snapshot, runs both builds, and refuses to
+finish if the privacy scan finds anything (see its docstring for what is excluded and the opt-in flags).

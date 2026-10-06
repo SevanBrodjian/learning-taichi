@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { fetchTraining, fetchText } from "../api.js";
 import MarkdownReport from "./MarkdownReport.jsx";
 import DocEditor from "./DocEditor.jsx";
+import { PUBLIC } from "../publicMode.js";
 
 // Per-device read tracking for the "New" tag (#10). A section is New if never opened on this device,
 // or edited (mtime advanced) since it was last opened. Opening it clears the tag.
@@ -70,7 +71,7 @@ export default function TrainingView({ onRead, target, onTargetHandled }) {
     };
   }, [active?.url]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const isNew = (s) => s.mtime && (!(s.id in readMap) || s.mtime > readMap[s.id]);
+  const isNew = (s) => !PUBLIC && s.mtime && (!(s.id in readMap) || s.mtime > readMap[s.id]);
 
   if (err) return <div className="error">{err}</div>;
   if (!toc) return <div className="muted pad">Loading textbook…</div>;
@@ -97,9 +98,13 @@ export default function TrainingView({ onRead, target, onTargetHandled }) {
         ))}
       </nav>
       <article className="doc-body">
-        <DocEditor url={active?.url} body={body} onSaved={(t) => { setBody(t); loadToc(); }}>
+        {PUBLIC ? (
           <MarkdownReport markdown={body} sections={sections} onNavigate={setActiveId} />
-        </DocEditor>
+        ) : (
+          <DocEditor url={active?.url} body={body} onSaved={(t) => { setBody(t); loadToc(); }}>
+            <MarkdownReport markdown={body} sections={sections} onNavigate={setActiveId} />
+          </DocEditor>
+        )}
       </article>
     </div>
   );

@@ -27,3 +27,9 @@ first real run exists.
 server; `npm run build:demo` builds the WebGPU demo as one self-contained `index.html`. Don't run these by
 hand to publish: `harness/tools/export_public.py` writes the snapshot, runs both builds, and refuses to
 finish if the privacy scan finds anything (see its docstring for what is excluded and the opt-in flags).
+
+The published copy lives in `public-lab/` on the `public-export` branch and is served as-is at
+https://taichi-lab.sevanb.net (Railway serves that folder alone). To update it, run on the Mac that holds
+the data (the scrub needs its local paths and host names, so never on a server):
+`python harness/tools/export_public.py --out public-lab --report-json /tmp/lab-report.json`, then commit
+`public-lab/` and push.

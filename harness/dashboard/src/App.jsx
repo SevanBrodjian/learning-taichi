@@ -81,7 +81,8 @@ function useMediaQuery(query) {
 
 export default function App() {
   const [place] = useState(loadPlace); // snapshot once at mount
-  const [section, setSection] = useState(place.section || "overview");
+  // A first public visit opens on the task map; after that the lab keeps its own place.
+  const [section, setSection] = useState(place.section || (PUBLIC ? "map" : "overview"));
   const snapMeta = useSnapshotMeta();
   const sections = useMemo(() => visibleSections(snapMeta), [snapMeta]);
   // A restored place may point at a view this build does not have (e.g. the Notebook, in public mode).
